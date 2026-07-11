@@ -993,12 +993,15 @@
         <div class="form-row">
           <div class="form-group">
             <label class="form-label">Start Date</label>
-            <input type="date" class="form-input" id="taskStartDate">
+            <input type="date" class="form-input" id="taskStartDate" onchange="validateTaskDates()">
           </div>
           <div class="form-group">
             <label class="form-label">Due Date</label>
-            <input type="date" class="form-input" id="taskDueDate">
+            <input type="date" class="form-input" id="taskDueDate" onchange="validateTaskDates()">
           </div>
+        </div>
+        <div id="taskDateError" style="display:none;color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:4px">
+          ⚠ Start date must be before the due date.
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -2491,7 +2494,10 @@ const renderers = {
       document.getElementById('taskDueTime').value  = t?.dueTime || '';
       document.getElementById('taskStatus').value   = t?.status || 'Todo';
       document.getElementById('taskHours').value    = t?.estimatedHours || '';
-      document.getElementById('taskTitle').style.borderColor = '';
+      document.getElementById('taskTitle').style.borderColor    = '';
+      document.getElementById('taskStartDate').style.borderColor = '';
+      document.getElementById('taskDueDate').style.borderColor   = '';
+      document.getElementById('taskDateError').style.display     = 'none';
 
       // Populate assign-to dropdown
       buildAssignOptions(document.getElementById('taskProjectLink'), t?.projectId || preProjectId || '');
@@ -2513,11 +2519,27 @@ const renderers = {
       editingTaskId = null;
     }
 
+    function validateTaskDates() {
+      const start = document.getElementById('taskStartDate').value;
+      const due   = document.getElementById('taskDueDate').value;
+      const err   = document.getElementById('taskDateError');
+      const startEl = document.getElementById('taskStartDate');
+      const dueEl   = document.getElementById('taskDueDate');
+      const invalid = start && due && start >= due;
+      err.style.display       = invalid ? 'block' : 'none';
+      startEl.style.borderColor = invalid ? 'var(--danger)' : '';
+      dueEl.style.borderColor   = invalid ? 'var(--danger)' : '';
+      return !invalid;
+    }
+
     function saveTask() {
       const title = document.getElementById('taskTitle').value.trim();
       if (!title) {
         document.getElementById('taskTitle').style.borderColor = 'var(--danger)';
         document.getElementById('taskTitle').focus(); return;
+      }
+      if (!validateTaskDates()) {
+        document.getElementById('taskStartDate').focus(); return;
       }
       const id       = document.getElementById('taskId').value || uid();
       const existing = tasks.find(x => x.id === id);
