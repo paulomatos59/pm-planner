@@ -1,0 +1,1801 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Program Manager Planner — Paulo</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #f0f4f8;
+      --surface: #ffffff;
+      --border: #e2e8f0;
+      --text: #1e293b;
+      --text-muted: #64748b;
+      --primary: #2563eb;
+      --primary-light: #eff6ff;
+      --danger: #ef4444;
+      --danger-light: #fef2f2;
+      --warning: #f59e0b;
+      --warning-light: #fffbeb;
+      --success: #22c55e;
+      --success-light: #f0fdf4;
+      --purple: #8b5cf6;
+      --purple-light: #f5f3ff;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--bg); color: var(--text);
+      min-height: 100vh; display: flex; flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .app-header {
+      background: var(--surface); border-bottom: 1px solid var(--border);
+      padding: 0 24px; height: 56px;
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 100;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+    }
+    .app-title { font-size: 17px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .header-date { font-size: 13px; color: var(--text-muted); margin-left: 16px; }
+    .header-stats { display: flex; gap: 10px; align-items: center; }
+    .stat-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+    .stat-overdue { background: var(--danger-light); color: var(--danger); }
+    .stat-today   { background: var(--primary-light); color: var(--primary); }
+    .stat-done    { background: var(--success-light); color: #16a34a; }
+
+    /* ── Layout ── */
+    .app-body { display: flex; flex: 1; }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 210px; background: var(--surface); border-right: 1px solid var(--border);
+      padding: 12px 0; display: flex; flex-direction: column;
+      position: sticky; top: 56px; height: calc(100vh - 56px);
+      overflow-y: auto; flex-shrink: 0;
+    }
+    .sidebar-label {
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 16px 4px;
+    }
+    .nav-item {
+      display: flex; align-items: center; gap: 9px;
+      padding: 8px 16px; cursor: pointer; font-size: 14px; font-weight: 500;
+      color: var(--text); border: none; background: none;
+      width: 100%; text-align: left; transition: all 0.1s;
+    }
+    .nav-item:hover { background: var(--bg); }
+    .nav-item.active { background: var(--primary-light); color: var(--primary); border-right: 3px solid var(--primary); }
+    .nav-badge {
+      margin-left: auto; background: var(--danger); color: white;
+      font-size: 10px; font-weight: 700; padding: 1px 6px;
+      border-radius: 10px; min-width: 20px; text-align: center;
+    }
+    .btn-add-task {
+      margin: 4px 12px 12px; background: var(--primary); color: white;
+      border: none; border-radius: 8px; padding: 9px 14px;
+      font-size: 14px; font-weight: 600; cursor: pointer;
+      display: flex; align-items: center; gap: 7px;
+      transition: background 0.15s; width: calc(100% - 24px);
+    }
+    .btn-add-task:hover { background: #1d4ed8; }
+
+    /* ── Main ── */
+    .main { flex: 1; padding: 24px; overflow-y: auto; max-width: 1000px; }
+    .view-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
+    .view-title { font-size: 22px; font-weight: 700; }
+    .view-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+
+    /* ── Sections ── */
+    .section-header { display: flex; align-items: center; gap: 8px; margin: 20px 0 8px; }
+    .section-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .section-count { font-size: 11px; font-weight: 600; color: var(--text-muted); background: var(--bg); padding: 1px 7px; border-radius: 10px; border: 1px solid var(--border); }
+
+    /* ── Task cards ── */
+    .task-list { display: flex; flex-direction: column; gap: 5px; }
+    .task-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; padding: 11px 14px;
+      display: flex; align-items: flex-start; gap: 11px;
+      transition: all 0.15s; cursor: pointer;
+    }
+    .task-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+    .task-card.overdue { border-left: 3px solid var(--danger); background: #fff9f9; }
+    .task-card.done    { opacity: 0.55; }
+    .task-checkbox {
+      width: 17px; height: 17px; border: 2px solid var(--border);
+      border-radius: 4px; cursor: pointer; flex-shrink: 0; margin-top: 2px;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; user-select: none;
+    }
+    .task-checkbox:hover { border-color: var(--primary); }
+    .task-checkbox.checked { background: var(--success); border-color: var(--success); }
+    .task-checkbox.checked::after { content: '✓'; color: white; font-size: 10px; font-weight: 800; }
+    .task-content { flex: 1; min-width: 0; }
+    .task-title { font-size: 14px; font-weight: 500; }
+    .task-card.done .task-title { text-decoration: line-through; color: var(--text-muted); }
+    .task-meta { display: flex; align-items: center; gap: 6px; margin-top: 5px; flex-wrap: wrap; }
+    .task-chip { font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 4px; }
+    .chip-high     { background: #fef2f2; color: var(--danger); }
+    .chip-medium   { background: var(--warning-light); color: #92400e; }
+    .chip-low      { background: #f0fdf4; color: #15803d; }
+    .chip-meeting  { background: var(--purple-light); color: var(--purple); }
+    .chip-project  { background: var(--primary-light); color: var(--primary); }
+    .chip-admin    { background: #f8fafc; color: #475569; border: 1px solid var(--border); }
+    .chip-followup { background: var(--warning-light); color: #92400e; }
+    .chip-personal { background: #fdf4ff; color: #7e22ce; }
+    .chip-proj-link { background: #f0fdf4; color: #15803d; font-size: 11px; font-weight: 500; padding: 2px 7px; border-radius: 4px; }
+    .task-due { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 3px; }
+    .task-due.overdue-text { color: var(--danger); font-weight: 600; }
+    .task-actions { display: flex; gap: 2px; opacity: 0; transition: opacity 0.15s; }
+    .task-card:hover .task-actions { opacity: 1; }
+    .btn-icon { background: none; border: none; padding: 4px 6px; cursor: pointer; border-radius: 4px; color: var(--text-muted); font-size: 13px; }
+    .btn-icon:hover { background: var(--bg); }
+    .status-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap; }
+    .status-todo       { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+    .status-inprogress { background: var(--primary-light); color: var(--primary); }
+    .status-done       { background: var(--success-light); color: #15803d; }
+    .status-delayed    { background: var(--danger-light); color: var(--danger); }
+    .status-blocked    { background: var(--warning-light); color: #92400e; }
+
+    /* ── Overdue banner ── */
+    .overdue-banner {
+      background: #fff5f5; border: 1px solid #fecaca;
+      border-radius: 10px; padding: 12px 16px;
+      display: flex; align-items: center; gap: 12px; margin-bottom: 4px;
+    }
+    .overdue-banner-icon { font-size: 22px; }
+    .overdue-banner-title { font-size: 14px; font-weight: 700; color: var(--danger); }
+    .overdue-banner-desc  { font-size: 12px; color: #991b1b; margin-top: 2px; }
+
+    /* ── Morning card ── */
+    .morning-card {
+      background: linear-gradient(135deg, #eff6ff 0%, #f0fdf4 100%);
+      border: 1px solid #bfdbfe; border-radius: 12px;
+      padding: 18px 20px; margin-bottom: 20px;
+    }
+    .morning-title { font-size: 16px; font-weight: 700; margin-bottom: 3px; }
+    .morning-sub   { font-size: 12px; color: var(--text-muted); margin-bottom: 12px; }
+    .focus-input {
+      width: 100%; border: 1px solid var(--border); border-radius: 8px;
+      padding: 9px 14px; font-size: 14px; font-family: inherit;
+      background: white; color: var(--text); outline: none;
+    }
+    .focus-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+
+    /* ── Week grid ── */
+    .week-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 10px; }
+    .week-day { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; min-height: 140px; }
+    .week-day.today { border-color: var(--primary); box-shadow: 0 0 0 1px var(--primary); }
+    .week-day-header { padding: 9px 10px 7px; border-bottom: 1px solid var(--border); }
+    .week-day-name { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+    .week-day-num  { font-size: 20px; font-weight: 700; line-height: 1.2; }
+    .week-day.today .week-day-num { color: var(--primary); }
+    .week-tasks { padding: 6px; }
+    .week-task-item { font-size: 11px; padding: 3px 7px; border-radius: 4px; margin-bottom: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; }
+    .week-task-item.priority-high   { background: var(--danger-light); color: var(--danger); }
+    .week-task-item.priority-medium { background: var(--warning-light); color: #92400e; }
+    .week-task-item.priority-low    { background: var(--success-light); color: #15803d; }
+    .week-task-item.done            { opacity: 0.45; text-decoration: line-through; }
+    .week-add { font-size: 11px; color: var(--text-muted); padding: 3px 7px; cursor: pointer; border-radius: 4px; display: block; }
+    .week-add:hover { background: var(--bg); }
+
+    /* ── All-tasks table ── */
+    .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
+    .filter-select, .filter-input {
+      border: 1px solid var(--border); border-radius: 8px;
+      padding: 7px 10px; font-size: 13px; font-family: inherit;
+      background: var(--surface); color: var(--text);
+    }
+    .filter-input { flex: 1; min-width: 180px; }
+    .filter-input:focus, .filter-select:focus { outline: none; border-color: var(--primary); }
+    .tasks-table { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .table-header, .table-row {
+      display: grid;
+      grid-template-columns: 28px 1fr 100px 78px 96px 86px 52px;
+      padding: 10px 14px; gap: 8px; align-items: center;
+    }
+    .table-header { background: var(--bg); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .table-row { border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; transition: background 0.1s; }
+    .table-row:last-child { border-bottom: none; }
+    .table-row:hover { background: var(--bg); }
+    .table-row.overdue { border-left: 3px solid var(--danger); padding-left: 11px; }
+
+    /* ── Empty state ── */
+    .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+    .empty-state .icon { font-size: 40px; margin-bottom: 12px; }
+    .empty-state h3 { font-size: 16px; font-weight: 600; margin-bottom: 6px; color: var(--text); }
+    .empty-state p { font-size: 14px; }
+
+    /* ── Modal ── */
+    .modal-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.45);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: 20px;
+    }
+    .modal-overlay.hidden { display: none; }
+    .modal {
+      background: var(--surface); border-radius: 12px;
+      width: 100%; max-width: 500px; max-height: 92vh;
+      overflow-y: auto; box-shadow: 0 24px 64px rgba(0,0,0,0.22);
+    }
+    .modal-wide { max-width: 620px; }
+    .modal-header {
+      padding: 18px 22px 14px; border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; background: var(--surface); z-index: 1;
+    }
+    .modal-title  { font-size: 16px; font-weight: 700; }
+    .btn-close { background: none; border: none; font-size: 20px; cursor: pointer; color: var(--text-muted); padding: 2px 8px; border-radius: 4px; line-height: 1; }
+    .btn-close:hover { background: var(--bg); }
+    .modal-body { padding: 18px 22px; }
+    .modal-footer {
+      padding: 14px 22px; border-top: 1px solid var(--border);
+      display: flex; gap: 8px; justify-content: flex-end;
+      position: sticky; bottom: 0; background: var(--surface);
+    }
+    .form-group { margin-bottom: 14px; }
+    .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
+    .form-input, .form-select, .form-textarea {
+      width: 100%; border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px 12px; font-size: 14px; font-family: inherit;
+      color: var(--text); background: var(--surface); outline: none; transition: border-color 0.15s;
+    }
+    .form-input:focus, .form-select:focus, .form-textarea:focus {
+      border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+    }
+    .form-textarea { resize: vertical; min-height: 72px; }
+    .form-textarea-tall { min-height: 160px; }
+    .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .btn { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
+    .btn-primary   { background: var(--primary); color: white; }
+    .btn-primary:hover { background: #1d4ed8; }
+    .btn-secondary { background: var(--bg); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { background: var(--border); }
+    .btn-danger    { background: var(--danger); color: white; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn-sm { padding: 5px 12px; font-size: 13px; }
+
+    /* ── Color swatches ── */
+    .color-swatches { display: flex; gap: 8px; flex-wrap: wrap; }
+    .color-swatch {
+      width: 28px; height: 28px; border-radius: 50%; cursor: pointer;
+      border: 3px solid transparent; transition: all 0.15s;
+    }
+    .color-swatch.selected { border-color: var(--text); transform: scale(1.15); }
+
+    /* ── Project cards ── */
+    .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .project-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; cursor: pointer;
+      transition: all 0.15s; position: relative;
+    }
+    .project-card:hover { box-shadow: 0 4px 16px rgba(0,0,0,0.1); border-color: #cbd5e1; transform: translateY(-1px); }
+    .project-card-stripe { height: 4px; }
+    .project-card-body { padding: 14px 16px 16px; }
+    .project-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 5px; }
+    .project-card-name { font-size: 15px; font-weight: 700; }
+    .project-card-desc { font-size: 13px; color: var(--text-muted); margin-bottom: 12px; min-height: 18px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .project-card-stats { display: flex; align-items: center; gap: 10px; }
+    .project-stat { font-size: 12px; color: var(--text-muted); display: flex; align-items: center; gap: 4px; }
+    .project-status-badge { font-size: 11px; font-weight: 600; padding: 2px 8px; border-radius: 20px; }
+    .ps-active    { background: var(--success-light); color: #15803d; }
+    .ps-onhold    { background: var(--warning-light); color: #92400e; }
+    .ps-completed { background: var(--bg); color: var(--text-muted); border: 1px solid var(--border); }
+    .ps-cancelled { background: var(--danger-light); color: var(--danger); }
+
+    /* ── Project detail ── */
+    .back-btn {
+      display: inline-flex; align-items: center; gap: 6px;
+      color: var(--primary); font-size: 13px; font-weight: 600;
+      background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 14px;
+    }
+    .back-btn:hover { text-decoration: underline; }
+    .project-detail-header {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; overflow: hidden; margin-bottom: 20px;
+    }
+    .project-detail-stripe { height: 5px; }
+    .project-detail-body { padding: 16px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; }
+    .project-detail-name { font-size: 20px; font-weight: 700; margin-bottom: 4px; }
+    .project-detail-desc { font-size: 14px; color: var(--text-muted); }
+    .project-detail-actions { display: flex; gap: 8px; flex-shrink: 0; }
+
+    /* ── Tabs ── */
+    .tabs { display: flex; border-bottom: 2px solid var(--border); margin-bottom: 18px; }
+    .tab-btn {
+      padding: 9px 18px; font-size: 14px; font-weight: 600;
+      color: var(--text-muted); background: none; border: none; cursor: pointer;
+      border-bottom: 2px solid transparent; margin-bottom: -2px; transition: all 0.15s;
+      display: flex; align-items: center; gap: 7px;
+    }
+    .tab-btn:hover { color: var(--text); }
+    .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+    .tab-count { font-size: 11px; background: var(--bg); padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); }
+
+    /* ── Follow-up items ── */
+    .followup-list { display: flex; flex-direction: column; gap: 6px; }
+    .followup-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; padding: 12px 14px;
+      display: flex; align-items: flex-start; gap: 10px; cursor: pointer; transition: all 0.15s;
+    }
+    .followup-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+    .followup-card.resolved { opacity: 0.55; }
+    .followup-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .fd-open      { background: var(--warning); }
+    .fd-discussed { background: var(--primary); }
+    .fd-resolved  { background: var(--success); }
+    .followup-content { flex: 1; min-width: 0; }
+    .followup-topic { font-size: 14px; font-weight: 500; }
+    .followup-card.resolved .followup-topic { text-decoration: line-through; color: var(--text-muted); }
+    .followup-notes-text { font-size: 12px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .fu-status-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
+    .fu-open      { background: var(--warning-light); color: #92400e; }
+    .fu-discussed { background: var(--primary-light); color: var(--primary); }
+    .fu-resolved  { background: var(--success-light); color: #15803d; }
+
+    /* ── Notes ── */
+    .notes-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+    .note-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; padding: 14px; cursor: pointer; transition: all 0.15s;
+    }
+    .note-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+    .note-card-title { font-size: 14px; font-weight: 600; margin-bottom: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .note-card-preview { font-size: 13px; color: var(--text-muted); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; line-height: 1.5; }
+    .note-card-date { font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+    .note-add-card {
+      background: var(--bg); border: 2px dashed var(--border);
+      border-radius: 9px; padding: 14px; cursor: pointer; transition: all 0.15s;
+      display: flex; align-items: center; justify-content: center;
+      flex-direction: column; gap: 6px; min-height: 110px;
+      color: var(--text-muted); font-size: 14px; font-weight: 500;
+    }
+    .note-add-card:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .note-add-icon { font-size: 24px; }
+
+    /* ── Collapsible Sidebar Sections ── */
+    .sidebar-section { border-bottom: 1px solid var(--border); }
+    .sidebar-section:last-child { border-bottom: none; }
+
+    .sidebar-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 9px 14px; cursor: pointer; user-select: none;
+      font-size: 10px; font-weight: 800; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.7px; transition: background 0.1s;
+    }
+    .sidebar-section-header:hover { background: var(--bg); }
+    .sidebar-section-left { display: flex; align-items: center; gap: 5px; }
+    .sidebar-section-right { display: flex; align-items: center; gap: 4px; }
+    .section-arrow { display: inline-block; font-size: 8px; transition: transform 0.2s; }
+    .section-arrow.open   { transform: rotate(0deg); }
+    .section-arrow.closed { transform: rotate(-90deg); }
+    .section-add-btn {
+      background: none; border: none; color: var(--text-muted); cursor: pointer;
+      font-size: 15px; line-height: 1; padding: 1px 3px; border-radius: 3px;
+    }
+    .section-add-btn:hover { color: var(--primary); background: var(--primary-light); }
+
+    .sidebar-section-body {
+      overflow: hidden; max-height: 600px; opacity: 1;
+      transition: max-height 0.25s ease, opacity 0.2s ease;
+    }
+    .sidebar-section-body.collapsed { max-height: 0 !important; opacity: 0; }
+
+    /* Planner sub-group */
+    .sidebar-subgroup-header {
+      display: flex; align-items: center; gap: 7px;
+      padding: 7px 14px; cursor: pointer; user-select: none;
+      font-size: 13px; font-weight: 600; color: var(--text);
+      background: none; border: none; width: 100%; text-align: left;
+      transition: background 0.1s;
+    }
+    .sidebar-subgroup-header:hover { background: var(--bg); }
+    .subgroup-arrow { display: inline-block; font-size: 8px; color: var(--text-muted); transition: transform 0.2s; }
+    .subgroup-arrow.open   { transform: rotate(0deg); }
+    .subgroup-arrow.closed { transform: rotate(-90deg); }
+    .sidebar-subgroup-body {
+      overflow: hidden; max-height: 300px; opacity: 1;
+      transition: max-height 0.2s ease, opacity 0.2s ease;
+    }
+    .sidebar-subgroup-body.collapsed { max-height: 0 !important; opacity: 0; }
+    .nav-item-indent { padding-left: 28px !important; }
+
+    /* Sidebar project items */
+    .sidebar-proj-item {
+      display: flex; align-items: center; gap: 8px;
+      padding: 7px 14px; cursor: pointer; font-size: 13px; font-weight: 500;
+      color: var(--text); border: none; background: none;
+      width: 100%; text-align: left; transition: all 0.1s;
+    }
+    .sidebar-proj-item:hover { background: var(--bg); }
+    .sidebar-proj-item.active { background: var(--primary-light); color: var(--primary); border-right: 3px solid var(--primary); }
+    .sidebar-proj-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .sidebar-proj-name { flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .sidebar-view-all {
+      display: block; padding: 6px 14px 8px;
+      font-size: 12px; color: var(--primary); cursor: pointer;
+      background: none; border: none; width: 100%; text-align: left; font-weight: 500;
+    }
+    .sidebar-view-all:hover { text-decoration: underline; }
+    .sidebar-no-projects { padding: 6px 14px 8px; font-size: 12px; color: var(--text-muted); font-style: italic; }
+
+    /* ── Priorities Dashboard ── */
+    .dash-stat-grid {
+      display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px;
+    }
+    .dash-stat-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 16px 18px;
+      display: flex; flex-direction: column; gap: 4px;
+    }
+    .dash-stat-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); }
+    .dash-stat-value { font-size: 28px; font-weight: 800; line-height: 1.1; }
+    .dash-stat-sub   { font-size: 12px; color: var(--text-muted); }
+    .dash-stat-card.danger  { border-top: 3px solid var(--danger); }
+    .dash-stat-card.primary { border-top: 3px solid var(--primary); }
+    .dash-stat-card.warning { border-top: 3px solid var(--warning); }
+    .dash-stat-card.success { border-top: 3px solid var(--success); }
+    .dash-stat-card.danger  .dash-stat-value { color: var(--danger); }
+    .dash-stat-card.primary .dash-stat-value { color: var(--primary); }
+    .dash-stat-card.warning .dash-stat-value { color: var(--warning); }
+    .dash-stat-card.success .dash-stat-value { color: #16a34a; }
+
+    .dash-projects-grid {
+      display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 10px;
+    }
+    .dash-proj-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 9px; padding: 12px 14px; cursor: pointer; transition: all 0.15s;
+      display: flex; flex-direction: column; gap: 6px;
+    }
+    .dash-proj-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+    .dash-proj-name { font-size: 13px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .dash-proj-meta { font-size: 12px; color: var(--text-muted); display: flex; gap: 10px; }
+    .dash-proj-stripe { height: 3px; border-radius: 2px; margin-bottom: 2px; }
+
+    /* ── Scrollbar ── */
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+</head>
+<body>
+
+  <!-- ── Header ── -->
+  <header class="app-header">
+    <div style="display:flex;align-items:center">
+      <div class="app-title">📋 Program Manager Planner</div>
+      <div class="header-date" id="headerDate"></div>
+    </div>
+    <div class="header-stats" id="headerStats"></div>
+  </header>
+
+  <div class="app-body">
+
+    <!-- ── Sidebar ── -->
+    <nav class="sidebar">
+      <div style="padding:8px 12px 4px">
+        <button class="btn-add-task" id="sidebarAddBtn" onclick="sidebarAdd()">＋ New Task</button>
+      </div>
+
+      <!-- Views section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('views')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-views">▶</span>
+            <span>Views</span>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-views">
+          <button class="nav-item" id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
+
+          <!-- Planner sub-group -->
+          <div class="sidebar-subgroup">
+            <button class="sidebar-subgroup-header" onclick="toggleSection('planner')">
+              <span class="subgroup-arrow open" id="arrow-planner">▶</span>
+              <span>Planner</span>
+            </button>
+            <div class="sidebar-subgroup-body" id="section-planner">
+              <button class="nav-item nav-item-indent active" id="nav-today"   onclick="showView('today')">🗓 Today</button>
+              <button class="nav-item nav-item-indent"        id="nav-week"    onclick="showView('week')">📅 This Week</button>
+              <button class="nav-item nav-item-indent"        id="nav-all"     onclick="showView('all')">📋 All Tasks</button>
+              <button class="nav-item nav-item-indent"        id="nav-overdue" onclick="showView('overdue')">
+                🚨 Overdue
+                <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Projects section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('projects')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-projects">▶</span>
+            <span>Projects</span>
+          </div>
+          <div class="sidebar-section-right">
+            <button class="section-add-btn" onclick="event.stopPropagation();openProjectModal()" title="New project">＋</button>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-projects">
+          <!-- Populated dynamically by updateSidebarProjects() -->
+        </div>
+      </div>
+
+      <!-- Categories section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('categories')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-categories">▶</span>
+            <span>Categories</span>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-categories">
+          <button class="nav-item" onclick="filterByCategory('Meeting')">🤝 Meetings</button>
+          <button class="nav-item" onclick="filterByCategory('Project')">🚀 Projects</button>
+          <button class="nav-item" onclick="filterByCategory('Admin')">⚙️ Admin</button>
+          <button class="nav-item" onclick="filterByCategory('Follow-up')">📌 Follow-ups</button>
+          <button class="nav-item" onclick="filterByCategory('Personal')">👤 Personal</button>
+        </div>
+      </div>
+    </nav>
+
+    <!-- ── Main content ── -->
+    <main class="main" id="mainContent"></main>
+  </div>
+
+  <!-- ── Task Modal ── -->
+  <div class="modal-overlay hidden" id="taskModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="modalTitle">New Task</h2>
+        <button class="btn-close" onclick="closeTaskModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="taskId">
+        <input type="hidden" id="taskProjectId">
+
+        <div class="form-group">
+          <label class="form-label">Task Title *</label>
+          <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description / Notes</label>
+          <textarea class="form-textarea" id="taskDesc" placeholder="Details, links, context…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Category</label>
+            <select class="form-select" id="taskCategory">
+              <option value="Project">🚀 Project</option>
+              <option value="Meeting">🤝 Meeting</option>
+              <option value="Admin">⚙️ Admin</option>
+              <option value="Follow-up">📌 Follow-up</option>
+              <option value="Personal">👤 Personal</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Priority</label>
+            <select class="form-select" id="taskPriority">
+              <option value="High">🔴 High</option>
+              <option value="Medium" selected>🟡 Medium</option>
+              <option value="Low">🟢 Low</option>
+            </select>
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Link to Project</label>
+          <select class="form-select" id="taskProjectLink">
+            <option value="">— No Project —</option>
+          </select>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" id="taskDueDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Due Time (optional)</label>
+            <input type="time" class="form-input" id="taskDueTime">
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="taskStatus">
+              <option value="Todo">To Do</option>
+              <option value="In Progress">In Progress</option>
+              <option value="Done">Done</option>
+              <option value="Delayed">Delayed</option>
+              <option value="Blocked">Blocked</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Est. Hours</label>
+            <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="btnDelete" style="display:none;margin-right:auto" onclick="deleteTask()">Delete</button>
+        <button class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Project Modal ── -->
+  <div class="modal-overlay hidden" id="projectModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="projectModalTitle">New Project</h2>
+        <button class="btn-close" onclick="closeProjectModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="projectId">
+        <div class="form-group">
+          <label class="form-label">Project Name *</label>
+          <input type="text" class="form-input" id="projectName" placeholder="e.g. Cloud Migration, Q3 Planning…" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Description</label>
+          <textarea class="form-textarea" id="projectDesc" placeholder="Goals, scope, context…"></textarea>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="projectStatus">
+              <option value="Active">Active</option>
+              <option value="On Hold">On Hold</option>
+              <option value="Completed">Completed</option>
+              <option value="Cancelled">Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Color</label>
+            <div class="color-swatches" id="colorSwatches"></div>
+            <input type="hidden" id="projectColor" value="#2563eb">
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="btnDeleteProject" style="display:none;margin-right:auto" onclick="deleteProject()">Delete</button>
+        <button class="btn btn-secondary" onclick="closeProjectModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveProject()">Save Project</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Follow-up Modal ── -->
+  <div class="modal-overlay hidden" id="followupModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="followupModalTitle">New Follow-up</h2>
+        <button class="btn-close" onclick="closeFollowupModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="followupId">
+        <input type="hidden" id="followupProjectId">
+        <div class="form-group">
+          <label class="form-label">Topic *</label>
+          <input type="text" class="form-input" id="followupTopic" placeholder="What needs to be followed up?" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="followupNotes" placeholder="Context, owner, next steps…"></textarea>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Status</label>
+          <select class="form-select" id="followupStatus">
+            <option value="Open">Open</option>
+            <option value="Discussed">Discussed</option>
+            <option value="Resolved">Resolved</option>
+          </select>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="btnDeleteFollowup" style="display:none;margin-right:auto" onclick="deleteFollowup()">Delete</button>
+        <button class="btn btn-secondary" onclick="closeFollowupModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveFollowup()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Note Modal ── -->
+  <div class="modal-overlay hidden" id="noteModal">
+    <div class="modal modal-wide">
+      <div class="modal-header">
+        <h2 class="modal-title" id="noteModalTitle">New Note</h2>
+        <button class="btn-close" onclick="closeNoteModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <input type="hidden" id="noteId">
+        <input type="hidden" id="noteProjectId">
+        <div class="form-group">
+          <label class="form-label">Title *</label>
+          <input type="text" class="form-input" id="noteTitle" placeholder="Note title…" autocomplete="off">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Content</label>
+          <textarea class="form-textarea form-textarea-tall" id="noteContent" placeholder="Write your note here…"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="btnDeleteNote" style="display:none;margin-right:auto" onclick="deleteNote()">Delete</button>
+        <button class="btn btn-secondary" onclick="closeNoteModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveNote()">Save Note</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /* ==============================
+       STATE
+    ============================== */
+    let tasks        = JSON.parse(localStorage.getItem('dp_tasks_v1')    || '[]');
+    let projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
+    let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
+    let projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
+
+    let currentView      = 'today';
+    let activeProjectId  = null;
+    let activeProjectTab = 'tasks';
+    let editingTaskId    = null;
+    let editingProjId    = null;
+    let editingFuId      = null;
+    let editingNoteId    = null;
+    let filterState      = { search: '', category: '', priority: '', status: '' };
+
+    const PROJECT_COLORS = ['#2563eb','#16a34a','#8b5cf6','#ea580c','#dc2626','#0891b2','#d97706','#be185d'];
+
+    function persistTasks()    { localStorage.setItem('dp_tasks_v1',    JSON.stringify(tasks)); }
+    function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects)); }
+    function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups)); }
+    function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); }
+
+    function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+
+    /* ==============================
+       DATE HELPERS
+    ============================== */
+    function todayStr() {
+      const d = new Date();
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+    function pad(n) { return String(n).padStart(2,'0'); }
+    function parseLocal(str) {
+      if (!str) return null;
+      const [y,m,d] = str.split('-').map(Number);
+      return new Date(y, m-1, d);
+    }
+    function isOverdue(t) {
+      if (!t.dueDate || t.status === 'Done') return false;
+      const due = parseLocal(t.dueDate);
+      const today = new Date(); today.setHours(0,0,0,0);
+      return due < today;
+    }
+    function formatDue(str) {
+      if (!str) return '';
+      const d = parseLocal(str);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const diff = Math.round((d - today) / 86400000);
+      if (diff === 0)  return 'Today';
+      if (diff === 1)  return 'Tomorrow';
+      if (diff === -1) return 'Yesterday';
+      if (diff < 0)    return `${Math.abs(diff)}d overdue`;
+      if (diff <= 6)   return d.toLocaleDateString('en-US', { weekday: 'short' });
+      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+    function formatTs(iso) {
+      if (!iso) return '';
+      return new Date(iso).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    }
+    function priorityOrder(t) { return { High: 0, Medium: 1, Low: 2 }[t.priority] ?? 1; }
+    function statusClass(s) {
+      return { 'Todo':'todo','In Progress':'inprogress','Done':'done','Delayed':'delayed','Blocked':'blocked' }[s] || 'todo';
+    }
+    function esc(s) {
+      return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+    function chipClass(cat) {
+      return { Meeting:'meeting', Project:'project', Admin:'admin', 'Follow-up':'followup', Personal:'personal' }[cat] || 'admin';
+    }
+    function projectStatusClass(s) {
+      return { 'Active':'active','On Hold':'onhold','Completed':'completed','Cancelled':'cancelled' }[s] || 'active';
+    }
+    function fuStatusClass(s) {
+      return { 'Open':'open','Discussed':'discussed','Resolved':'resolved' }[s] || 'open';
+    }
+
+    /* ==============================
+       HEADER
+    ============================== */
+    function updateHeader() {
+      document.getElementById('headerDate').textContent =
+        new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
+      const overdue   = tasks.filter(isOverdue).length;
+      const todayOpen = tasks.filter(t => t.dueDate === todayStr() && t.status !== 'Done').length;
+      const doneTdy   = tasks.filter(t => t.status === 'Done' && t.dueDate === todayStr()).length;
+      document.getElementById('headerStats').innerHTML =
+        (overdue > 0 ? `<div class="stat-chip stat-overdue">🚨 ${overdue} overdue</div>` : '') +
+        `<div class="stat-chip stat-today">📋 ${todayOpen} today</div>` +
+        `<div class="stat-chip stat-done">✓ ${doneTdy} done</div>`;
+      const badge = document.getElementById('overdueBadge');
+      if (overdue > 0) { badge.textContent = overdue; badge.style.display = 'inline'; }
+      else { badge.style.display = 'none'; }
+    }
+
+    /* ==============================
+       SIDEBAR SMART ADD
+    ============================== */
+    function sidebarAdd() {
+      if (currentView === 'projects' || currentView === 'project-detail') {
+        if (currentView === 'project-detail' && activeProjectId) {
+          if (activeProjectTab === 'tasks')    { openTaskModal(null, activeProjectId); return; }
+          if (activeProjectTab === 'followups'){ openFollowupModal(null, activeProjectId); return; }
+          if (activeProjectTab === 'notes')    { openNoteModal(null, activeProjectId); return; }
+        }
+        openProjectModal();
+      } else {
+        openTaskModal();
+      }
+    }
+
+    /* ==============================
+       VIEW ROUTER
+    ============================== */
+    function showView(view, resetFilters = false) {
+      currentView = view;
+      if (resetFilters) filterState = { search:'', category:'', priority:'', status:'' };
+
+      document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+      if (view !== 'project-detail') {
+        const navEl = document.getElementById('nav-' + view);
+        if (navEl) navEl.classList.add('active');
+      }
+      updateSidebarProjects();
+
+      // Update sidebar add button label
+      const addBtn = document.getElementById('sidebarAddBtn');
+      if (view === 'projects') { addBtn.textContent = '＋ New Project'; }
+      else if (view === 'project-detail') {
+        const labels = { tasks:'＋ New Task', followups:'＋ New Follow-up', notes:'＋ New Note' };
+        addBtn.textContent = labels[activeProjectTab] || '＋ New';
+      } else { addBtn.textContent = '＋ New Task'; }
+
+      const renderers = {
+        priorities:     renderPriorities,
+        today:          renderToday,
+        week:           renderWeek,
+        all:            renderAll,
+        overdue:        renderOverdue,
+        projects:       renderProjects,
+        'project-detail': () => renderProjectDetail(activeProjectId)
+      };
+
+      document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
+      updateHeader();
+    }
+
+    function openProject(projectId) {
+      activeProjectId  = projectId;
+      activeProjectTab = 'tasks';
+      showView('project-detail');
+    }
+
+    function switchTab(tab) {
+      activeProjectTab = tab;
+      showView('project-detail');
+    }
+
+    function filterByCategory(cat) {
+      filterState = { ...filterState, category: cat };
+      showView('all');
+      setTimeout(() => {
+        const sel = document.getElementById('filterCategory');
+        if (sel) sel.value = cat;
+      }, 10);
+    }
+
+    /* ==============================
+       PRIORITIES DASHBOARD
+    ============================== */
+    function renderPriorities() {
+      const today     = todayStr();
+      const now       = new Date(); now.setHours(0,0,0,0);
+
+      // Week bounds (Mon–Sun)
+      const dow  = now.getDay();
+      const mon  = new Date(now); mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+      const sun  = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const monStr = `${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+      const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
+
+      const open      = tasks.filter(t => t.status !== 'Done');
+      const overdue   = open.filter(isOverdue);
+      const dueToday  = open.filter(t => t.dueDate === today);
+      const dueWeek   = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr && t.dueDate !== today && !isOverdue(t));
+      const blocked   = open.filter(t => t.status === 'Blocked');
+      const highPri   = open.filter(t => t.priority === 'High' && !isOverdue(t) && t.dueDate !== today);
+
+      const activeProjects = projects.filter(p => p.status === 'Active');
+
+      // ── Stat cards ──
+      let html = `
+        <div class="view-header">
+          <div><div class="view-title">🎯 Priorities</div><div class="view-subtitle">At-a-glance view of what matters most</div></div>
+        </div>
+
+        <div class="dash-stat-grid">
+          <div class="dash-stat-card danger" style="cursor:pointer" onclick="showView('overdue')">
+            <div class="dash-stat-label">Overdue</div>
+            <div class="dash-stat-value">${overdue.length}</div>
+            <div class="dash-stat-sub">task${overdue.length!==1?'s':''} past due date</div>
+          </div>
+          <div class="dash-stat-card primary" style="cursor:pointer" onclick="showView('today')">
+            <div class="dash-stat-label">Due Today</div>
+            <div class="dash-stat-value">${dueToday.length}</div>
+            <div class="dash-stat-sub">scheduled for today</div>
+          </div>
+          <div class="dash-stat-card warning">
+            <div class="dash-stat-label">This Week</div>
+            <div class="dash-stat-value">${dueWeek.length}</div>
+            <div class="dash-stat-sub">remaining this week</div>
+          </div>
+          <div class="dash-stat-card ${blocked.length > 0 ? 'danger' : 'success'}">
+            <div class="dash-stat-label">Blocked</div>
+            <div class="dash-stat-value">${blocked.length}</div>
+            <div class="dash-stat-sub">need unblocking</div>
+          </div>
+        </div>`;
+
+      // ── Critical: overdue + high priority due today ──
+      const critical = [
+        ...overdue,
+        ...dueToday.filter(t => t.priority === 'High')
+      ].filter((t,i,a) => a.findIndex(x=>x.id===t.id)===i)
+       .sort((a,b) => { if (isOverdue(a) && !isOverdue(b)) return -1; if (!isOverdue(a) && isOverdue(b)) return 1; return priorityOrder(a)-priorityOrder(b); });
+
+      if (critical.length > 0) {
+        html += `
+          <div class="section-header">
+            <span class="section-title" style="color:var(--danger)">🚨 Critical</span>
+            <span class="section-count">${critical.length}</span>
+          </div>
+          <div class="task-list">${critical.map(taskCard).join('')}</div>`;
+      }
+
+      // ── Due today (remaining, non-high-pri) ──
+      const todayRest = dueToday.filter(t => t.priority !== 'High' || isOverdue(t) ? false : !critical.find(c=>c.id===t.id)).filter(t => !critical.find(c=>c.id===t.id));
+      if (todayRest.length > 0) {
+        html += `
+          <div class="section-header" style="margin-top:20px">
+            <span class="section-title">📅 Due Today</span>
+            <span class="section-count">${todayRest.length}</span>
+          </div>
+          <div class="task-list">${todayRest.map(taskCard).join('')}</div>`;
+      }
+
+      // ── High priority this week ──
+      const highWeek = highPri.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr)
+                               .sort((a,b) => (a.dueDate||'').localeCompare(b.dueDate||''));
+      if (highWeek.length > 0) {
+        html += `
+          <div class="section-header" style="margin-top:20px">
+            <span class="section-title">📆 High Priority This Week</span>
+            <span class="section-count">${highWeek.length}</span>
+          </div>
+          <div class="task-list">${highWeek.map(taskCard).join('')}</div>`;
+      }
+
+      // ── Blocked tasks ──
+      if (blocked.length > 0) {
+        html += `
+          <div class="section-header" style="margin-top:20px">
+            <span class="section-title" style="color:var(--warning)">🚫 Blocked</span>
+            <span class="section-count">${blocked.length}</span>
+          </div>
+          <div class="task-list">${blocked.map(taskCard).join('')}</div>`;
+      }
+
+      // ── Active projects snapshot ──
+      if (activeProjects.length > 0) {
+        html += `
+          <div class="section-header" style="margin-top:24px">
+            <span class="section-title">🗂 Active Projects</span>
+            <span class="section-count">${activeProjects.length}</span>
+          </div>
+          <div class="dash-projects-grid">
+            ${activeProjects.map(p => {
+              const openTasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
+              const openFu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+              const overdueT  = tasks.filter(t => t.projectId === p.id && isOverdue(t)).length;
+              return `
+                <div class="dash-proj-card" onclick="openProject('${p.id}')">
+                  <div class="dash-proj-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
+                  <div class="dash-proj-name">${esc(p.name)}</div>
+                  <div class="dash-proj-meta">
+                    <span>📋 ${openTasks} open</span>
+                    ${openFu > 0 ? `<span>📌 ${openFu}</span>` : ''}
+                    ${overdueT > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${overdueT}</span>` : ''}
+                  </div>
+                </div>`;
+            }).join('')}
+          </div>`;
+      }
+
+      if (critical.length === 0 && todayRest.length === 0 && highWeek.length === 0 && blocked.length === 0) {
+        html += `<div class="empty-state"><div class="icon">✅</div><h3>All clear!</h3><p>No critical, overdue, or blocked tasks. Nice work.</p></div>`;
+      }
+
+      return html;
+    }
+
+    /* ==============================
+       TODAY VIEW
+    ============================== */
+    function renderToday() {
+      const today        = todayStr();
+      const overdueTasks = tasks.filter(isOverdue).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayTasks   = tasks.filter(t => t.dueDate === today && !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const focusNote    = localStorage.getItem('dp_focus') || '';
+
+      let html = `
+        <div class="view-header">
+          <div>
+            <div class="view-title">Today</div>
+            <div class="view-subtitle">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+          </div>
+          <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+        </div>
+        <div class="morning-card">
+          <div class="morning-title">🌅 Daily Focus</div>
+          <div class="morning-sub">What is your #1 priority today?</div>
+          <input class="focus-input" type="text" id="focusInput"
+            placeholder="My main focus today is…" value="${esc(focusNote)}"
+            onchange="localStorage.setItem('dp_focus', this.value)">
+        </div>`;
+
+      if (overdueTasks.length > 0) {
+        html += `
+          <div class="overdue-banner">
+            <div class="overdue-banner-icon">🚨</div>
+            <div>
+              <div class="overdue-banner-title">${overdueTasks.length} overdue task${overdueTasks.length > 1 ? 's' : ''}</div>
+              <div class="overdue-banner-desc">Review, complete, or reschedule these items.</div>
+            </div>
+          </div>
+          <div class="section-header"><span class="section-title">Overdue</span><span class="section-count">${overdueTasks.length}</span></div>
+          <div class="task-list">${overdueTasks.map(taskCard).join('')}</div>`;
+      }
+
+      html += `<div class="section-header"><span class="section-title">Scheduled</span><span class="section-count">${todayTasks.length}</span></div>`;
+      if (todayTasks.length === 0 && overdueTasks.length === 0) {
+        html += `<div class="empty-state"><div class="icon">🎉</div><h3>All clear!</h3><p>Nothing scheduled for today. Add a task to get started.</p></div>`;
+      } else if (todayTasks.length === 0) {
+        html += `<div style="padding:16px;font-size:13px;color:var(--text-muted)">No additional tasks scheduled.</div>`;
+      } else {
+        html += `<div class="task-list">${todayTasks.map(taskCard).join('')}</div>`;
+      }
+      return html;
+    }
+
+    /* ==============================
+       WEEK VIEW
+    ============================== */
+    function renderWeek() {
+      const today = new Date(); today.setHours(0,0,0,0);
+      const dow   = today.getDay();
+      const mon   = new Date(today);
+      mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+
+      let html = `
+        <div class="view-header">
+          <div><div class="view-title">This Week</div><div class="view-subtitle">Mon – Sun</div></div>
+          <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+        </div>
+        <div class="week-grid">`;
+
+      for (let i = 0; i < 7; i++) {
+        const day    = new Date(mon); day.setDate(mon.getDate() + i);
+        const dayStr = `${day.getFullYear()}-${pad(day.getMonth()+1)}-${pad(day.getDate())}`;
+        const isTdy  = dayStr === todayStr();
+        const dayTasks = tasks.filter(t => t.dueDate === dayStr).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+
+        html += `
+          <div class="week-day ${isTdy ? 'today' : ''}">
+            <div class="week-day-header">
+              <div class="week-day-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</div>
+              <div class="week-day-num">${day.getDate()}</div>
+            </div>
+            <div class="week-tasks">
+              ${dayTasks.map(t => `
+                <div class="week-task-item priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
+                     onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
+              <span class="week-add" onclick="openTaskModalWithDate('${dayStr}')">＋ add</span>
+            </div>
+          </div>`;
+      }
+      html += '</div>';
+      return html;
+    }
+
+    /* ==============================
+       ALL TASKS VIEW
+    ============================== */
+    function renderAll() {
+      const fs = filterState;
+      const filtered = tasks.filter(t => {
+        if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
+                           !(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
+        if (fs.category && t.category !== fs.category) return false;
+        if (fs.priority && t.priority !== fs.priority) return false;
+        if (fs.status   && t.status   !== fs.status)   return false;
+        return true;
+      }).sort((a,b) => {
+        if (isOverdue(a) && !isOverdue(b)) return -1;
+        if (!isOverdue(a) && isOverdue(b)) return 1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.dueDate) return -1; if (b.dueDate) return 1;
+        return priorityOrder(a) - priorityOrder(b);
+      });
+
+      return `
+        <div class="view-header">
+          <div><div class="view-title">All Tasks</div><div class="view-subtitle">${filtered.length} of ${tasks.length}</div></div>
+          <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+        </div>
+        <div class="filter-bar">
+          <input type="text" class="filter-input" id="filterSearch" placeholder="Search…" value="${esc(fs.search)}" oninput="applyFilters()">
+          <select class="filter-select" id="filterCategory" onchange="applyFilters()">
+            <option value="">All Categories</option>
+            <option value="Project"   ${fs.category==='Project'   ?'selected':''}>🚀 Project</option>
+            <option value="Meeting"   ${fs.category==='Meeting'   ?'selected':''}>🤝 Meeting</option>
+            <option value="Admin"     ${fs.category==='Admin'     ?'selected':''}>⚙️ Admin</option>
+            <option value="Follow-up" ${fs.category==='Follow-up' ?'selected':''}>📌 Follow-up</option>
+            <option value="Personal"  ${fs.category==='Personal'  ?'selected':''}>👤 Personal</option>
+          </select>
+          <select class="filter-select" id="filterPriority" onchange="applyFilters()">
+            <option value="">All Priorities</option>
+            <option value="High"   ${fs.priority==='High'   ?'selected':''}>🔴 High</option>
+            <option value="Medium" ${fs.priority==='Medium' ?'selected':''}>🟡 Medium</option>
+            <option value="Low"    ${fs.priority==='Low'    ?'selected':''}>🟢 Low</option>
+          </select>
+          <select class="filter-select" id="filterStatus" onchange="applyFilters()">
+            <option value="">All Statuses</option>
+            <option value="Todo"        ${fs.status==='Todo'        ?'selected':''}>To Do</option>
+            <option value="In Progress" ${fs.status==='In Progress' ?'selected':''}>In Progress</option>
+            <option value="Done"        ${fs.status==='Done'        ?'selected':''}>Done</option>
+            <option value="Delayed"     ${fs.status==='Delayed'     ?'selected':''}>Delayed</option>
+            <option value="Blocked"     ${fs.status==='Blocked'     ?'selected':''}>Blocked</option>
+          </select>
+        </div>
+        <div class="tasks-table">
+          <div class="table-header">
+            <div></div><div>Task</div><div>Category</div><div>Priority</div><div>Due</div><div>Status</div><div>Hrs</div>
+          </div>
+          ${filtered.length === 0
+            ? '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px">No tasks match your filters.</div>'
+            : filtered.map(tableRow).join('')}
+        </div>`;
+    }
+
+    function applyFilters() {
+      filterState = {
+        search:   document.getElementById('filterSearch')?.value   || '',
+        category: document.getElementById('filterCategory')?.value || '',
+        priority: document.getElementById('filterPriority')?.value || '',
+        status:   document.getElementById('filterStatus')?.value   || ''
+      };
+      document.getElementById('mainContent').innerHTML = renderAll();
+    }
+
+    function tableRow(t) {
+      const od = isOverdue(t);
+      return `
+        <div class="table-row ${od?'overdue':''}" onclick="openTaskModal('${t.id}')">
+          <div><div class="task-checkbox ${t.status==='Done'?'checked':''}" onclick="event.stopPropagation();toggleDone('${t.id}')"></div></div>
+          <div style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:${od?600:'normal'};color:${od?'var(--danger)':'inherit'}">${esc(t.title)}</div>
+          <div><span class="task-chip chip-${chipClass(t.category)}">${t.category}</span></div>
+          <div><span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span></div>
+          <div class="task-due ${od?'overdue-text':''}">${formatDue(t.dueDate)}</div>
+          <div><span class="status-badge status-${statusClass(t.status)}">${t.status}</span></div>
+          <div style="color:var(--text-muted)">${t.estimatedHours ? t.estimatedHours+'h' : '—'}</div>
+        </div>`;
+    }
+
+    /* ==============================
+       OVERDUE VIEW
+    ============================== */
+    function renderOverdue() {
+      const list = tasks.filter(isOverdue).sort((a,b) => {
+        if (a.dueDate < b.dueDate) return -1;
+        if (a.dueDate > b.dueDate) return 1;
+        return priorityOrder(a) - priorityOrder(b);
+      });
+      let html = `<div class="view-header"><div><div class="view-title">🚨 Overdue</div><div class="view-subtitle">${list.length} task${list.length!==1?'s':''} need attention</div></div></div>`;
+      html += list.length === 0
+        ? `<div class="empty-state"><div class="icon">🎉</div><h3>No overdue tasks!</h3><p>You're all caught up.</p></div>`
+        : `<div class="task-list">${list.map(taskCard).join('')}</div>`;
+      return html;
+    }
+
+    /* ==============================
+       PROJECTS VIEW
+    ============================== */
+    function renderProjects() {
+      const activeProj = projects.filter(p => p.status === 'Active');
+      const otherProj  = projects.filter(p => p.status !== 'Active');
+
+      let html = `
+        <div class="view-header">
+          <div><div class="view-title">Projects</div><div class="view-subtitle">${projects.length} project${projects.length!==1?'s':''}</div></div>
+          <button class="btn btn-primary" onclick="openProjectModal()">＋ New Project</button>
+        </div>`;
+
+      if (projects.length === 0) {
+        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No projects yet</h3><p>Create a project to organise tasks, follow-ups, and notes in one place.</p></div>`;
+      }
+
+      if (activeProj.length > 0) {
+        html += `<div class="section-header"><span class="section-title">Active</span><span class="section-count">${activeProj.length}</span></div>
+                 <div class="projects-grid">${activeProj.map(projectCard).join('')}</div>`;
+      }
+      if (otherProj.length > 0) {
+        html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${otherProj.length}</span></div>
+                 <div class="projects-grid">${otherProj.map(projectCard).join('')}</div>`;
+      }
+      return html;
+    }
+
+    function projectCard(p) {
+      const ptasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
+      const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+      const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
+      return `
+        <div class="project-card" onclick="openProject('${p.id}')">
+          <div class="project-card-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
+          <div class="project-card-body">
+            <div class="project-card-header">
+              <div class="project-card-name">${esc(p.name)}</div>
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>
+            </div>
+            <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
+            <div class="project-card-stats">
+              <span class="project-stat">📋 ${ptasks} task${ptasks!==1?'s':''}</span>
+              <span class="project-stat">📌 ${pfu} follow-up${pfu!==1?'s':''}</span>
+              <span class="project-stat">📝 ${pnotes} note${pnotes!==1?'s':''}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    /* ==============================
+       PROJECT DETAIL VIEW
+    ============================== */
+    function renderProjectDetail(pid) {
+      const p = projects.find(x => x.id === pid);
+      if (!p) return `<div class="empty-state"><div class="icon">⚠️</div><h3>Project not found</h3></div>`;
+
+      const ptasks = tasks.filter(t => t.projectId === pid);
+      const pfu    = followups.filter(f => f.projectId === pid);
+      const pnotes = projectNotes.filter(n => n.projectId === pid);
+
+      const openFu = pfu.filter(f => f.status !== 'Resolved').length;
+
+      let html = `
+        <button class="back-btn" onclick="showView('projects')">← Back to Projects</button>
+        <div class="project-detail-header">
+          <div class="project-detail-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
+          <div class="project-detail-body">
+            <div>
+              <div class="project-detail-name">${esc(p.name)}</div>
+              ${p.description ? `<div class="project-detail-desc">${esc(p.description)}</div>` : ''}
+            </div>
+            <div class="project-detail-actions">
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>
+              <button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}')">Edit</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn ${activeProjectTab==='tasks'?'active':''}" onclick="switchTab('tasks')">
+            📋 Tasks <span class="tab-count">${ptasks.length}</span>
+          </button>
+          <button class="tab-btn ${activeProjectTab==='followups'?'active':''}" onclick="switchTab('followups')">
+            📌 Follow-ups <span class="tab-count">${openFu} open</span>
+          </button>
+          <button class="tab-btn ${activeProjectTab==='notes'?'active':''}" onclick="switchTab('notes')">
+            📝 Notes <span class="tab-count">${pnotes.length}</span>
+          </button>
+        </div>`;
+
+      if (activeProjectTab === 'tasks') {
+        const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+        const done = ptasks.filter(t => t.status === 'Done');
+        html += `
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn btn-primary btn-sm" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
+          </div>`;
+        if (ptasks.length === 0) {
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📋</div><h3>No tasks yet</h3><p>Add tasks to track work for this project.</p></div>`;
+        } else {
+          if (open.length > 0) {
+            html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
+                     <div class="task-list">${open.map(taskCard).join('')}</div>`;
+          }
+          if (done.length > 0) {
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Done</span><span class="section-count">${done.length}</span></div>
+                     <div class="task-list">${done.map(taskCard).join('')}</div>`;
+          }
+        }
+      }
+
+      if (activeProjectTab === 'followups') {
+        const open     = pfu.filter(f => f.status === 'Open').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+        const discussed= pfu.filter(f => f.status === 'Discussed');
+        const resolved = pfu.filter(f => f.status === 'Resolved');
+        html += `
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn btn-primary btn-sm" onclick="openFollowupModal(null,'${pid}')">＋ Add Follow-up</button>
+          </div>`;
+        if (pfu.length === 0) {
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📌</div><h3>No follow-ups yet</h3><p>Track topics that need to be discussed or actioned.</p></div>`;
+        } else {
+          if (open.length > 0) {
+            html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
+                     <div class="followup-list">${open.map(followupCard).join('')}</div>`;
+          }
+          if (discussed.length > 0) {
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Discussed</span><span class="section-count">${discussed.length}</span></div>
+                     <div class="followup-list">${discussed.map(followupCard).join('')}</div>`;
+          }
+          if (resolved.length > 0) {
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Resolved</span><span class="section-count">${resolved.length}</span></div>
+                     <div class="followup-list">${resolved.map(followupCard).join('')}</div>`;
+          }
+        }
+      }
+
+      if (activeProjectTab === 'notes') {
+        html += `
+          <div class="notes-grid">
+            <div class="note-add-card" onclick="openNoteModal(null,'${pid}')">
+              <div class="note-add-icon">📝</div>
+              <div>New Note</div>
+            </div>
+            ${pnotes.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).map(noteCard).join('')}
+          </div>`;
+      }
+
+      return html;
+    }
+
+    /* ==============================
+       TASK CARD
+    ============================== */
+    function taskCard(t) {
+      const od = isOverdue(t);
+      const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
+      return `
+        <div class="task-card ${od?'overdue':''} ${t.status==='Done'?'done':''}" onclick="openTaskModal('${t.id}')">
+          <div class="task-checkbox ${t.status==='Done'?'checked':''}" onclick="event.stopPropagation();toggleDone('${t.id}')"></div>
+          <div class="task-content">
+            <div class="task-title">${esc(t.title)}</div>
+            <div class="task-meta">
+              <span class="task-chip chip-${chipClass(t.category)}">${t.category}</span>
+              <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
+              <span class="status-badge status-${statusClass(t.status)}">${t.status}</span>
+              ${proj ? `<span class="chip-proj-link" onclick="event.stopPropagation();openProject('${proj.id}')">🗂 ${esc(proj.name)}</span>` : ''}
+              ${t.dueDate ? `<span class="task-due ${od?'overdue-text':''}">📅 ${formatDue(t.dueDate)}${t.dueTime?' '+t.dueTime:''}</span>` : ''}
+              ${t.estimatedHours ? `<span class="task-due">⏱ ${t.estimatedHours}h</span>` : ''}
+            </div>
+            ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">${esc(t.description)}</div>` : ''}
+          </div>
+          <div class="task-actions">
+            <button class="btn-icon" onclick="event.stopPropagation();reschedule('${t.id}')" title="Reschedule">📅</button>
+            <button class="btn-icon" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="Edit">✏️</button>
+          </div>
+        </div>`;
+    }
+
+    /* ==============================
+       FOLLOW-UP CARD
+    ============================== */
+    function followupCard(f) {
+      const dotClass = { Open:'fd-open', Discussed:'fd-discussed', Resolved:'fd-resolved' }[f.status] || 'fd-open';
+      return `
+        <div class="followup-card ${f.status==='Resolved'?'resolved':''}" onclick="openFollowupModal('${f.id}')">
+          <div class="followup-dot ${dotClass}"></div>
+          <div class="followup-content">
+            <div class="followup-topic">${esc(f.topic)}</div>
+            ${f.notes ? `<div class="followup-notes-text">${esc(f.notes)}</div>` : ''}
+          </div>
+          <span class="fu-status-badge fu-${fuStatusClass(f.status)}">${f.status}</span>
+        </div>`;
+    }
+
+    /* ==============================
+       NOTE CARD
+    ============================== */
+    function noteCard(n) {
+      return `
+        <div class="note-card" onclick="openNoteModal('${n.id}')">
+          <div class="note-card-title">${esc(n.title)}</div>
+          <div class="note-card-preview">${esc(n.content)}</div>
+          <div class="note-card-date">${formatTs(n.updatedAt)}</div>
+        </div>`;
+    }
+
+    /* ==============================
+       TASK ACTIONS
+    ============================== */
+    function toggleDone(id) {
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+      t.status      = t.status === 'Done' ? 'Todo' : 'Done';
+      t.completedAt = t.status === 'Done' ? new Date().toISOString() : null;
+      t.updatedAt   = new Date().toISOString();
+      persistTasks();
+      showView(currentView);
+    }
+
+    function reschedule(id) {
+      const t = tasks.find(x => x.id === id);
+      if (!t) return;
+      const nd = prompt('New due date (YYYY-MM-DD):', t.dueDate || todayStr());
+      if (nd && /^\d{4}-\d{2}-\d{2}$/.test(nd)) {
+        t.dueDate   = nd;
+        t.updatedAt = new Date().toISOString();
+        if (t.status === 'Delayed') t.status = 'Todo';
+        persistTasks();
+        showView(currentView);
+      }
+    }
+
+    /* ==============================
+       TASK MODAL
+    ============================== */
+    function openTaskModal(id = null, preProjectId = null) {
+      editingTaskId = id;
+      const isNew = !id;
+      const t     = id ? tasks.find(x => x.id === id) : null;
+
+      document.getElementById('modalTitle').textContent  = isNew ? 'New Task' : 'Edit Task';
+      document.getElementById('btnDelete').style.display = isNew ? 'none' : 'block';
+      document.getElementById('taskId').value       = t?.id    || '';
+      document.getElementById('taskTitle').value    = t?.title || '';
+      document.getElementById('taskDesc').value     = t?.description || '';
+      document.getElementById('taskCategory').value = t?.category || 'Project';
+      document.getElementById('taskPriority').value = t?.priority || 'Medium';
+      document.getElementById('taskDueDate').value  = t?.dueDate || todayStr();
+      document.getElementById('taskDueTime').value  = t?.dueTime || '';
+      document.getElementById('taskStatus').value   = t?.status || 'Todo';
+      document.getElementById('taskHours').value    = t?.estimatedHours || '';
+      document.getElementById('taskTitle').style.borderColor = '';
+
+      // Populate project dropdown
+      const sel = document.getElementById('taskProjectLink');
+      sel.innerHTML = '<option value="">— No Project —</option>' +
+        projects.map(p => `<option value="${p.id}" ${(t?.projectId||preProjectId)===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+
+      document.getElementById('taskModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('taskTitle').focus(), 80);
+    }
+
+    function openTaskModalWithDate(date) {
+      openTaskModal();
+      document.getElementById('taskDueDate').value = date;
+    }
+
+    // Legacy alias kept for keyboard shortcut
+    function openModal(id) { openTaskModal(id); }
+
+    function closeTaskModal() {
+      document.getElementById('taskModal').classList.add('hidden');
+      editingTaskId = null;
+    }
+
+    function saveTask() {
+      const title = document.getElementById('taskTitle').value.trim();
+      if (!title) {
+        document.getElementById('taskTitle').style.borderColor = 'var(--danger)';
+        document.getElementById('taskTitle').focus(); return;
+      }
+      const id       = document.getElementById('taskId').value || uid();
+      const existing = tasks.find(x => x.id === id);
+      const task = {
+        id, title,
+        description:    document.getElementById('taskDesc').value.trim(),
+        category:       document.getElementById('taskCategory').value,
+        priority:       document.getElementById('taskPriority').value,
+        projectId:      document.getElementById('taskProjectLink').value || null,
+        dueDate:        document.getElementById('taskDueDate').value,
+        dueTime:        document.getElementById('taskDueTime').value,
+        status:         document.getElementById('taskStatus').value,
+        estimatedHours: parseFloat(document.getElementById('taskHours').value) || null,
+        createdAt:      existing?.createdAt  || new Date().toISOString(),
+        updatedAt:      new Date().toISOString(),
+        completedAt:    existing?.completedAt || null
+      };
+      if (existing) { Object.assign(existing, task); } else { tasks.push(task); }
+      persistTasks();
+      closeTaskModal();
+      showView(currentView);
+    }
+
+    function deleteTask() {
+      if (!editingTaskId || !confirm('Delete this task?')) return;
+      tasks = tasks.filter(t => t.id !== editingTaskId);
+      persistTasks();
+      closeTaskModal();
+      showView(currentView);
+    }
+
+    /* ==============================
+       PROJECT MODAL
+    ============================== */
+    function openProjectModal(id = null) {
+      editingProjId = id;
+      const isNew = !id;
+      const p     = id ? projects.find(x => x.id === id) : null;
+
+      document.getElementById('projectModalTitle').textContent      = isNew ? 'New Project' : 'Edit Project';
+      document.getElementById('btnDeleteProject').style.display     = isNew ? 'none' : 'block';
+      document.getElementById('projectId').value     = p?.id          || '';
+      document.getElementById('projectName').value   = p?.name        || '';
+      document.getElementById('projectDesc').value   = p?.description || '';
+      document.getElementById('projectStatus').value = p?.status      || 'Active';
+      document.getElementById('projectColor').value  = p?.color       || PROJECT_COLORS[0];
+
+      // Build color swatches
+      const selected = p?.color || PROJECT_COLORS[0];
+      document.getElementById('colorSwatches').innerHTML = PROJECT_COLORS.map(c =>
+        `<div class="color-swatch ${c===selected?'selected':''}" style="background:${c}"
+             onclick="selectColor('${c}')"></div>`
+      ).join('');
+
+      document.getElementById('projectModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('projectName').focus(), 80);
+    }
+
+    function selectColor(color) {
+      document.getElementById('projectColor').value = color;
+      document.querySelectorAll('.color-swatch').forEach(el => {
+        el.classList.toggle('selected', el.style.background === color || el.style.backgroundColor === color);
+      });
+    }
+
+    function closeProjectModal() {
+      document.getElementById('projectModal').classList.add('hidden');
+      editingProjId = null;
+    }
+
+    function saveProject() {
+      const name = document.getElementById('projectName').value.trim();
+      if (!name) {
+        document.getElementById('projectName').style.borderColor = 'var(--danger)';
+        document.getElementById('projectName').focus(); return;
+      }
+      const id       = document.getElementById('projectId').value || uid();
+      const existing = projects.find(x => x.id === id);
+      const proj = {
+        id, name,
+        description: document.getElementById('projectDesc').value.trim(),
+        status:      document.getElementById('projectStatus').value,
+        color:       document.getElementById('projectColor').value,
+        createdAt:   existing?.createdAt || new Date().toISOString(),
+        updatedAt:   new Date().toISOString()
+      };
+      if (existing) { Object.assign(existing, proj); } else { projects.push(proj); }
+      persistProjects();
+      closeProjectModal();
+      showView(currentView);
+    }
+
+    function deleteProject() {
+      if (!editingProjId || !confirm('Delete this project? Tasks, follow-ups and notes linked to it will NOT be deleted — just unlinked.')) return;
+      // Unlink tasks
+      tasks.forEach(t => { if (t.projectId === editingProjId) t.projectId = null; });
+      persistTasks();
+      followups    = followups.filter(f => f.projectId !== editingProjId);
+      projectNotes = projectNotes.filter(n => n.projectId !== editingProjId);
+      projects     = projects.filter(p => p.id !== editingProjId);
+      persistProjects(); persistFollowups(); persistNotes();
+      closeProjectModal();
+      showView('projects');
+    }
+
+    /* ==============================
+       FOLLOW-UP MODAL
+    ============================== */
+    function openFollowupModal(id = null, projectId = null) {
+      editingFuId = id;
+      const isNew = !id;
+      const f     = id ? followups.find(x => x.id === id) : null;
+
+      document.getElementById('followupModalTitle').textContent    = isNew ? 'New Follow-up' : 'Edit Follow-up';
+      document.getElementById('btnDeleteFollowup').style.display   = isNew ? 'none' : 'block';
+      document.getElementById('followupId').value        = f?.id        || '';
+      document.getElementById('followupProjectId').value = f?.projectId || projectId || '';
+      document.getElementById('followupTopic').value     = f?.topic     || '';
+      document.getElementById('followupNotes').value     = f?.notes     || '';
+      document.getElementById('followupStatus').value    = f?.status    || 'Open';
+      document.getElementById('followupTopic').style.borderColor = '';
+
+      document.getElementById('followupModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('followupTopic').focus(), 80);
+    }
+
+    function closeFollowupModal() {
+      document.getElementById('followupModal').classList.add('hidden');
+      editingFuId = null;
+    }
+
+    function saveFollowup() {
+      const topic = document.getElementById('followupTopic').value.trim();
+      if (!topic) {
+        document.getElementById('followupTopic').style.borderColor = 'var(--danger)';
+        document.getElementById('followupTopic').focus(); return;
+      }
+      const id       = document.getElementById('followupId').value || uid();
+      const existing = followups.find(x => x.id === id);
+      const fu = {
+        id, topic,
+        projectId: document.getElementById('followupProjectId').value,
+        notes:     document.getElementById('followupNotes').value.trim(),
+        status:    document.getElementById('followupStatus').value,
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      if (existing) { Object.assign(existing, fu); } else { followups.push(fu); }
+      persistFollowups();
+      closeFollowupModal();
+      showView(currentView);
+    }
+
+    function deleteFollowup() {
+      if (!editingFuId || !confirm('Delete this follow-up?')) return;
+      followups = followups.filter(f => f.id !== editingFuId);
+      persistFollowups();
+      closeFollowupModal();
+      showView(currentView);
+    }
+
+    /* ==============================
+       NOTE MODAL
+    ============================== */
+    function openNoteModal(id = null, projectId = null) {
+      editingNoteId = id;
+      const isNew = !id;
+      const n     = id ? projectNotes.find(x => x.id === id) : null;
+
+      document.getElementById('noteModalTitle').textContent    = isNew ? 'New Note' : 'Edit Note';
+      document.getElementById('btnDeleteNote').style.display   = isNew ? 'none' : 'block';
+      document.getElementById('noteId').value        = n?.id        || '';
+      document.getElementById('noteProjectId').value = n?.projectId || projectId || '';
+      document.getElementById('noteTitle').value     = n?.title     || '';
+      document.getElementById('noteContent').value   = n?.content   || '';
+      document.getElementById('noteTitle').style.borderColor = '';
+
+      document.getElementById('noteModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('noteTitle').focus(), 80);
+    }
+
+    function closeNoteModal() {
+      document.getElementById('noteModal').classList.add('hidden');
+      editingNoteId = null;
+    }
+
+    function saveNote() {
+      const title = document.getElementById('noteTitle').value.trim();
+      if (!title) {
+        document.getElementById('noteTitle').style.borderColor = 'var(--danger)';
+        document.getElementById('noteTitle').focus(); return;
+      }
+      const id       = document.getElementById('noteId').value || uid();
+      const existing = projectNotes.find(x => x.id === id);
+      const note = {
+        id, title,
+        projectId: document.getElementById('noteProjectId').value,
+        content:   document.getElementById('noteContent').value.trim(),
+        createdAt: existing?.createdAt || new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      if (existing) { Object.assign(existing, note); } else { projectNotes.push(note); }
+      persistNotes();
+      closeNoteModal();
+      showView(currentView);
+    }
+
+    function deleteNote() {
+      if (!editingNoteId || !confirm('Delete this note?')) return;
+      projectNotes = projectNotes.filter(n => n.id !== editingNoteId);
+      persistNotes();
+      closeNoteModal();
+      showView(currentView);
+    }
+
+    /* ==============================
+       SIDEBAR COLLAPSE / EXPAND
+    ============================== */
+    let sectionState = JSON.parse(
+      localStorage.getItem('dp_sections') ||
+      '{"views":true,"planner":true,"projects":true,"categories":true}'
+    );
+
+    function toggleSection(name) {
+      sectionState[name] = !sectionState[name];
+      localStorage.setItem('dp_sections', JSON.stringify(sectionState));
+      applySectionStates();
+    }
+
+    function applySectionStates() {
+      for (const [name, open] of Object.entries(sectionState)) {
+        const body  = document.getElementById('section-' + name);
+        const arrow = document.getElementById('arrow-' + name);
+        if (body)  { body.classList.toggle('collapsed', !open); }
+        if (arrow) { arrow.classList.toggle('open', open); arrow.classList.toggle('closed', !open); }
+      }
+    }
+
+    function updateSidebarProjects() {
+      const container = document.getElementById('section-projects');
+      if (!container) return;
+
+      const activeProjs = projects.filter(p => p.status === 'Active');
+      let html = '';
+
+      if (activeProjs.length === 0) {
+        html = `<div class="sidebar-no-projects">No active projects</div>`;
+      } else {
+        html = activeProjs.map(p => `
+          <button class="sidebar-proj-item ${currentView === 'project-detail' && activeProjectId === p.id ? 'active' : ''}"
+                  onclick="openProject('${p.id}')">
+            <div class="sidebar-proj-dot" style="background:${esc(p.color || '#2563eb')}"></div>
+            <span class="sidebar-proj-name">${esc(p.name)}</span>
+          </button>`).join('');
+      }
+
+      html += `<button class="sidebar-view-all" onclick="showView('projects')">→ All projects</button>`;
+      container.innerHTML = html;
+      applySectionStates();
+    }
+
+    /* ==============================
+       KEYBOARD SHORTCUTS
+    ============================== */
+    document.addEventListener('keydown', e => {
+      if (e.key === 'Escape') {
+        closeTaskModal(); closeProjectModal(); closeFollowupModal(); closeNoteModal();
+      }
+      if ((e.metaKey || e.ctrlKey) && e.key === 'n') { e.preventDefault(); sidebarAdd(); }
+      if (e.key === 'Enter' && e.target === document.getElementById('taskTitle')) saveTask();
+    });
+
+    // Close modals on backdrop click
+    ['taskModal','projectModal','followupModal','noteModal'].forEach(id => {
+      document.getElementById(id).addEventListener('click', e => {
+        if (e.target === e.currentTarget) {
+          closeTaskModal(); closeProjectModal(); closeFollowupModal(); closeNoteModal();
+        }
+      });
+    });
+
+    /* ==============================
+       BOOT
+    ============================== */
+    applySectionStates();
+    showView('today');
+  </script>
+</body>
+</html>
