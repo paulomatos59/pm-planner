@@ -912,13 +912,7 @@
         </div>
         <div class="sidebar-section-body" id="section-views">
           <button class="nav-item active" id="nav-summary"    onclick="showView('summary')">📊 Overview</button>
-          <button class="nav-item"        id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
           <button class="nav-item"        id="nav-kanban"     onclick="showView('kanban')">🗃 Kanban</button>
-          <button class="nav-item"        id="nav-all"        onclick="showView('all')">📋 All Tasks</button>
-          <button class="nav-item"        id="nav-overdue"    onclick="showView('overdue')">
-            🚨 Overdue
-            <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
-          </button>
         </div>
       </div>
 
@@ -934,6 +928,24 @@
           <button class="nav-item" id="nav-today"   onclick="showView('today')">🗓 Today</button>
           <button class="nav-item" id="nav-week"    onclick="showView('week')">📅 This Week</button>
           <button class="nav-item" id="nav-month"   onclick="showView('month')">🗃 Month</button>
+        </div>
+      </div>
+
+      <!-- Activities section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('activities')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-activities">▶</span>
+            <span>Activities</span>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-activities">
+          <button class="nav-item" id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
+          <button class="nav-item" id="nav-all"        onclick="showView('all')">📋 All Tasks</button>
+          <button class="nav-item" id="nav-overdue"    onclick="showView('overdue')">
+            🚨 Overdue
+            <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
+          </button>
         </div>
       </div>
 
@@ -3066,7 +3078,7 @@ const renderers = {
     ============================== */
     let sectionState = JSON.parse(
       localStorage.getItem('dp_sections') ||
-      '{"views":true,"planner":true,"projects":true,"personal":true,"categories":true}'
+      '{"views":true,"planner":true,"activities":true,"projects":true,"personal":true,"categories":true}'
     );
 
     function toggleSection(name) {
