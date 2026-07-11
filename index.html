@@ -613,6 +613,22 @@
         </div>
       </div>
 
+      <!-- Personal section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('personal')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-personal">▶</span>
+            <span>Personal</span>
+          </div>
+          <div class="sidebar-section-right">
+            <button class="section-add-btn" onclick="event.stopPropagation();openProjectModal(null,'personal')" title="New personal item">＋</button>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-personal">
+          <!-- Populated dynamically by updateSidebarPersonal() -->
+        </div>
+      </div>
+
       <!-- Categories section -->
       <div class="sidebar-section">
         <div class="sidebar-section-header" onclick="toggleSection('categories')">
@@ -724,6 +740,7 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="projectId">
+        <input type="hidden" id="projectType" value="project">
         <div class="form-group">
           <label class="form-label">Project Name *</label>
           <input type="text" class="form-input" id="projectName" placeholder="e.g. Cloud Migration, Q3 Planning…" autocomplete="off">
@@ -830,6 +847,7 @@
 
     let currentView      = 'today';
     let activeProjectId  = null;
+    let activePersonalId = null;
     let activeProjectTab = 'tasks';
     let editingTaskId    = null;
     let editingProjId    = null;
@@ -945,24 +963,31 @@
         if (navEl) navEl.classList.add('active');
       }
       updateSidebarProjects();
+      updateSidebarPersonal();
 
       // Update sidebar add button label
       const addBtn = document.getElementById('sidebarAddBtn');
       if (view === 'projects') { addBtn.textContent = '＋ New Project'; }
+      else if (view === 'personal') { addBtn.textContent = '＋ New Personal Item'; }
       else if (view === 'project-detail') {
+        const labels = { tasks:'＋ New Task', followups:'＋ New Follow-up', notes:'＋ New Note' };
+        addBtn.textContent = labels[activeProjectTab] || '＋ New';
+      } else if (view === 'personal-detail') {
         const labels = { tasks:'＋ New Task', followups:'＋ New Follow-up', notes:'＋ New Note' };
         addBtn.textContent = labels[activeProjectTab] || '＋ New';
       } else { addBtn.textContent = '＋ New Task'; }
 
       const renderers = {
-        summary:        renderSummary,
-        priorities:     renderPriorities,
-        today:          renderToday,
-        week:           renderWeek,
-        all:            renderAll,
-        overdue:        renderOverdue,
-        projects:       renderProjects,
-        'project-detail': () => renderProjectDetail(activeProjectId)
+        summary:          renderSummary,
+        priorities:       renderPriorities,
+        today:            renderToday,
+        week:             renderWeek,
+        all:              renderAll,
+        overdue:          renderOverdue,
+        projects:         renderProjects,
+        'project-detail': () => renderProjectDetail(activeProjectId),
+        personal:         renderPersonal,
+        'personal-detail':() => renderPersonalDetail(activePersonalId)
       };
 
       document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
@@ -970,9 +995,17 @@
     }
 
     function openProject(projectId) {
+      const p = projects.find(x => x.id === projectId);
+      if (p?.type === 'personal') { openPersonalItem(projectId); return; }
       activeProjectId  = projectId;
       activeProjectTab = 'tasks';
       showView('project-detail');
+    }
+
+    function openPersonalItem(id) {
+      activePersonalId = id;
+      activeProjectTab = 'tasks';
+      showView('personal-detail');
     }
 
     function switchTab(tab) {
@@ -1010,7 +1043,7 @@
       const blockedList   = open.filter(t => t.status === 'Blocked');
       const doneThisWeek  = tasks.filter(t => t.status === 'Done' && t.completedAt && t.completedAt.slice(0,10) >= monStr);
       const focusNote     = localStorage.getItem('dp_focus') || '';
-      const activeProjs   = projects.filter(p => p.status === 'Active');
+      const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
 
       const hour = new Date().getHours();
       const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
@@ -1180,7 +1213,7 @@
       const blocked   = open.filter(t => t.status === 'Blocked');
       const highPri   = open.filter(t => t.priority === 'High' && !isOverdue(t) && t.dueDate !== today);
 
-      const activeProjects = projects.filter(p => p.status === 'Active');
+      const activeProjects = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
 
       // ── Stat cards ──
       let html = `
@@ -1486,16 +1519,17 @@
        PROJECTS VIEW
     ============================== */
     function renderProjects() {
-      const activeProj = projects.filter(p => p.status === 'Active');
-      const otherProj  = projects.filter(p => p.status !== 'Active');
+      const workProjects = projects.filter(p => p.type !== 'personal');
+      const activeProj   = workProjects.filter(p => p.status === 'Active');
+      const otherProj    = workProjects.filter(p => p.status !== 'Active');
 
       let html = `
         <div class="view-header">
-          <div><div class="view-title">Projects</div><div class="view-subtitle">${projects.length} project${projects.length!==1?'s':''}</div></div>
+          <div><div class="view-title">Projects</div><div class="view-subtitle">${workProjects.length} project${workProjects.length!==1?'s':''}</div></div>
           <button class="btn btn-primary" onclick="openProjectModal()">＋ New Project</button>
         </div>`;
 
-      if (projects.length === 0) {
+      if (workProjects.length === 0) {
         return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No projects yet</h3><p>Create a project to organise tasks, follow-ups, and notes in one place.</p></div>`;
       }
 
@@ -1582,6 +1616,158 @@
           </div>`;
         if (ptasks.length === 0) {
           html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📋</div><h3>No tasks yet</h3><p>Add tasks to track work for this project.</p></div>`;
+        } else {
+          if (open.length > 0) {
+            html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
+                     <div class="task-list">${open.map(taskCard).join('')}</div>`;
+          }
+          if (done.length > 0) {
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Done</span><span class="section-count">${done.length}</span></div>
+                     <div class="task-list">${done.map(taskCard).join('')}</div>`;
+          }
+        }
+      }
+
+      if (activeProjectTab === 'followups') {
+        const open     = pfu.filter(f => f.status === 'Open').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+        const discussed= pfu.filter(f => f.status === 'Discussed');
+        const resolved = pfu.filter(f => f.status === 'Resolved');
+        html += `
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn btn-primary btn-sm" onclick="openFollowupModal(null,'${pid}')">＋ Add Follow-up</button>
+          </div>`;
+        if (pfu.length === 0) {
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📌</div><h3>No follow-ups yet</h3><p>Track topics that need to be discussed or actioned.</p></div>`;
+        } else {
+          if (open.length > 0) {
+            html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
+                     <div class="followup-list">${open.map(followupCard).join('')}</div>`;
+          }
+          if (discussed.length > 0) {
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Discussed</span><span class="section-count">${discussed.length}</span></div>
+                     <div class="followup-list">${discussed.map(followupCard).join('')}</div>`;
+          }
+          if (resolved.length > 0) {
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Resolved</span><span class="section-count">${resolved.length}</span></div>
+                     <div class="followup-list">${resolved.map(followupCard).join('')}</div>`;
+          }
+        }
+      }
+
+      if (activeProjectTab === 'notes') {
+        html += `
+          <div class="notes-grid">
+            <div class="note-add-card" onclick="openNoteModal(null,'${pid}')">
+              <div class="note-add-icon">📝</div>
+              <div>New Note</div>
+            </div>
+            ${pnotes.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).map(noteCard).join('')}
+          </div>`;
+      }
+
+      return html;
+    }
+
+    /* ==============================
+       PERSONAL LIST VIEW
+    ============================== */
+    function renderPersonal() {
+      const personalItems = projects.filter(p => p.type === 'personal');
+      const activeItems   = personalItems.filter(p => p.status === 'Active');
+      const otherItems    = personalItems.filter(p => p.status !== 'Active');
+
+      let html = `
+        <div class="view-header">
+          <div><div class="view-title">Personal</div><div class="view-subtitle">${personalItems.length} item${personalItems.length!==1?'s':''}</div></div>
+          <button class="btn btn-primary" onclick="openProjectModal(null,'personal')">＋ New Personal Item</button>
+        </div>`;
+
+      if (personalItems.length === 0) {
+        return html + `<div class="empty-state"><div class="icon">🏠</div><h3>No personal items yet</h3><p>Create a personal item to organise your own tasks, follow-ups, and notes.</p></div>`;
+      }
+
+      if (activeItems.length > 0) {
+        html += `<div class="section-header"><span class="section-title">Active</span><span class="section-count">${activeItems.length}</span></div>
+                 <div class="projects-grid">${activeItems.map(personalCard).join('')}</div>`;
+      }
+      if (otherItems.length > 0) {
+        html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${otherItems.length}</span></div>
+                 <div class="projects-grid">${otherItems.map(personalCard).join('')}</div>`;
+      }
+      return html;
+    }
+
+    function personalCard(p) {
+      const ptasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
+      const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+      const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
+      return `
+        <div class="project-card" onclick="openPersonalItem('${p.id}')">
+          <div class="project-card-stripe" style="background:${esc(p.color||'#8b5cf6')}"></div>
+          <div class="project-card-body">
+            <div class="project-card-header">
+              <div class="project-card-name">${esc(p.name)}</div>
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>
+            </div>
+            <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
+            <div class="project-card-stats">
+              <span class="project-stat">📋 ${ptasks} task${ptasks!==1?'s':''}</span>
+              <span class="project-stat">📌 ${pfu} follow-up${pfu!==1?'s':''}</span>
+              <span class="project-stat">📝 ${pnotes} note${pnotes!==1?'s':''}</span>
+            </div>
+          </div>
+        </div>`;
+    }
+
+    /* ==============================
+       PERSONAL DETAIL VIEW
+    ============================== */
+    function renderPersonalDetail(pid) {
+      const p = projects.find(x => x.id === pid);
+      if (!p) return `<div class="empty-state"><div class="icon">⚠️</div><h3>Item not found</h3></div>`;
+
+      const ptasks = tasks.filter(t => t.projectId === pid);
+      const pfu    = followups.filter(f => f.projectId === pid);
+      const pnotes = projectNotes.filter(n => n.projectId === pid);
+      const openFu = pfu.filter(f => f.status !== 'Resolved').length;
+
+      let html = `
+        <button class="back-btn" onclick="showView('personal')">← Back to Personal</button>
+        <div class="project-detail-header">
+          <div class="project-detail-stripe" style="background:${esc(p.color||'#8b5cf6')}"></div>
+          <div class="project-detail-body">
+            <div>
+              <div class="project-detail-name">${esc(p.name)}</div>
+              ${p.description ? `<div class="project-detail-desc">${esc(p.description)}</div>` : ''}
+            </div>
+            <div class="project-detail-actions">
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>
+              <button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}','personal')">Edit</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="tabs">
+          <button class="tab-btn ${activeProjectTab==='tasks'?'active':''}" onclick="switchTab('tasks')">
+            📋 Tasks <span class="tab-count">${ptasks.length}</span>
+          </button>
+          <button class="tab-btn ${activeProjectTab==='followups'?'active':''}" onclick="switchTab('followups')">
+            📌 Follow-ups <span class="tab-count">${openFu} open</span>
+          </button>
+          <button class="tab-btn ${activeProjectTab==='notes'?'active':''}" onclick="switchTab('notes')">
+            📝 Notes <span class="tab-count">${pnotes.length}</span>
+          </button>
+        </div>`;
+
+      if (activeProjectTab === 'tasks') {
+        const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+        const done = ptasks.filter(t => t.status === 'Done');
+        html += `
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn btn-primary btn-sm" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
+          </div>`;
+        if (ptasks.length === 0) {
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📋</div><h3>No tasks yet</h3><p>Add tasks to track work for this item.</p></div>`;
         } else {
           if (open.length > 0) {
             html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
@@ -1798,14 +1984,17 @@
     /* ==============================
        PROJECT MODAL
     ============================== */
-    function openProjectModal(id = null) {
+    function openProjectModal(id = null, type = null) {
       editingProjId = id;
       const isNew = !id;
       const p     = id ? projects.find(x => x.id === id) : null;
+      const itemType = p?.type || type || 'project';
+      const label = itemType === 'personal' ? 'Personal Item' : 'Project';
 
-      document.getElementById('projectModalTitle').textContent      = isNew ? 'New Project' : 'Edit Project';
+      document.getElementById('projectModalTitle').textContent      = isNew ? `New ${label}` : `Edit ${label}`;
       document.getElementById('btnDeleteProject').style.display     = isNew ? 'none' : 'block';
       document.getElementById('projectId').value     = p?.id          || '';
+      document.getElementById('projectType').value   = itemType;
       document.getElementById('projectName').value   = p?.name        || '';
       document.getElementById('projectDesc').value   = p?.description || '';
       document.getElementById('projectStatus').value = p?.status      || 'Active';
@@ -1844,6 +2033,7 @@
       const existing = projects.find(x => x.id === id);
       const proj = {
         id, name,
+        type:        document.getElementById('projectType').value || 'project',
         description: document.getElementById('projectDesc').value.trim(),
         status:      document.getElementById('projectStatus').value,
         color:       document.getElementById('projectColor').value,
@@ -1857,8 +2047,9 @@
     }
 
     function deleteProject() {
-      if (!editingProjId || !confirm('Delete this project? Tasks, follow-ups and notes linked to it will NOT be deleted — just unlinked.')) return;
-      // Unlink tasks
+      const p = projects.find(x => x.id === editingProjId);
+      const isPersonal = p?.type === 'personal';
+      if (!editingProjId || !confirm(`Delete this ${isPersonal?'personal item':'project'}? Tasks, follow-ups and notes linked to it will NOT be deleted — just unlinked.`)) return;
       tasks.forEach(t => { if (t.projectId === editingProjId) t.projectId = null; });
       persistTasks();
       followups    = followups.filter(f => f.projectId !== editingProjId);
@@ -1866,7 +2057,7 @@
       projects     = projects.filter(p => p.id !== editingProjId);
       persistProjects(); persistFollowups(); persistNotes();
       closeProjectModal();
-      showView('projects');
+      showView(isPersonal ? 'personal' : 'projects');
     }
 
     /* ==============================
@@ -1984,7 +2175,7 @@
     ============================== */
     let sectionState = JSON.parse(
       localStorage.getItem('dp_sections') ||
-      '{"views":true,"planner":true,"projects":true,"categories":true}'
+      '{"views":true,"planner":true,"projects":true,"personal":true,"categories":true}'
     );
 
     function toggleSection(name) {
@@ -2006,7 +2197,7 @@
       const container = document.getElementById('section-projects');
       if (!container) return;
 
-      const activeProjs = projects.filter(p => p.status === 'Active');
+      const activeProjs = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
       let html = '';
 
       if (activeProjs.length === 0) {
@@ -2021,6 +2212,29 @@
       }
 
       html += `<button class="sidebar-view-all" onclick="showView('projects')">→ All projects</button>`;
+      container.innerHTML = html;
+      applySectionStates();
+    }
+
+    function updateSidebarPersonal() {
+      const container = document.getElementById('section-personal');
+      if (!container) return;
+
+      const activePersonal = projects.filter(p => p.status === 'Active' && p.type === 'personal');
+      let html = '';
+
+      if (activePersonal.length === 0) {
+        html = `<div class="sidebar-no-projects">No active items</div>`;
+      } else {
+        html = activePersonal.map(p => `
+          <button class="sidebar-proj-item ${currentView === 'personal-detail' && activePersonalId === p.id ? 'active' : ''}"
+                  onclick="openPersonalItem('${p.id}')">
+            <div class="sidebar-proj-dot" style="background:${esc(p.color || '#8b5cf6')}"></div>
+            <span class="sidebar-proj-name">${esc(p.name)}</span>
+          </button>`).join('');
+      }
+
+      html += `<button class="sidebar-view-all" onclick="showView('personal')">→ All personal</button>`;
       container.innerHTML = html;
       applySectionStates();
     }
