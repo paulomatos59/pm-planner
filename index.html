@@ -2203,131 +2203,92 @@ const renderers = {
        PRIORITIES DASHBOARD
     ============================== */
     function renderPriorities() {
-      const today     = todayStr();
-      const now       = new Date(); now.setHours(0,0,0,0);
+      const PORDER = { High: 0, Medium: 1, Low: 2, None: 3 };
+      const priLabel = { High: '🔴 High Priority', Medium: '🟡 Medium Priority', Low: '🟢 Low Priority', None: '⚪ No Priority' };
+      const priColor = { High: 'var(--danger)', Medium: 'var(--warning)', Low: 'var(--success)', None: 'var(--text-muted)' };
+      const priBar   = { High: '#ef4444', Medium: '#f59e0b', Low: '#22c55e', None: '#94a3b8' };
 
-      // Week bounds (Mon–Sun)
-      const dow  = now.getDay();
-      const mon  = new Date(now); mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
-      const sun  = new Date(mon); sun.setDate(mon.getDate() + 6);
-      const monStr = `${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
-      const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
+      function sortByDue(a, b) {
+        if (isOverdue(a) && !isOverdue(b)) return -1;
+        if (!isOverdue(a) && isOverdue(b)) return  1;
+        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        if (a.dueDate) return -1;
+        if (b.dueDate) return  1;
+        return 0;
+      }
 
-      const open      = tasks.filter(t => t.status !== 'Done');
-      const overdue   = open.filter(isOverdue);
-      const dueToday  = open.filter(t => (t.dueDate||'').slice(0,10) === today);
-      const dueWeek   = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr && t.dueDate !== today && !isOverdue(t));
-      const blocked   = open.filter(t => t.status === 'Blocked');
-      const highPri   = open.filter(t => t.priority === 'High' && !isOverdue(t) && t.dueDate !== today);
+      // ── Projects sorted by priority ──
+      const allProjects = [...projects]
+        .filter(p => ['Active','On Hold'].includes(p.status))
+        .sort((a, b) => (PORDER[a.priority||'None'] - PORDER[b.priority||'None']) || a.name.localeCompare(b.name));
 
-      const activeProjects = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
-
-      // ── Stat cards ──
       let html = `
         <div class="view-header">
-          <div><div class="view-title">🎯 Priorities</div><div class="view-subtitle">At-a-glance view of what matters most</div></div>
-        </div>
-
-        <div class="dash-stat-grid">
-          <div class="dash-stat-card danger" style="cursor:pointer" onclick="showView('overdue')">
-            <div class="dash-stat-label">Overdue</div>
-            <div class="dash-stat-value">${overdue.length}</div>
-            <div class="dash-stat-sub">task${overdue.length!==1?'s':''} past due date</div>
-          </div>
-          <div class="dash-stat-card primary" style="cursor:pointer" onclick="showView('today')">
-            <div class="dash-stat-label">Due Today</div>
-            <div class="dash-stat-value">${dueToday.length}</div>
-            <div class="dash-stat-sub">scheduled for today</div>
-          </div>
-          <div class="dash-stat-card warning">
-            <div class="dash-stat-label">This Week</div>
-            <div class="dash-stat-value">${dueWeek.length}</div>
-            <div class="dash-stat-sub">remaining this week</div>
-          </div>
-          <div class="dash-stat-card ${blocked.length > 0 ? 'danger' : 'success'}">
-            <div class="dash-stat-label">Blocked</div>
-            <div class="dash-stat-value">${blocked.length}</div>
-            <div class="dash-stat-sub">need unblocking</div>
-          </div>
+          <div><div class="view-title">🎯 Priorities</div><div class="view-subtitle">Everything organised by priority</div></div>
+          <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
         </div>`;
 
-      // ── Critical: overdue + high priority due today ──
-      const critical = [
-        ...overdue,
-        ...dueToday.filter(t => t.priority === 'High')
-      ].filter((t,i,a) => a.findIndex(x=>x.id===t.id)===i)
-       .sort((a,b) => { if (isOverdue(a) && !isOverdue(b)) return -1; if (!isOverdue(a) && isOverdue(b)) return 1; return priorityOrder(a)-priorityOrder(b); });
-
-      if (critical.length > 0) {
+      // ── Section: Projects ──
+      if (allProjects.length > 0) {
         html += `
           <div class="section-header">
-            <span class="section-title" style="color:var(--danger)">🚨 Critical</span>
-            <span class="section-count">${critical.length}</span>
+            <span class="section-title">🗂 Projects</span>
+            <span class="section-count">${allProjects.length}</span>
           </div>
-          <div class="task-list">${critical.map(taskCard).join('')}</div>`;
-      }
-
-      // ── Due today (remaining, non-high-pri) ──
-      const todayRest = dueToday.filter(t => t.priority !== 'High' || isOverdue(t) ? false : !critical.find(c=>c.id===t.id)).filter(t => !critical.find(c=>c.id===t.id));
-      if (todayRest.length > 0) {
-        html += `
-          <div class="section-header" style="margin-top:20px">
-            <span class="section-title">📅 Due Today</span>
-            <span class="section-count">${todayRest.length}</span>
-          </div>
-          <div class="task-list">${todayRest.map(taskCard).join('')}</div>`;
-      }
-
-      // ── High priority this week ──
-      const highWeek = highPri.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr)
-                               .sort((a,b) => (a.dueDate||'').localeCompare(b.dueDate||''));
-      if (highWeek.length > 0) {
-        html += `
-          <div class="section-header" style="margin-top:20px">
-            <span class="section-title">📆 High Priority This Week</span>
-            <span class="section-count">${highWeek.length}</span>
-          </div>
-          <div class="task-list">${highWeek.map(taskCard).join('')}</div>`;
-      }
-
-      // ── Blocked tasks ──
-      if (blocked.length > 0) {
-        html += `
-          <div class="section-header" style="margin-top:20px">
-            <span class="section-title" style="color:var(--warning)">🚫 Blocked</span>
-            <span class="section-count">${blocked.length}</span>
-          </div>
-          <div class="task-list">${blocked.map(taskCard).join('')}</div>`;
-      }
-
-      // ── Active projects snapshot ──
-      if (activeProjects.length > 0) {
-        html += `
-          <div class="section-header" style="margin-top:24px">
-            <span class="section-title">🗂 Active Projects</span>
-            <span class="section-count">${activeProjects.length}</span>
-          </div>
-          <div class="dash-projects-grid">
-            ${activeProjects.map(p => {
-              const openTasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
-              const openFu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
-              const overdueT  = tasks.filter(t => t.projectId === p.id && isOverdue(t)).length;
+          <div class="dash-projects-grid" style="margin-bottom:28px">
+            ${allProjects.map(p => {
+              const openT  = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
+              const openFu = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+              const odT    = tasks.filter(t => t.projectId === p.id && isOverdue(t)).length;
+              const pri    = p.priority || 'None';
+              const priDot = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : pri === 'Low' ? '🟢' : '⚪';
               return `
-                <div class="dash-proj-card" onclick="openProject('${p.id}')">
+                <div class="dash-proj-card" onclick="openProject('${p.id}')" style="border-top:3px solid ${priBar[pri]}">
                   <div class="dash-proj-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
-                  <div class="dash-proj-name">${esc(p.name)}</div>
-                  <div class="dash-proj-meta">
-                    <span>📋 ${openTasks} open</span>
-                    ${openFu > 0 ? `<span>📌 ${openFu}</span>` : ''}
-                    ${overdueT > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${overdueT}</span>` : ''}
+                  <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:6px">
+                    <div class="dash-proj-name">${esc(p.name)}</div>
+                    <span style="font-size:10px;font-weight:700;color:${priColor[pri]};white-space:nowrap">${priDot} ${pri !== 'None' ? pri : ''}</span>
                   </div>
+                  <div class="dash-proj-meta">
+                    <span>📋 ${openT} open</span>
+                    ${openFu > 0 ? `<span>📌 ${openFu}</span>` : ''}
+                    ${odT    > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${odT} overdue</span>` : ''}
+                  </div>
+                  <div style="font-size:10px;color:var(--text-muted);margin-top:4px">${p.status}</div>
                 </div>`;
             }).join('')}
           </div>`;
       }
 
-      if (critical.length === 0 && todayRest.length === 0 && highWeek.length === 0 && blocked.length === 0) {
-        html += `<div class="empty-state"><div class="icon">✅</div><h3>All clear!</h3><p>No critical, overdue, or blocked tasks. Nice work.</p></div>`;
+      // ── Section: Activities by priority ──
+      const open = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff');
+
+      html += `
+        <div class="section-header" style="margin-bottom:16px">
+          <span class="section-title">📋 Activities</span>
+          <span class="section-count">${open.length} open</span>
+        </div>`;
+
+      const levels = ['High','Medium','Low','None'];
+      let anyTasks = false;
+      levels.forEach(pri => {
+        const group = open
+          .filter(t => (t.priority === pri) || (pri === 'None' && (!t.priority || t.priority === 'None')))
+          .sort(sortByDue);
+        if (group.length === 0) return;
+        anyTasks = true;
+        html += `
+          <div style="margin-bottom:20px">
+            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 0;border-bottom:2px solid ${priBar[pri]}">
+              <span style="font-size:13px;font-weight:800;color:${priColor[pri]}">${priLabel[pri]}</span>
+              <span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--bg);border-radius:10px;padding:1px 8px">${group.length}</span>
+            </div>
+            <div class="task-list">${group.map(taskCard).join('')}</div>
+          </div>`;
+      });
+
+      if (!anyTasks) {
+        html += `<div class="empty-state"><div class="icon">✅</div><h3>All clear!</h3><p>No open tasks. Nice work.</p></div>`;
       }
 
       return html;
