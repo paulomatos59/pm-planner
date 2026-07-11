@@ -2983,6 +2983,13 @@ const renderers = {
       else setSyncChip('off', 'Sync');
       showView('summary');
     }
+
+    // Auto-sync: pull latest from Gist every 30 seconds (only when sync is configured)
+    setInterval(async () => {
+      if (!syncToken || !syncGistId) return;
+      if (_syncStatus === 'syncing') return; // don't overlap with an in-progress save
+      await loadFromGist();
+    }, 30000);
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
   <script>
