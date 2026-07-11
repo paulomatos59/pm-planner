@@ -1733,8 +1733,8 @@ const renderers = {
             <div class="ss-label" style="margin-top:3px">This Week</div>
           </div>
           <div class="summary-stat s-success">
-            <div class="ss-value">${doneThisWeek.length}</div>
-            <div class="ss-label">Done This Week</div>
+            <div class="ss-value">${open.filter(t => t.taskType !== 'timeoff').length}</div>
+            <div class="ss-label">Open Tasks</div>
           </div>
         </div>
 
