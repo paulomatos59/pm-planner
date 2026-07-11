@@ -117,7 +117,7 @@
     .add-dropdown-item:hover { background: var(--primary-light); color: var(--primary); }
 
     /* ── Main ── */
-    .main { flex: 1; padding: 24px; overflow-y: auto; max-width: 1000px; }
+    .main { flex: 1; padding: 24px; overflow-y: auto; min-width: 0; }
     .view-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
     .view-title { font-size: 22px; font-weight: 700; }
     .view-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
@@ -750,6 +750,35 @@
 
       /* Add dropdown full width */
       .add-dropdown { width: calc(100% - 24px); }
+    }
+
+    /* ============================================================
+       RESPONSIVE — LARGE SCREENS  (≥ 1400px)
+    ============================================================ */
+    @media (min-width: 1400px) {
+      .main { padding: 28px 36px; }
+
+      /* Summary: 3-col bottom grid on wide screens */
+      .summary-grid { grid-template-columns: 1fr 1fr 1fr; }
+
+      /* Stats: stay 5-col but give more breathing room */
+      .summary-stats { gap: 14px; }
+
+      /* Projects grid: allow more cards per row */
+      .projects-grid { grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); }
+
+      /* Kanban: slightly wider row labels */
+      .kb2-col-header-row,
+      .kb2-row { grid-template-columns: 200px repeat(5, 1fr); }
+    }
+
+    /* ============================================================
+       RESPONSIVE — EXTRA LARGE  (≥ 1800px)
+    ============================================================ */
+    @media (min-width: 1800px) {
+      .main { padding: 32px 48px; }
+      .summary-stats { grid-template-columns: repeat(5, 1fr); }
+      .dash-stat-grid { grid-template-columns: repeat(4, 1fr); }
     }
   </style>
 </head>
