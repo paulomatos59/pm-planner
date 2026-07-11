@@ -621,23 +621,25 @@
         <div class="sidebar-section-body" id="section-views">
           <button class="nav-item active" id="nav-summary"    onclick="showView('summary')">📊 Overview</button>
           <button class="nav-item"        id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
+        </div>
+      </div>
 
-          <!-- Planner sub-group -->
-          <div class="sidebar-subgroup">
-            <button class="sidebar-subgroup-header" onclick="toggleSection('planner')">
-              <span class="subgroup-arrow open" id="arrow-planner">▶</span>
-              <span>Planner</span>
-            </button>
-            <div class="sidebar-subgroup-body" id="section-planner">
-              <button class="nav-item nav-item-indent active" id="nav-today"   onclick="showView('today')">🗓 Today</button>
-              <button class="nav-item nav-item-indent"        id="nav-week"    onclick="showView('week')">📅 This Week</button>
-              <button class="nav-item nav-item-indent"        id="nav-all"     onclick="showView('all')">📋 All Tasks</button>
-              <button class="nav-item nav-item-indent"        id="nav-overdue" onclick="showView('overdue')">
-                🚨 Overdue
-                <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
-              </button>
-            </div>
+      <!-- Planner section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('planner')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-planner">▶</span>
+            <span>Planner</span>
           </div>
+        </div>
+        <div class="sidebar-section-body" id="section-planner">
+          <button class="nav-item" id="nav-today"   onclick="showView('today')">🗓 Today</button>
+          <button class="nav-item" id="nav-week"    onclick="showView('week')">📅 This Week</button>
+          <button class="nav-item" id="nav-all"     onclick="showView('all')">📋 All Tasks</button>
+          <button class="nav-item" id="nav-overdue" onclick="showView('overdue')">
+            🚨 Overdue
+            <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
+          </button>
         </div>
       </div>
 
