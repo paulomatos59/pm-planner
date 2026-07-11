@@ -1307,7 +1307,7 @@ const renderers = {
                     <div class="kanban-card-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
                     <div class="kanban-card-meta">
                       <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
-                      ${t.dueDate ? `<span style="font-size:11px;font-weight:600;color:${od?'var(--danger)':'var(--text-muted)'}">📅 ${formatDue(t.dueDate)}${od?' ⚠️':''}</span>` : ''}
+                      ${t.dueDate ? `<span style="font-size:11px;font-weight:600;color:${od?'var(--danger)':'var(--text-muted)'}">${formatDue(t.dueDate)}${od?' ⚠️':''}</span>` : ''}
                     </div>
                     ${proj ? `<div class="kanban-card-proj" style="margin-top:5px">
                       <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${esc(proj.color||'#2563eb')};margin-right:4px;vertical-align:middle"></span>${esc(proj.name)}
