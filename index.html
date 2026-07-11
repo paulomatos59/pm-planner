@@ -1518,8 +1518,8 @@
       document.getElementById('headerDate').textContent =
         new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
       const overdue   = tasks.filter(isOverdue).length;
-      const todayOpen = tasks.filter(t => t.dueDate === todayStr() && t.status !== 'Done').length;
-      const doneTdy   = tasks.filter(t => t.status === 'Done' && t.dueDate === todayStr()).length;
+      const todayOpen = tasks.filter(t => (t.dueDate||'').slice(0,10) === todayStr() && t.status !== 'Done').length;
+      const doneTdy   = tasks.filter(t => t.status === 'Done' && (t.dueDate||'').slice(0,10) === todayStr()).length;
       document.getElementById('headerStats').innerHTML =
         (overdue > 0 ? `<div class="stat-chip stat-overdue">🚨 ${overdue} overdue</div>` : '') +
         `<div class="stat-chip stat-today">📋 ${todayOpen} today</div>` +
@@ -1634,13 +1634,14 @@ const renderers = {
 
       const open          = tasks.filter(t => t.status !== 'Done');
       const overdueList   = open.filter(isOverdue);
-      const todayList     = open.filter(t => t.dueDate === today);
+      const todayList     = open.filter(t => (t.dueDate||'').slice(0,10) === today);
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
       const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
       // Planned (all, incl. done) & done counts for today and this week
-      const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === today);
-      const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === today);
+      // Use .slice(0,10) to guard against dates stored with time components or whitespace
+      const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && (t.dueDate||'').slice(0,10) === today);
+      const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && (t.dueDate||'').slice(0,10) === today);
       const weekDoneCount = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const weekPlanned   = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const focusNote     = localStorage.getItem('dp_focus') || '';
@@ -2205,7 +2206,7 @@ const renderers = {
 
       const open      = tasks.filter(t => t.status !== 'Done');
       const overdue   = open.filter(isOverdue);
-      const dueToday  = open.filter(t => t.dueDate === today);
+      const dueToday  = open.filter(t => (t.dueDate||'').slice(0,10) === today);
       const dueWeek   = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr && t.dueDate !== today && !isOverdue(t));
       const blocked   = open.filter(t => t.status === 'Blocked');
       const highPri   = open.filter(t => t.priority === 'High' && !isOverdue(t) && t.dueDate !== today);
@@ -2329,7 +2330,7 @@ const renderers = {
     function renderToday() {
       const today        = todayStr();
       const overdueTasks = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const todayTasks   = tasks.filter(t => t.dueDate === today && !isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayTasks   = tasks.filter(t => (t.dueDate||'').slice(0,10) === today && !isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const focusNote    = localStorage.getItem('dp_focus') || '';
 
       let html = `
