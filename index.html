@@ -1702,6 +1702,10 @@ const renderers = {
             <div class="ss-value">${overdueList.length}</div>
             <div class="ss-label">Overdue</div>
           </div>
+          <div class="summary-stat ${blockedList.length > 0 ? 's-danger' : 's-neutral'}" onclick="showView('priorities')">
+            <div class="ss-value">${blockedList.length}</div>
+            <div class="ss-label">Blocked</div>
+          </div>
           <div class="summary-stat s-primary" onclick="showView('today')">
             <div class="ss-split">
               <span class="ss-split-num" style="color:var(--primary)">${todayPlanned.length}</span>
@@ -1727,10 +1731,6 @@ const renderers = {
               <span class="ss-split-lbl done">done</span>
             </div>
             <div class="ss-label" style="margin-top:3px">This Week</div>
-          </div>
-          <div class="summary-stat ${blockedList.length > 0 ? 's-danger' : 's-neutral'}" onclick="showView('priorities')">
-            <div class="ss-value">${blockedList.length}</div>
-            <div class="ss-label">Blocked</div>
           </div>
           <div class="summary-stat s-success">
             <div class="ss-value">${doneThisWeek.length}</div>
