@@ -1436,7 +1436,7 @@
     let editingProjId    = null;
     let editingFuId      = null;
     let editingNoteId    = null;
-    let filterState        = { search: '', category: '', priority: '', status: '' };
+    let filterState        = { search: '', category: '', priority: '', status: '', taskType: 'task' };
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
     let capacitySettings   = JSON.parse(localStorage.getItem('dp_capacity') || '{"workingDays":[1,2,3,4,5],"hoursPerDay":8,"bufferPct":20}');
 
@@ -1554,7 +1554,7 @@
     ============================== */
     function showView(view, resetFilters = false) {
       currentView = view;
-      if (resetFilters) filterState = { search:'', category:'', priority:'', status:'' };
+      if (resetFilters) filterState = { search:'', category:'', priority:'', status:'', taskType:'task' };
       closeSidebar(); // auto-close on mobile when navigating
 
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -2513,12 +2513,14 @@ const renderers = {
     function renderAll() {
       const fs = filterState;
       const filtered = tasks.filter(t => {
-        if (t.taskType === 'timeoff') return false;
+        const tt = fs.taskType || 'task';
+        if (tt === 'task'    && t.taskType === 'timeoff') return false;
+        if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
         if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
                            !(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
-        if (fs.category && t.category !== fs.category) return false;
-        if (fs.priority && t.priority !== fs.priority) return false;
-        if (fs.status   && t.status   !== fs.status)   return false;
+        if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
+        if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
+        if (fs.status   && t.status !== fs.status)   return false;
         return true;
       }).sort((a,b) => {
         if (isOverdue(a) && !isOverdue(b)) return -1;
@@ -2530,11 +2532,16 @@ const renderers = {
 
       return `
         <div class="view-header">
-          <div><div class="view-title">All Tasks</div><div class="view-subtitle">${filtered.length} of ${tasks.length}</div></div>
+          <div><div class="view-title">All Tasks</div><div class="view-subtitle">${filtered.length} shown</div></div>
           <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
         </div>
         <div class="filter-bar">
           <input type="text" class="filter-input" id="filterSearch" placeholder="Search…" value="${esc(fs.search)}" oninput="applyFilters()">
+          <select class="filter-select" id="filterTaskType" onchange="applyFilters()" style="min-width:150px">
+            <option value="task"    ${(fs.taskType||'task')==='task'    ?'selected':''}>📋 Work Tasks</option>
+            <option value="timeoff" ${(fs.taskType||'task')==='timeoff' ?'selected':''}>🌴 Time Off / Events</option>
+            <option value="all"     ${(fs.taskType||'task')==='all'     ?'selected':''}>All Types</option>
+          </select>
           <select class="filter-select" id="filterCategory" onchange="applyFilters()">
             <option value="">All Categories</option>
             <option value="Project"   ${fs.category==='Project'   ?'selected':''}>🚀 Project</option>
@@ -2571,6 +2578,7 @@ const renderers = {
     function applyFilters() {
       filterState = {
         search:   document.getElementById('filterSearch')?.value   || '',
+        taskType: document.getElementById('filterTaskType')?.value || 'task',
         category: document.getElementById('filterCategory')?.value || '',
         priority: document.getElementById('filterPriority')?.value || '',
         status:   document.getElementById('filterStatus')?.value   || ''
