@@ -53,6 +53,12 @@
     .sync-synced  { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
     .sync-error   { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
     .sync-off     { background:#f8fafc; color:#94a3b8; border-color:var(--border); }
+    /* Settings dropdown menu */
+    .settings-menu { position:absolute; right:0; top:calc(100% + 6px); background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:180px; z-index:400; padding:6px; }
+    .settings-menu.hidden { display:none; }
+    .settings-menu-item { display:flex; align-items:center; gap:8px; width:100%; background:none; border:none; padding:9px 12px; font-size:13px; font-weight:500; color:var(--text); cursor:pointer; border-radius:6px; text-align:left; }
+    .settings-menu-item:hover { background:var(--primary-light); color:var(--primary); }
+    .settings-menu-divider { height:1px; background:var(--border); margin:4px 0; }
     /* Settings modal */
     .settings-section { margin-bottom:20px; }
     .settings-section-title { font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
@@ -835,11 +841,18 @@
     <div style="display:flex;align-items:center;gap:8px">
       <div class="header-stats" id="headerStats"></div>
       <span class="sync-chip sync-off" id="syncChip" onclick="openSettingsModal()" title="Cloud sync settings">☁ Sync</span>
-      <button class="header-icon-btn" onclick="exportData()" title="Export backup">⬇ Export</button>
-      <label class="header-icon-btn" title="Import backup" style="cursor:pointer">
-        ⬆ Import<input type="file" accept=".json" onchange="importData(event)" style="display:none">
-      </label>
-      <button class="header-icon-btn" onclick="openSettingsModal()" title="Settings">⚙ Settings</button>
+      <div style="position:relative">
+        <button class="header-icon-btn" id="settingsMenuBtn" onclick="toggleSettingsMenu(event)">⚙ Settings ▾</button>
+        <div class="settings-menu hidden" id="settingsMenu">
+          <button class="settings-menu-item" onclick="exportData();closeSettingsMenu()">⬇ Export backup</button>
+          <label class="settings-menu-item" style="cursor:pointer">
+            ⬆ Import backup
+            <input type="file" accept=".json" onchange="importData(event);closeSettingsMenu()" style="display:none">
+          </label>
+          <div class="settings-menu-divider"></div>
+          <button class="settings-menu-item" onclick="openSettingsModal();closeSettingsMenu()">☁ Sync settings</button>
+        </div>
+      </div>
     </div>
   </header>
 
@@ -3093,6 +3106,20 @@ const renderers = {
       const inp = document.getElementById('syncTokenInput');
       inp.type = inp.type === 'password' ? 'text' : 'password';
     }
+
+    /* ── Settings dropdown menu ── */
+    function toggleSettingsMenu(e) {
+      e.stopPropagation();
+      document.getElementById('settingsMenu').classList.toggle('hidden');
+    }
+    function closeSettingsMenu() {
+      document.getElementById('settingsMenu').classList.add('hidden');
+    }
+    document.addEventListener('click', function(e) {
+      const menu = document.getElementById('settingsMenu');
+      const btn  = document.getElementById('settingsMenuBtn');
+      if (menu && !menu.contains(e.target) && e.target !== btn) closeSettingsMenu();
+    });
 
     /* ── Mobile sidebar ── */
     function toggleSidebar() {
