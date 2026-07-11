@@ -1071,6 +1071,40 @@
           <button class="task-type-btn" id="typeBtnTimeoff" onclick="setTaskType('timeoff')">🌴 Time Off / Event</button>
         </div>
 
+        <!-- Recurring (shown at top for quick access) -->
+        <div class="form-group" style="margin-bottom:8px">
+          <label class="recurrence-toggle" id="recurrenceToggleLabel">
+            <input type="checkbox" id="taskRecurring" onchange="toggleRecurrenceUI()">
+            🔁 Recurring task
+          </label>
+          <div id="recurrenceBody" style="display:none" class="recurrence-body">
+            <div class="form-group" style="margin:0;flex:1;min-width:120px">
+              <label class="form-label" style="margin-bottom:4px">Repeat every</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="number" class="form-input" id="recurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
+                <select class="form-select" id="recurrenceFreq" onchange="toggleRecurrenceUI()" style="flex:1">
+                  <option value="daily">Day(s)</option>
+                  <option value="weekly" selected>Week(s)</option>
+                  <option value="monthly">Month(s)</option>
+                  <option value="yearly">Year(s)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" id="recurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
+              <label class="form-label" style="margin-bottom:4px">On days</label>
+              <div style="display:flex;gap:4px;flex-wrap:wrap" id="recurrenceDayPicker">
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="1" style="display:none"><span class="recur-day-btn" data-day="1">Mo</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="2" style="display:none"><span class="recur-day-btn" data-day="2">Tu</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="3" style="display:none"><span class="recur-day-btn" data-day="3">We</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="4" style="display:none"><span class="recur-day-btn" data-day="4">Th</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="5" style="display:none"><span class="recur-day-btn" data-day="5">Fr</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Shared: title -->
         <div class="form-group">
           <label class="form-label" id="titleLabel">Task Title *</label>
@@ -1149,38 +1183,6 @@
             <div class="form-group">
               <label class="form-label">Est. Hours</label>
               <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
-            </div>
-          </div>
-        </div>
-        <div class="form-group" style="margin-top:4px">
-          <label class="recurrence-toggle" id="recurrenceToggleLabel">
-            <input type="checkbox" id="taskRecurring" onchange="toggleRecurrenceUI()">
-            🔁 Recurring task
-          </label>
-          <div id="recurrenceBody" style="display:none" class="recurrence-body">
-            <div class="form-group" style="margin:0;flex:1;min-width:120px">
-              <label class="form-label" style="margin-bottom:4px">Repeat every</label>
-              <div style="display:flex;gap:6px;align-items:center">
-                <input type="number" class="form-input" id="recurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
-                <select class="form-select" id="recurrenceFreq" onchange="toggleRecurrenceUI()" style="flex:1">
-                  <option value="daily">Day(s)</option>
-                  <option value="weekly" selected>Week(s)</option>
-                  <option value="monthly">Month(s)</option>
-                  <option value="yearly">Year(s)</option>
-                </select>
-              </div>
-            </div>
-            <div class="form-group" id="recurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
-              <label class="form-label" style="margin-bottom:4px">On days</label>
-              <div style="display:flex;gap:4px;flex-wrap:wrap" id="recurrenceDayPicker">
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="1" style="display:none"><span class="recur-day-btn" data-day="1">Mo</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="2" style="display:none"><span class="recur-day-btn" data-day="2">Tu</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="3" style="display:none"><span class="recur-day-btn" data-day="3">We</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="4" style="display:none"><span class="recur-day-btn" data-day="4">Th</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="5" style="display:none"><span class="recur-day-btn" data-day="5">Fr</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
-              </div>
             </div>
           </div>
         </div>
@@ -3057,8 +3059,8 @@ const renderers = {
       document.getElementById('taskDesc').value     = t?.description || '';
       document.getElementById('taskCategory').value = t?.category || 'Project';
       document.getElementById('taskPriority').value = t?.priority || 'Medium';
-      document.getElementById('taskStartDate').value = t?.startDate || '';
-      document.getElementById('taskDueDate').value  = t?.dueDate || todayStr();
+      document.getElementById('taskStartDate').value = t?.startDate || (isNew ? todayStr() : '');
+      document.getElementById('taskDueDate').value  = t?.dueDate   || todayStr();
       document.getElementById('taskDueTime').value  = t?.dueTime || '';
       document.getElementById('taskStatus').value   = t?.status || 'Todo';
       document.getElementById('taskHours').value    = t?.estimatedHours || '';
