@@ -2723,7 +2723,6 @@ const renderers = {
 
     async function connectSync() {
       const inputVal = document.getElementById('syncTokenInput').value.trim();
-      // If the field still shows placeholder bullets, use the already-stored token
       const token = /^[•]+$/.test(inputVal) ? syncToken : inputVal;
       if (!token) { alert('Please enter a GitHub Personal Access Token.'); return; }
       syncToken  = token;
@@ -2731,6 +2730,27 @@ const renderers = {
       localStorage.setItem('dp_sync_token', syncToken);
       localStorage.removeItem('dp_sync_gist_id');
       closeSettingsModal();
+      setSyncChip('syncing', 'Connecting…');
+
+      // Try to find an existing PM Planner Gist first
+      try {
+        const r = await fetch('https://api.github.com/gists?per_page=100', {
+          headers: { Authorization: `token ${syncToken}`, 'X-GitHub-Api-Version': '2022-11-28' }
+        });
+        if (r.ok) {
+          const gists = await r.json();
+          const existing = gists.find(g => g.files && g.files[GIST_FILE]);
+          if (existing) {
+            syncGistId = existing.id;
+            localStorage.setItem('dp_sync_gist_id', syncGistId);
+            // Load data from the existing Gist
+            const loaded = await loadFromGist();
+            if (loaded) { showView(currentView); openSettingsModal(); return; }
+          }
+        }
+      } catch(e) { console.warn('Gist search failed:', e); }
+
+      // No existing Gist found — create one with current data
       await saveToGist();
       openSettingsModal();
     }
