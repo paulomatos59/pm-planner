@@ -1905,11 +1905,42 @@ const renderers = {
           </div>`;
       }
 
+      // ── Time-off rows ──
+      const TOFF_COLOR = '#0891b2';
+      function timeoffBar(t) {
+        const from = t.startDate || t.dueDate;
+        const x1   = clamp(xOf(from), 0, totalW - 2);
+        const x2   = clamp(xOf(t.dueDate) + DAY_W - 2, x1 + DAY_W - 2, totalW);
+        const rawW = x2 - x1;
+        const label = rawW > 44 ? esc(t.title) : '';
+        return `
+          <div class="gantt-row">
+            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="🌴 ${esc(t.title)}">🌴 ${esc(t.title)}</div>
+            <div class="gantt-bars-cell" style="width:${totalW}px">
+              ${dates.map((d,i) => d.getDay()===0||d.getDay()===6 ? `<div class="gantt-wknd-band" style="left:${i*DAY_W}px;width:${DAY_W}px"></div>` : '').join('')}
+              ${todStr >= winS && todStr <= winE ? `<div class="gantt-tod-line" style="left:${xOf(todStr)+DAY_W/2}px"></div>` : ''}
+              <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${TOFF_COLOR};opacity:0.85"
+                   onclick="openTaskModal('${t.id}')"
+                   title="🌴 ${esc(t.title)}  (${from} → ${t.dueDate})">${label}</div>
+            </div>
+          </div>`;
+      }
+
+      const timeoffSection = timeoffs.length === 0 ? '' : `
+        <div class="gantt-group-hdr">
+          <div class="gantt-group-name">
+            <div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>
+            🌴 Time Off / Events
+          </div>
+          <div class="gantt-group-band" style="background:linear-gradient(90deg,${TOFF_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
+        </div>
+        ${timeoffs.map(t => timeoffBar(t)).join('')}`;
+
       // ── Group rows ──
-      const groupRows = groups.length === 0
+      const groupRows = (groups.length === 0 && timeoffs.length === 0)
         ? `<div class="gantt-empty-row">No tasks with due dates found in this period.<br>
              <small>Assign start &amp; due dates to tasks to see them on the Gantt.</small></div>`
-        : groups.map(g => `
+        : timeoffSection + groups.map(g => `
             <div class="gantt-group-hdr">
               <div class="gantt-group-name">
                 <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
