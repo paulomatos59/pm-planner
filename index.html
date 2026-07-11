@@ -1069,10 +1069,13 @@
             <div class="form-group" id="recurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
               <label class="form-label" style="margin-bottom:4px">On days</label>
               <div style="display:flex;gap:4px;flex-wrap:wrap" id="recurrenceDayPicker">
-                ${['Mo','Tu','We','Th','Fr','Sa','Su'].map((d,i) =>
-                  `<label style="cursor:pointer"><input type="checkbox" class="recur-day" value="${i+1}" style="display:none">
-                   <span class="recur-day-btn" data-day="${i+1}">${d}</span></label>`
-                ).join('')}
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="1" style="display:none"><span class="recur-day-btn" data-day="1">Mo</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="2" style="display:none"><span class="recur-day-btn" data-day="2">Tu</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="3" style="display:none"><span class="recur-day-btn" data-day="3">We</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="4" style="display:none"><span class="recur-day-btn" data-day="4">Th</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="5" style="display:none"><span class="recur-day-btn" data-day="5">Fr</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
+                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
               </div>
             </div>
           </div>
