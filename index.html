@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-GB">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -561,6 +561,20 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  </style>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+  <style>
+    /* Flatpickr theme overrides */
+    .flatpickr-calendar { font-family: inherit; border-radius: 10px; box-shadow: 0 4px 20px rgba(0,0,0,0.12); border: 1px solid var(--border); }
+    .flatpickr-day.selected, .flatpickr-day.selected:hover { background: var(--primary); border-color: var(--primary); }
+    .flatpickr-day.today { border-color: var(--primary); }
+    .flatpickr-months .flatpickr-month { background: var(--surface); color: var(--text); }
+    .flatpickr-current-month { color: var(--text); }
+    .flatpickr-weekday { color: var(--text-muted); }
+    .flatpickr-day { color: var(--text); }
+    .flatpickr-day:hover { background: var(--primary-light); }
+    /* Keep the input looking native */
+    #taskDueDate { cursor: pointer; }
   </style>
 </head>
 <body>
@@ -2299,6 +2313,25 @@ const renderers = {
     ============================== */
     applySectionStates();
     showView('summary');
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
+  <script>
+    // Init Flatpickr on the task due-date field — Monday-first, no time
+    let _fpTask = flatpickr('#taskDueDate', {
+      locale:        { firstDayOfWeek: 1 },
+      dateFormat:    'Y-m-d',
+      allowInput:    true,
+      disableMobile: true
+    });
+
+    // Patch openTaskModal to use flatpickr's setDate
+    const _origOpenTaskModal = openTaskModal;
+    openTaskModal = function(id = null, preProjectId = null) {
+      _origOpenTaskModal(id, preProjectId);
+      // After the modal sets the raw value, sync to flatpickr
+      const raw = document.getElementById('taskDueDate').value;
+      _fpTask.setDate(raw || null, false);
+    };
   </script>
 </body>
 </html>
