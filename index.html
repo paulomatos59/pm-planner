@@ -53,6 +53,15 @@
     .sync-synced  { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
     .sync-error   { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
     .sync-off     { background:#f8fafc; color:#94a3b8; border-color:var(--border); }
+    /* Recurrence */
+    .recurrence-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:600; color:var(--text-muted); margin-bottom:4px; user-select:none; }
+    .recurrence-toggle input[type=checkbox] { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
+    .recurrence-toggle.active { color:var(--primary); }
+    .recurrence-body { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
+    .recurrence-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--primary-light); color:var(--primary); }
+    .recur-day-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; border:1px solid var(--border); font-size:11px; font-weight:700; cursor:pointer; background:var(--surface); color:var(--text-muted); transition:all 0.1s; }
+    .recur-day-btn.selected { background:var(--primary); color:#fff; border-color:var(--primary); }
+
     /* Settings dropdown menu */
     .settings-menu { position:absolute; right:0; top:calc(100% + 6px); background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:180px; z-index:400; padding:6px; }
     .settings-menu.hidden { display:none; }
@@ -1037,6 +1046,35 @@
           <div class="form-group">
             <label class="form-label">Est. Hours</label>
             <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+          </div>
+        </div>
+        <div class="form-group" style="margin-top:4px">
+          <label class="recurrence-toggle" id="recurrenceToggleLabel">
+            <input type="checkbox" id="taskRecurring" onchange="toggleRecurrenceUI()">
+            🔁 Recurring task
+          </label>
+          <div id="recurrenceBody" style="display:none" class="recurrence-body">
+            <div class="form-group" style="margin:0;flex:1;min-width:120px">
+              <label class="form-label" style="margin-bottom:4px">Repeat every</label>
+              <div style="display:flex;gap:6px;align-items:center">
+                <input type="number" class="form-input" id="recurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
+                <select class="form-select" id="recurrenceFreq" onchange="toggleRecurrenceUI()" style="flex:1">
+                  <option value="daily">Day(s)</option>
+                  <option value="weekly" selected>Week(s)</option>
+                  <option value="monthly">Month(s)</option>
+                  <option value="yearly">Year(s)</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group" id="recurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
+              <label class="form-label" style="margin-bottom:4px">On days</label>
+              <div style="display:flex;gap:4px;flex-wrap:wrap" id="recurrenceDayPicker">
+                ${['Mo','Tu','We','Th','Fr','Sa','Su'].map((d,i) =>
+                  `<label style="cursor:pointer"><input type="checkbox" class="recur-day" value="${i+1}" style="display:none">
+                   <span class="recur-day-btn" data-day="${i+1}">${d}</span></label>`
+                ).join('')}
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -2423,6 +2461,7 @@ const renderers = {
               ${proj ? `<span class="chip-proj-link" onclick="event.stopPropagation();openProject('${proj.id}')">🗂 ${esc(proj.name)}</span>` : ''}
               ${t.dueDate ? `<span class="task-due ${od?'overdue-text':''}">📅 ${formatDue(t.dueDate)}${t.dueTime?' '+t.dueTime:''}</span>` : ''}
               ${t.estimatedHours ? `<span class="task-due">⏱ ${t.estimatedHours}h</span>` : ''}
+              ${t.recurrence ? `<span class="recurrence-badge">🔁 ${t.recurrence.freq}</span>` : ''}
             </div>
             ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">${esc(t.description)}</div>` : ''}
           </div>
@@ -2464,12 +2503,105 @@ const renderers = {
     /* ==============================
        TASK ACTIONS
     ============================== */
+    /* ── Recurrence UI helpers ── */
+    function toggleRecurrenceUI() {
+      const on   = document.getElementById('taskRecurring').checked;
+      const body = document.getElementById('recurrenceBody');
+      const lbl  = document.getElementById('recurrenceToggleLabel');
+      const freq = document.getElementById('recurrenceFreq')?.value;
+      const dg   = document.getElementById('recurrenceDaysGroup');
+      body.style.display = on ? 'flex' : 'none';
+      lbl.classList.toggle('active', on);
+      if (dg) dg.style.display = (on && freq === 'weekly') ? 'block' : 'none';
+      // Wire day-picker clicks (idempotent)
+      document.querySelectorAll('.recur-day-btn').forEach(btn => {
+        btn.onclick = () => {
+          const cb = btn.previousElementSibling;
+          cb.checked = !cb.checked;
+          btn.classList.toggle('selected', cb.checked);
+        };
+      });
+    }
+
+    function getRecurrenceFromForm() {
+      if (!document.getElementById('taskRecurring').checked) return null;
+      const freq     = document.getElementById('recurrenceFreq').value;
+      const interval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
+      const days     = freq === 'weekly'
+        ? [...document.querySelectorAll('.recur-day:checked')].map(cb => parseInt(cb.value))
+        : [];
+      return { freq, interval, days };
+    }
+
+    function setRecurrenceToForm(rec) {
+      const on = !!rec;
+      document.getElementById('taskRecurring').checked = on;
+      if (rec) {
+        document.getElementById('recurrenceFreq').value     = rec.freq || 'weekly';
+        document.getElementById('recurrenceInterval').value = rec.interval || 1;
+        document.querySelectorAll('.recur-day').forEach(cb => {
+          cb.checked = (rec.days || []).includes(parseInt(cb.value));
+          cb.nextElementSibling.classList.toggle('selected', cb.checked);
+        });
+      }
+      toggleRecurrenceUI();
+    }
+
+    function nextRecurDate(dueDate, rec) {
+      if (!dueDate || !rec) return null;
+      const d = parseLocal(dueDate);
+      const n = parseInt(rec.interval) || 1;
+      if (rec.freq === 'daily')   { d.setDate(d.getDate() + n); }
+      else if (rec.freq === 'weekly') {
+        if (rec.days && rec.days.length > 0) {
+          // Find the next matching weekday after dueDate
+          // JS getDay: 0=Sun…6=Sat; our days: 1=Mon…7=Sun
+          const jsToOur = dow => dow === 0 ? 7 : dow;
+          let cur = new Date(d); cur.setDate(cur.getDate() + 1);
+          for (let i = 0; i < 7 * n + 1; i++) {
+            if (rec.days.includes(jsToOur(cur.getDay()))) { d.setTime(cur.getTime()); break; }
+            cur.setDate(cur.getDate() + 1);
+          }
+        } else {
+          d.setDate(d.getDate() + 7 * n);
+        }
+      }
+      else if (rec.freq === 'monthly') { d.setMonth(d.getMonth() + n); }
+      else if (rec.freq === 'yearly')  { d.setFullYear(d.getFullYear() + n); }
+      return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+    }
+
+    function spawnNextRecurrence(t) {
+      if (!t.recurrence) return;
+      const nextDue = nextRecurDate(t.dueDate, t.recurrence);
+      if (!nextDue) return;
+      // Shift startDate by same delta
+      let nextStart = null;
+      if (t.startDate && t.dueDate) {
+        const delta = parseLocal(t.dueDate) - parseLocal(t.startDate);
+        const ns = parseLocal(nextDue); ns.setTime(ns.getTime() - delta);
+        nextStart = `${ns.getFullYear()}-${pad(ns.getMonth()+1)}-${pad(ns.getDate())}`;
+      }
+      tasks.push({
+        ...t,
+        id:          uid(),
+        status:      'Todo',
+        dueDate:     nextDue,
+        startDate:   nextStart,
+        completedAt: null,
+        createdAt:   new Date().toISOString(),
+        updatedAt:   new Date().toISOString()
+      });
+    }
+
     function toggleDone(id) {
       const t = tasks.find(x => x.id === id);
       if (!t) return;
-      t.status      = t.status === 'Done' ? 'Todo' : 'Done';
+      const wasDone = t.status === 'Done';
+      t.status      = wasDone ? 'Todo' : 'Done';
       t.completedAt = t.status === 'Done' ? new Date().toISOString() : null;
       t.updatedAt   = new Date().toISOString();
+      if (t.status === 'Done' && t.recurrence) spawnNextRecurrence(t);
       persistTasks();
       showView(currentView);
     }
@@ -2511,6 +2643,7 @@ const renderers = {
       document.getElementById('taskStartDate').style.borderColor = '';
       document.getElementById('taskDueDate').style.borderColor   = '';
       document.getElementById('taskDateError').style.display     = 'none';
+      setRecurrenceToForm(t?.recurrence || null);
 
       // Populate assign-to dropdown
       buildAssignOptions(document.getElementById('taskProjectLink'), t?.projectId || preProjectId || '');
@@ -2567,10 +2700,15 @@ const renderers = {
         dueTime:        document.getElementById('taskDueTime').value,
         status:         document.getElementById('taskStatus').value,
         estimatedHours: parseFloat(document.getElementById('taskHours').value) || null,
+        recurrence:     getRecurrenceFromForm(),
         createdAt:      existing?.createdAt  || new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
         completedAt:    existing?.completedAt || null
       };
+      // If marked Done directly from modal and has recurrence, spawn next
+      if (task.status === 'Done' && task.recurrence && existing?.status !== 'Done') {
+        spawnNextRecurrence(task);
+      }
       if (existing) { Object.assign(existing, task); } else { tasks.push(task); }
       persistTasks();
       closeTaskModal();
