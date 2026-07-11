@@ -1515,7 +1515,7 @@ const renderers = {
       const todayList     = open.filter(t => t.dueDate === today);
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
-      const doneThisWeek  = tasks.filter(t => t.status === 'Done' && t.completedAt && t.completedAt.slice(0,10) >= monStr);
+      const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
       const focusNote     = localStorage.getItem('dp_focus') || '';
       const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
 
