@@ -482,7 +482,7 @@
     .summary-stat.s-warning .ss-value { color: var(--warning); }
     .summary-stat.s-success .ss-value { color: #16a34a; }
 
-    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
     .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
     .summary-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .summary-card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
@@ -705,6 +705,8 @@
       /* Summary stats: 2 columns */
       .summary-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
       .summary-grid  { grid-template-columns: 1fr; gap: 12px; }
+      /* 5th stat overflows — move to next row */
+      .summary-stats .summary-stat:nth-child(5) { grid-column: span 2; }
 
       /* Projects / notes grids: 1 column */
       .projects-grid { grid-template-columns: 1fr; }
@@ -753,13 +755,17 @@
     }
 
     /* ============================================================
+       RESPONSIVE — MEDIUM SCREENS  (769px – 1199px)
+    ============================================================ */
+    @media (min-width: 769px) and (max-width: 1199px) {
+      .summary-grid { grid-template-columns: 1fr 1fr; }
+    }
+
+    /* ============================================================
        RESPONSIVE — LARGE SCREENS  (≥ 1400px)
     ============================================================ */
     @media (min-width: 1400px) {
       .main { padding: 28px 36px; }
-
-      /* Summary: 3-col bottom grid on wide screens */
-      .summary-grid { grid-template-columns: 1fr 1fr 1fr; }
 
       /* Stats: stay 5-col but give more breathing room */
       .summary-stats { gap: 14px; }
@@ -1477,6 +1483,30 @@ const renderers = {
                 }).join('')
             }
           </div>
+
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <span class="summary-card-title" style="color:var(--danger)">⚠ Overdue</span>
+              <button class="summary-card-link" onclick="showView('overdue')">View all →</button>
+            </div>
+            ${overdueList.length === 0
+              ? `<div class="summary-empty">✅ Nothing overdue</div>`
+              : `<div class="summary-task-list">${overdueList.slice(0,6).map(t => {
+                  const proj = projects.find(p => p.id === t.projectId);
+                  return `<div class="summary-task-item" onclick="openTaskModal('${t.id}')">
+                    <div class="s-task-dot s-dot-${t.priority.toLowerCase()}"></div>
+                    <div style="flex:1;min-width:0">
+                      <div class="summary-task-title" style="color:var(--danger)">${esc(t.title)}</div>
+                      ${proj ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(proj.name)}</div>` : ''}
+                    </div>
+                    <span class="summary-task-due od">${formatDue(t.dueDate)}</span>
+                  </div>`;
+                }).join('')}
+                ${overdueList.length > 6 ? `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:6px 0">+${overdueList.length-6} more</div>` : ''}
+              </div>`
+            }
+          </div>
+
         </div>
 
         <div class="summary-card" style="margin-top:14px">
