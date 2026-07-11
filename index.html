@@ -983,9 +983,13 @@
       if (diff === 0)  return 'Today';
       if (diff === 1)  return 'Tomorrow';
       if (diff === -1) return 'Yesterday';
-      if (diff < 0)    return `${Math.abs(diff)}d overdue`;
-      if (diff <= 6)   return d.toLocaleDateString('en-US', { weekday: 'short' });
-      return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+      const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const DAYS   = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      const dd  = String(d.getDate()).padStart(2,'0');
+      const mmm = MONTHS[d.getMonth()];
+      const yyyy = d.getFullYear();
+      const day  = DAYS[d.getDay()];
+      return `${dd}-${mmm}-${yyyy} (${day})`;
     }
     function formatTs(iso) {
       if (!iso) return '';
