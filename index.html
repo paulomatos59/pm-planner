@@ -43,6 +43,8 @@
     .header-date { font-size: 13px; color: var(--text-muted); margin-left: 16px; }
     .header-stats { display: flex; gap: 10px; align-items: center; }
     .stat-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
+    .header-icon-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+    .header-icon-btn:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
     .stat-overdue { background: var(--danger-light); color: var(--danger); }
     .stat-today   { background: var(--primary-light); color: var(--primary); }
     .stat-done    { background: var(--success-light); color: #16a34a; }
@@ -585,7 +587,13 @@
       <div class="app-title">📋 Program Manager Planner</div>
       <div class="header-date" id="headerDate"></div>
     </div>
-    <div class="header-stats" id="headerStats"></div>
+    <div style="display:flex;align-items:center;gap:8px">
+      <div class="header-stats" id="headerStats"></div>
+      <button class="header-icon-btn" onclick="exportData()" title="Export backup">⬇ Export</button>
+      <label class="header-icon-btn" title="Import backup" style="cursor:pointer">
+        ⬆ Import<input type="file" accept=".json" onchange="importData(event)" style="display:none">
+      </label>
+    </div>
   </header>
 
   <div class="app-body">
@@ -2312,6 +2320,57 @@ const renderers = {
         }
       });
     });
+
+    /* ==============================
+       EXPORT / IMPORT
+    ============================== */
+    function exportData() {
+      const data = {
+        version:      2,
+        exportedAt:   new Date().toISOString(),
+        tasks:        tasks,
+        projects:     projects,
+        followups:    followups,
+        projectNotes: projectNotes,
+        focus:        localStorage.getItem('dp_focus') || ''
+      };
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url  = URL.createObjectURL(blob);
+      const a    = document.createElement('a');
+      const date = new Date().toISOString().slice(0, 10);
+      a.href     = url;
+      a.download = `pm-planner-backup-${date}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    }
+
+    function importData(event) {
+      const file = event.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          const data = JSON.parse(e.target.result);
+          if (!data.tasks || !data.projects) throw new Error('Invalid backup file.');
+          if (!confirm(`Import backup from ${data.exportedAt ? new Date(data.exportedAt).toLocaleString() : 'unknown date'}?\n\nThis will REPLACE all current data.`)) {
+            event.target.value = ''; return;
+          }
+          tasks        = data.tasks        || [];
+          projects     = data.projects     || [];
+          followups    = data.followups    || [];
+          projectNotes = data.projectNotes || [];
+          persistTasks(); persistProjects(); persistFollowups(); persistNotes();
+          if (data.focus) localStorage.setItem('dp_focus', data.focus);
+          event.target.value = '';
+          showView('summary');
+          alert('✅ Data imported successfully!');
+        } catch(err) {
+          alert('❌ Import failed: ' + err.message);
+          event.target.value = '';
+        }
+      };
+      reader.readAsText(file);
+    }
 
     /* ==============================
        BOOT
