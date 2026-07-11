@@ -534,7 +534,7 @@
     .summary-stat.s-warning .ss-value { color: var(--warning); }
     .summary-stat.s-success .ss-value { color: #16a34a; }
 
-    .summary-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 14px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
     .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
     .summary-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
     .summary-card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
@@ -571,6 +571,17 @@
     .summary-proj-pct { font-weight: 700; font-size: 12px; }
     .s-fu-badge { color: var(--warning); font-weight: 700; font-size: 11px; }
     .s-od-badge { color: var(--danger); font-weight: 700; font-size: 11px; }
+    .upcoming-item { display:flex; align-items:flex-start; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); cursor:pointer; }
+    .upcoming-item:last-child { border-bottom:none; padding-bottom:0; }
+    .upcoming-item:hover .upcoming-title { color:var(--primary); }
+    .upcoming-date-col { text-align:center; min-width:36px; flex-shrink:0; }
+    .upcoming-date-day { font-size:18px; font-weight:800; line-height:1.1; }
+    .upcoming-date-mon { font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-muted); }
+    .upcoming-title { font-size:13px; font-weight:600; line-height:1.3; }
+    .upcoming-meta  { font-size:11px; color:var(--text-muted); margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; }
+    .upcoming-type-badge { font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; }
+    .upcoming-type-task    { background:var(--primary-light); color:var(--primary); }
+    .upcoming-type-timeoff { background:#ecfeff; color:#0891b2; }
 
     .summary-week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
     .summary-week-day {
@@ -817,7 +828,7 @@
     /* ============================================================
        RESPONSIVE — MEDIUM SCREENS  (769px – 1199px)
     ============================================================ */
-    @media (min-width: 769px) and (max-width: 1199px) {
+    @media (min-width: 769px) and (max-width: 1099px) {
       .summary-grid { grid-template-columns: 1fr 1fr; }
     }
 
@@ -1526,11 +1537,29 @@ const renderers = {
         ...todayList.filter(t => !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b))
       ].slice(0, 6);
 
-      // Upcoming (next 7 days, not today, not overdue)
+      // Upcoming (next 7 days, not today, not overdue) — legacy used in bottom strip
       const upcoming = open
-        .filter(t => t.dueDate && t.dueDate > today && t.dueDate <= sunStr)
+        .filter(t => t.taskType !== 'timeoff' && t.dueDate && t.dueDate > today && t.dueDate <= sunStr)
         .sort((a,b) => a.dueDate.localeCompare(b.dueDate) || priorityOrder(a) - priorityOrder(b))
         .slice(0, 5);
+
+      // Upcoming Events card: work tasks + time-off in next 30 days
+      const in30 = new Date(); in30.setDate(in30.getDate() + 30);
+      const in30Str = `${in30.getFullYear()}-${pad(in30.getMonth()+1)}-${pad(in30.getDate())}`;
+      const upcomingWorkTasks = open
+        .filter(t => t.taskType !== 'timeoff' && t.dueDate && t.dueDate > today && t.dueDate <= in30Str)
+        .sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+      const upcomingTimeoff = tasks
+        .filter(t => t.taskType === 'timeoff' && t.dueDate && t.dueDate >= today)
+        .sort((a,b) => (t => t.startDate || t.dueDate)(a).localeCompare((t => t.startDate || t.dueDate)(b)));
+      const upcomingEvents = [
+        ...upcomingWorkTasks.map(t => ({ ...t, _kind: 'task' })),
+        ...upcomingTimeoff.map(t => ({ ...t, _kind: 'timeoff' }))
+      ].sort((a,b) => {
+        const da = a._kind === 'timeoff' ? (a.startDate || a.dueDate) : a.dueDate;
+        const db = b._kind === 'timeoff' ? (b.startDate || b.dueDate) : b.dueDate;
+        return da.localeCompare(db);
+      }).slice(0, 7);
 
       return `
         <div class="summary-hero">
@@ -1638,6 +1667,41 @@ const renderers = {
                 }).join('')}
                 ${overdueList.length > 6 ? `<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:6px 0">+${overdueList.length-6} more</div>` : ''}
               </div>`
+            }
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <span class="summary-card-title">📅 Upcoming Events</span>
+              <button class="summary-card-link" onclick="showView('month')">Month view →</button>
+            </div>
+            ${upcomingEvents.length === 0
+              ? `<div class="summary-empty">No upcoming events in the next 30 days</div>`
+              : `<div>${upcomingEvents.map(t => {
+                  const isTimeoff = t._kind === 'timeoff';
+                  const dateStr   = isTimeoff ? (t.startDate || t.dueDate) : t.dueDate;
+                  const d         = parseLocal(dateStr);
+                  const dayNum    = d.getDate();
+                  const mon       = d.toLocaleDateString('en-US', { month:'short' });
+                  const proj      = projects.find(p => p.id === t.projectId);
+                  const rangeLabel = isTimeoff && t.startDate && t.dueDate && t.startDate !== t.dueDate
+                    ? `Until ${formatDue(t.dueDate)}`
+                    : '';
+                  return `<div class="upcoming-item" onclick="openTaskModal('${t.id}')">
+                    <div class="upcoming-date-col">
+                      <div class="upcoming-date-day">${dayNum}</div>
+                      <div class="upcoming-date-mon">${mon}</div>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                      <div class="upcoming-title">${isTimeoff ? '🌴 ' : ''}${esc(t.title)}</div>
+                      <div class="upcoming-meta">
+                        <span class="upcoming-type-badge ${isTimeoff ? 'upcoming-type-timeoff' : 'upcoming-type-task'}">${isTimeoff ? 'Time Off' : t.priority}</span>
+                        ${rangeLabel ? `<span>${rangeLabel}</span>` : ''}
+                        ${proj && !isTimeoff ? `<span>${esc(proj.name)}</span>` : ''}
+                      </div>
+                    </div>
+                  </div>`;
+                }).join('')}</div>`
             }
           </div>
 
