@@ -55,6 +55,19 @@
     .sync-off     { background:#f8fafc; color:#94a3b8; border-color:var(--border); }
     /* Recurrence */
     .recurrence-toggle { display:flex; align-items:center; gap:8px; cursor:pointer; font-size:13px; font-weight:600; color:var(--text-muted); margin-bottom:4px; user-select:none; }
+    /* Task type toggle */
+    .task-type-toggle { display:flex; gap:0; border:1px solid var(--border); border-radius:8px; overflow:hidden; margin-bottom:16px; }
+    .task-type-btn { flex:1; background:none; border:none; padding:8px 12px; font-size:13px; font-weight:600; color:var(--text-muted); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; transition:all 0.15s; }
+    .task-type-btn.active { background:var(--primary); color:#fff; }
+    .task-type-btn.active.timeoff { background:#0891b2; }
+    /* Time-off fields */
+    .timeoff-fields { background:linear-gradient(135deg,#ecfeff,#f0f9ff); border:1px solid #a5f3fc; border-radius:8px; padding:12px 14px; margin-bottom:12px; }
+    /* Month calendar time-off banner */
+    .month-timeoff-chip { font-size:10px; padding:2px 6px; border-radius:3px; margin-bottom:2px; background:#0891b2; color:#fff; font-weight:600; display:block; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; cursor:pointer; }
+    .month-timeoff-chip.starts { border-radius:3px 0 0 3px; }
+    .month-timeoff-chip.ends   { border-radius:0 3px 3px 0; }
+    .month-timeoff-chip.mid    { border-radius:0; opacity:0.85; }
+
     .recurrence-toggle input[type=checkbox] { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
     .recurrence-toggle.active { color:var(--primary); }
     .recurrence-body { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:12px 14px; display:flex; gap:10px; flex-wrap:wrap; align-items:center; }
@@ -978,74 +991,91 @@
         <input type="hidden" id="taskId">
         <input type="hidden" id="taskProjectId">
 
+        <!-- Task type toggle -->
+        <div class="task-type-toggle">
+          <button class="task-type-btn active" id="typeBtnTask" onclick="setTaskType('task')">📋 Work Task</button>
+          <button class="task-type-btn" id="typeBtnTimeoff" onclick="setTaskType('timeoff')">🌴 Time Off / Event</button>
+        </div>
+
+        <!-- Shared: title -->
         <div class="form-group">
-          <label class="form-label">Task Title *</label>
+          <label class="form-label" id="titleLabel">Task Title *</label>
           <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
         </div>
         <div class="form-group">
           <label class="form-label">Description / Notes</label>
           <textarea class="form-textarea" id="taskDesc" placeholder="Details, links, context…"></textarea>
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Category</label>
-            <select class="form-select" id="taskCategory">
-              <option value="Project">🚀 Project</option>
-              <option value="Meeting">🤝 Meeting</option>
-              <option value="Admin">⚙️ Admin</option>
-              <option value="Follow-up">📌 Follow-up</option>
-              <option value="Personal">👤 Personal</option>
-            </select>
+
+        <!-- Work Task fields -->
+        <div id="workFields">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-select" id="taskCategory">
+                <option value="Project">🚀 Project</option>
+                <option value="Meeting">🤝 Meeting</option>
+                <option value="Admin">⚙️ Admin</option>
+                <option value="Follow-up">📌 Follow-up</option>
+                <option value="Personal">👤 Personal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select class="form-select" id="taskPriority">
+                <option value="High">🔴 High</option>
+                <option value="Medium" selected>🟡 Medium</option>
+                <option value="Low">🟢 Low</option>
+              </select>
+            </div>
           </div>
           <div class="form-group">
-            <label class="form-label">Priority</label>
-            <select class="form-select" id="taskPriority">
-              <option value="High">🔴 High</option>
-              <option value="Medium" selected>🟡 Medium</option>
-              <option value="Low">🟢 Low</option>
+            <label class="form-label">Assign to</label>
+            <select class="form-select" id="taskProjectLink">
+              <option value="">— None —</option>
             </select>
           </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Assign to</label>
-          <select class="form-select" id="taskProjectLink">
-            <option value="">— None —</option>
-          </select>
-        </div>
+
+        <!-- Dates (shared but labels change) -->
         <div class="form-row">
           <div class="form-group">
-            <label class="form-label">Start Date</label>
+            <label class="form-label" id="startDateLabel">Start Date</label>
             <input type="date" class="form-input" id="taskStartDate" onchange="validateTaskDates()">
           </div>
           <div class="form-group">
-            <label class="form-label">Due Date</label>
+            <label class="form-label" id="dueDateLabel">Due Date</label>
             <input type="date" class="form-input" id="taskDueDate" onchange="validateTaskDates()">
           </div>
         </div>
         <div id="taskDateError" style="display:none;color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:4px">
-          ⚠ Start date must be before the due date.
+          ⚠ Start date must be before the end date.
         </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Due Time (optional)</label>
-            <input type="time" class="form-input" id="taskDueTime">
+
+        <!-- Work Task only: time, status, hours -->
+        <div id="workOnlyFields">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Due Time (optional)</label>
+              <input type="time" class="form-input" id="taskDueTime">
+            </div>
+            <div class="form-group"></div>
           </div>
-          <div class="form-group"></div>
-        </div>
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label">Status</label>
-            <select class="form-select" id="taskStatus">
-              <option value="Todo">To Do</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Done">Done</option>
-              <option value="Delayed">Delayed</option>
-              <option value="Blocked">Blocked</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Est. Hours</label>
-            <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+          <div class="form-row">
+            <div class="form-group">
+              <label class="form-label">Status</label>
+              <select class="form-select" id="taskStatus">
+                <option value="Todo">To Do</option>
+                <option value="In Progress">In Progress</option>
+                <option value="Done">Done</option>
+                <option value="Delayed">Delayed</option>
+                <option value="Blocked">Blocked</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Est. Hours</label>
+              <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+            </div>
           </div>
         </div>
         <div class="form-group" style="margin-top:4px">
@@ -1674,7 +1704,7 @@ const renderers = {
       }
 
       function projectRow(p) {
-        const ptasks = tasks.filter(t => t.projectId === p.id);
+        const ptasks = tasks.filter(t => t.projectId === p.id && t.taskType !== 'timeoff');
         const total  = ptasks.length;
         // column-level totals for header
         return `
@@ -1881,8 +1911,8 @@ const renderers = {
     ============================== */
     function renderToday() {
       const today        = todayStr();
-      const overdueTasks = tasks.filter(isOverdue).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const todayTasks   = tasks.filter(t => t.dueDate === today && !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const overdueTasks = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayTasks   = tasks.filter(t => t.dueDate === today && !isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const focusNote    = localStorage.getItem('dp_focus') || '';
 
       let html = `
@@ -2020,16 +2050,31 @@ const renderers = {
         <div class="month-grid">
           ${dayNames.map(d => `<div class="month-dow-header">${d}</div>`).join('')}
           ${cells.map(d => {
-            const ds       = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-            const inMonth  = d.getMonth() === month;
-            const isToday  = ds === todStr;
-            const dayTasks = tasks.filter(t => t.dueDate === ds).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-            const visible  = dayTasks.slice(0, 3);
-            const extra    = dayTasks.length - visible.length;
+            const ds        = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+            const inMonth   = d.getMonth() === month;
+            const isToday   = ds === todStr;
+            // Work tasks: due on this day
+            const dayTasks  = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === ds).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+            const visible   = dayTasks.slice(0, 2);
+            const extra     = dayTasks.length - visible.length;
+            // Time-off events: span includes this day (startDate <= ds <= dueDate)
+            const timeoffs  = tasks.filter(t => {
+              if (t.taskType !== 'timeoff') return false;
+              const from = t.startDate || t.dueDate;
+              const to   = t.dueDate   || t.startDate;
+              return from && to && ds >= from && ds <= to;
+            });
             return `
               <div class="month-cell ${!inMonth ? 'other-month' : ''} ${isToday ? 'is-today' : ''}"
                    onclick="openTaskModalWithDate('${ds}')">
                 <div class="month-cell-num">${d.getDate()}</div>
+                ${timeoffs.map(t => {
+                  const from = t.startDate || t.dueDate;
+                  const to   = t.dueDate   || t.startDate;
+                  const pos  = ds === from && ds === to ? '' : ds === from ? 'starts' : ds === to ? 'ends' : 'mid';
+                  const showLabel = ds === from || d.getDay() === 1; // show label on start or each Monday
+                  return `<div class="month-timeoff-chip ${pos}" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="${esc(t.title)}">🌴 ${showLabel ? esc(t.title) : '&nbsp;'}</div>`;
+                }).join('')}
                 ${visible.map(t => `
                   <div class="month-task-chip priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
                        onclick="event.stopPropagation();openTaskModal('${t.id}')"
@@ -2047,6 +2092,7 @@ const renderers = {
     function renderAll() {
       const fs = filterState;
       const filtered = tasks.filter(t => {
+        if (t.taskType === 'timeoff') return false;
         if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
                            !(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
         if (fs.category && t.category !== fs.category) return false;
@@ -2129,7 +2175,7 @@ const renderers = {
        OVERDUE VIEW
     ============================== */
     function renderOverdue() {
-      const list = tasks.filter(isOverdue).sort((a,b) => {
+      const list = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => {
         if (a.dueDate < b.dueDate) return -1;
         if (a.dueDate > b.dueDate) return 1;
         return priorityOrder(a) - priorityOrder(b);
@@ -2646,7 +2692,8 @@ const renderers = {
       document.getElementById('taskStartDate').style.borderColor = '';
       document.getElementById('taskDueDate').style.borderColor   = '';
       document.getElementById('taskDateError').style.display     = 'none';
-      setRecurrenceToForm(t?.recurrence || null);
+      setTaskType(t?.taskType || 'task');
+      setRecurrenceToForm(t?.taskType === 'timeoff' ? null : (t?.recurrence || null));
 
       // Populate assign-to dropdown
       buildAssignOptions(document.getElementById('taskProjectLink'), t?.projectId || preProjectId || '');
@@ -2666,6 +2713,19 @@ const renderers = {
     function closeTaskModal() {
       document.getElementById('taskModal').classList.add('hidden');
       editingTaskId = null;
+    }
+
+    function setTaskType(type) {
+      const isTimeoff = type === 'timeoff';
+      document.getElementById('typeBtnTask').classList.toggle('active', !isTimeoff);
+      document.getElementById('typeBtnTimeoff').classList.toggle('active', isTimeoff);
+      document.getElementById('typeBtnTimeoff').classList.toggle('timeoff', isTimeoff);
+      document.getElementById('workFields').style.display     = isTimeoff ? 'none' : '';
+      document.getElementById('workOnlyFields').style.display = isTimeoff ? 'none' : '';
+      document.getElementById('titleLabel').textContent       = isTimeoff ? 'Event Name *' : 'Task Title *';
+      document.getElementById('startDateLabel').textContent   = isTimeoff ? 'From' : 'Start Date';
+      document.getElementById('dueDateLabel').textContent     = isTimeoff ? 'To' : 'Due Date';
+      document.querySelector('#taskTitle').placeholder        = isTimeoff ? 'e.g. Summer Vacation, Public Holiday…' : 'What needs to be done?';
     }
 
     function validateTaskDates() {
@@ -2694,6 +2754,7 @@ const renderers = {
       const existing = tasks.find(x => x.id === id);
       const task = {
         id, title,
+        taskType:       document.getElementById('typeBtnTimeoff').classList.contains('active') ? 'timeoff' : 'task',
         description:    document.getElementById('taskDesc').value.trim(),
         category:       document.getElementById('taskCategory').value,
         priority:       document.getElementById('taskPriority').value,
