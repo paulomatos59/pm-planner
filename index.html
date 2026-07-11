@@ -1719,18 +1719,9 @@ const renderers = {
             </div>
             <div class="ss-label" style="margin-top:3px">Today</div>
           </div>
-          <div class="summary-stat s-warning" onclick="showView('week')">
-            <div class="ss-split">
-              <span class="ss-split-num" style="color:var(--warning)">${weekPlanned}</span>
-              <span class="ss-split-slash">/</span>
-              <span class="ss-split-done">${weekDoneCount}</span>
-            </div>
-            <div class="ss-split-labels">
-              <span class="ss-split-lbl">planned</span>
-              <span class="ss-split-lbl">&nbsp;·&nbsp;</span>
-              <span class="ss-split-lbl done">done</span>
-            </div>
-            <div class="ss-label" style="margin-top:3px">This Week</div>
+          <div class="summary-stat s-neutral" onclick="showView('all')">
+            <div class="ss-value">${open.filter(t => t.taskType !== 'timeoff').length}</div>
+            <div class="ss-label">Open Tasks</div>
           </div>
           <div class="summary-stat s-success">
             <div class="ss-value">${doneThisWeek.length}</div>
