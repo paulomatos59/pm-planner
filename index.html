@@ -2831,7 +2831,9 @@ const renderers = {
         recurrence:     getRecurrenceFromForm(),
         createdAt:      existing?.createdAt  || new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
-        completedAt:    existing?.completedAt || null
+        completedAt:    document.getElementById('taskStatus').value === 'Done'
+                          ? (existing?.completedAt || new Date().toISOString())
+                          : null
       };
       // If marked Done directly from modal and has recurrence, spawn next
       if (task.status === 'Done' && task.recurrence && existing?.status !== 'Done') {
