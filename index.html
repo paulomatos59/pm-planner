@@ -379,39 +379,63 @@
     .note-add-icon { font-size: 24px; }
 
     /* ── Kanban ── */
-    .kanban-board { display: flex; flex-direction: column; gap: 28px; }
-    .kanban-swimlane { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
-    .kanban-swimlane-header {
-      display: flex; align-items: center; gap: 10px;
-      padding: 12px 18px; border-bottom: 1px solid var(--border);
-      font-weight: 700; font-size: 14px;
+    .kb2-board { display: flex; flex-direction: column; gap: 28px; }
+    .kb2-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
+    .kb2-section-header {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px 18px; border-bottom: 2px solid var(--border);
+      font-weight: 700; font-size: 14px; background: var(--surface);
     }
-    .kanban-swimlane-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .kanban-swimlane-count { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-left: auto; }
-    .kanban-columns { display: flex; gap: 0; overflow-x: auto; padding: 14px; gap: 12px; min-height: 180px; }
-    .kanban-col { flex: 0 0 220px; display: flex; flex-direction: column; gap: 8px; }
-    .kanban-col-header {
+    .kb2-section-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .kb2-section-count { font-size: 12px; font-weight: 500; color: var(--text-muted); margin-left: auto; }
+    .kb2-scroll { overflow-x: auto; }
+    .kb2-grid { min-width: 900px; }
+    /* Column header row */
+    .kb2-col-header-row {
+      display: grid; grid-template-columns: 170px repeat(5, 1fr);
+      border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .kb2-corner { padding: 8px 14px; }
+    .kb2-col-hdr {
+      padding: 7px 10px; font-size: 11px; font-weight: 700;
+      text-transform: uppercase; letter-spacing: 0.05em;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 6px 10px; border-radius: 8px; font-size: 12px; font-weight: 700;
-      text-transform: uppercase; letter-spacing: 0.04em; margin-bottom: 2px;
+      border-left: 1px solid var(--border);
     }
-    .kch-todo     { background: #f1f5f9; color: #475569; }
-    .kch-progress { background: #eff6ff; color: #2563eb; }
-    .kch-delayed  { background: #fffbeb; color: #92400e; }
-    .kch-blocked  { background: #fef2f2; color: #dc2626; }
-    .kch-done     { background: #f0fdf4; color: #16a34a; }
-    .kanban-col-count { font-size: 11px; padding: 1px 6px; border-radius: 10px; background: rgba(0,0,0,0.08); }
-    .kanban-cards { display: flex; flex-direction: column; gap: 7px; }
+    .kch-todo     { color: #475569; }
+    .kch-progress { color: #2563eb; }
+    .kch-delayed  { color: #92400e; }
+    .kch-blocked  { color: #dc2626; }
+    .kch-done     { color: #16a34a; }
+    .kb2-col-hdr-count { font-size: 11px; background: rgba(0,0,0,0.07); border-radius: 10px; padding: 1px 6px; }
+    /* Project rows */
+    .kb2-row {
+      display: grid; grid-template-columns: 170px repeat(5, 1fr);
+      border-bottom: 1px solid var(--border); min-height: 64px;
+    }
+    .kb2-row:last-child { border-bottom: none; }
+    .kb2-row-label {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 14px; border-right: 1px solid var(--border);
+      background: var(--bg);
+    }
+    .kb2-row-dot   { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+    .kb2-row-name  { font-size: 12px; font-weight: 600; line-height: 1.4; }
+    .kb2-row-count { font-size: 11px; color: var(--text-muted); margin-left: auto; flex-shrink: 0; }
+    .kb2-cell {
+      padding: 8px; display: flex; flex-direction: column; gap: 6px;
+      border-left: 1px solid var(--border); vertical-align: top;
+      background: var(--surface);
+    }
+    .kb2-cell-empty { font-size: 11px; color: var(--text-muted); text-align: center; padding: 12px 0; opacity: 0.5; }
+    /* Cards */
     .kanban-card {
       background: var(--bg); border: 1px solid var(--border); border-radius: 8px;
-      padding: 9px 11px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
+      padding: 8px 10px; cursor: pointer; transition: box-shadow 0.15s, border-color 0.15s;
     }
     .kanban-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(37,99,235,0.1); }
-    .kanban-card-title { font-size: 13px; font-weight: 600; line-height: 1.35; margin-bottom: 6px; }
-    .kanban-card-meta { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
-    .kanban-card-proj { font-size: 11px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 140px; }
-    .kanban-empty { font-size: 12px; color: var(--text-muted); padding: 8px 0; text-align: center; opacity: 0.6; }
-    .kanban-col-divider { width: 1px; background: var(--border); flex-shrink: 0; align-self: stretch; margin: 0; }
+    .kanban-card-title { font-size: 12px; font-weight: 600; line-height: 1.35; margin-bottom: 5px; }
+    .kanban-card-meta  { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 
     /* ── Executive Summary ── */
     .summary-hero {
@@ -1286,69 +1310,87 @@ const renderers = {
     ============================== */
     function renderKanban() {
       const COLS = [
-        { key: 'Todo',        label: 'To Do',      cls: 'kch-todo'     },
-        { key: 'In Progress', label: 'In Progress', cls: 'kch-progress' },
-        { key: 'Delayed',     label: 'Delayed',     cls: 'kch-delayed'  },
-        { key: 'Blocked',     label: 'Blocked',     cls: 'kch-blocked'  },
-        { key: 'Done',        label: 'Done',        cls: 'kch-done'     },
+        { key: 'Todo',        label: 'To Do',       cls: 'kch-todo'     },
+        { key: 'In Progress', label: 'In Progress',  cls: 'kch-progress' },
+        { key: 'Delayed',     label: 'Delayed',      cls: 'kch-delayed'  },
+        { key: 'Blocked',     label: 'Blocked',      cls: 'kch-blocked'  },
+        { key: 'Done',        label: 'Done',         cls: 'kch-done'     },
       ];
 
-      function swimlane(label, color, emoji, laneTasks) {
-        const total = laneTasks.length;
-        const cols = COLS.map(col => {
-          const cards = laneTasks.filter(t => t.status === col.key);
-          const cardHtml = cards.length === 0
-            ? `<div class="kanban-empty">—</div>`
-            : cards.map(t => {
-                const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
-                const od   = isOverdue(t);
-                return `
-                  <div class="kanban-card ${od ? 'overdue' : ''}" onclick="openTaskModal('${t.id}')">
-                    <div class="kanban-card-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
-                    <div class="kanban-card-meta">
-                      <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
-                      ${t.dueDate ? `<span style="font-size:11px;font-weight:600;color:${od?'var(--danger)':'var(--text-muted)'}">${formatDue(t.dueDate)}${od?' ⚠️':''}</span>` : ''}
-                    </div>
-                    ${proj ? `<div class="kanban-card-proj" style="margin-top:5px">
-                      <span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${esc(proj.color||'#2563eb')};margin-right:4px;vertical-align:middle"></span>${esc(proj.name)}
-                    </div>` : ''}
-                  </div>`;
-              }).join('');
-          return `
-            <div class="kanban-col">
-              <div class="kanban-col-header ${col.cls}">
-                ${col.label}
-                <span class="kanban-col-count">${cards.length}</span>
-              </div>
-              <div class="kanban-cards">${cardHtml}</div>
-            </div>`;
-        }).join('');
-
+      function kbCard(t) {
+        const od = isOverdue(t);
         return `
-          <div class="kanban-swimlane">
-            <div class="kanban-swimlane-header">
-              <div class="kanban-swimlane-dot" style="background:${color}"></div>
-              ${emoji} ${label}
-              <span class="kanban-swimlane-count">${total} task${total!==1?'s':''}</span>
+          <div class="kanban-card ${od?'overdue':''}" onclick="openTaskModal('${t.id}')">
+            <div class="kanban-card-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
+            <div class="kanban-card-meta">
+              <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
+              ${t.dueDate ? `<span style="font-size:11px;font-weight:600;color:${od?'var(--danger)':'var(--text-muted)'}">${formatDue(t.dueDate)}${od?' ⚠️':''}</span>` : ''}
             </div>
-            <div class="kanban-columns">${cols}</div>
           </div>`;
       }
 
-      // Split tasks by swimlane
-      const workProjectIds     = projects.filter(p => p.type !== 'personal').map(p => p.id);
-      const personalProjectIds = projects.filter(p => p.type === 'personal').map(p => p.id);
+      function projectRow(p) {
+        const ptasks = tasks.filter(t => t.projectId === p.id);
+        const total  = ptasks.length;
+        // column-level totals for header
+        return `
+          <div class="kb2-row">
+            <div class="kb2-row-label">
+              <div class="kb2-row-dot" style="background:${esc(p.color||'#2563eb')}"></div>
+              <span class="kb2-row-name">${esc(p.name)}</span>
+              <span class="kb2-row-count">${total}</span>
+            </div>
+            ${COLS.map(col => {
+              const cards = ptasks.filter(t => t.status === col.key);
+              return `<div class="kb2-cell">
+                ${cards.length === 0
+                  ? `<div class="kb2-cell-empty">—</div>`
+                  : cards.map(kbCard).join('')}
+              </div>`;
+            }).join('')}
+          </div>`;
+      }
 
-      const workTasks     = tasks.filter(t => t.projectId && workProjectIds.includes(t.projectId));
-      const personalTasks = tasks.filter(t => t.projectId && personalProjectIds.includes(t.projectId));
+      function section(label, color, emoji, sectionProjects) {
+        const totalTasks = tasks.filter(t => sectionProjects.some(p => p.id === t.projectId)).length;
+        // Per-column totals across all projects in this section
+        const colTotals = COLS.map(col =>
+          tasks.filter(t => t.status === col.key && sectionProjects.some(p => p.id === t.projectId)).length
+        );
+        return `
+          <div class="kb2-section">
+            <div class="kb2-section-header">
+              <div class="kb2-section-dot" style="background:${color}"></div>
+              ${emoji} ${label}
+              <span class="kb2-section-count">${sectionProjects.length} item${sectionProjects.length!==1?'s':''} · ${totalTasks} task${totalTasks!==1?'s':''}</span>
+            </div>
+            ${sectionProjects.length === 0
+              ? `<div class="empty-state" style="padding:24px 0"><div class="icon">📭</div><p>No items yet</p></div>`
+              : `<div class="kb2-scroll"><div class="kb2-grid">
+                  <div class="kb2-col-header-row">
+                    <div class="kb2-corner"></div>
+                    ${COLS.map((col, i) => `
+                      <div class="kb2-col-hdr ${col.cls}">
+                        ${col.label}
+                        <span class="kb2-col-hdr-count">${colTotals[i]}</span>
+                      </div>`).join('')}
+                  </div>
+                  ${sectionProjects.map(projectRow).join('')}
+                </div></div>`
+            }
+          </div>`;
+      }
+
+      const workProjects     = projects.filter(p => p.type !== 'personal');
+      const personalProjects = projects.filter(p => p.type === 'personal');
 
       return `
         <div class="view-header">
-          <div><div class="view-title">Kanban</div><div class="view-subtitle">Tasks by status across Projects &amp; Personal</div></div>
+          <div><div class="view-title">Kanban</div><div class="view-subtitle">Tasks grouped by project &amp; status</div></div>
         </div>
-        <div class="kanban-board">
-          ${swimlane('Projects', '#2563eb', '🗂', workTasks)}
-          ${swimlane('Personal', '#8b5cf6', '🏠', personalTasks)}
+        <div class="kb2-board">
+          ${section('Projects', '#2563eb', '🗂', workProjects)}
+          ${section('Personal', '#8b5cf6', '🏠', personalProjects)}
         </div>`;
     }
 
