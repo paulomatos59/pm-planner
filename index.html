@@ -986,13 +986,18 @@
       e.stopPropagation();
       const dd = document.getElementById('addDropdown');
       dd.classList.toggle('hidden');
-      if (!dd.classList.contains('hidden')) {
-        setTimeout(() => document.addEventListener('click', closeAddMenu, { once: true }), 0);
-      }
     }
     function closeAddMenu() {
       document.getElementById('addDropdown')?.classList.add('hidden');
     }
+    // Close dropdown when clicking anywhere outside it
+    document.addEventListener('click', function(e) {
+      const dd  = document.getElementById('addDropdown');
+      const btn = document.getElementById('sidebarAddBtn');
+      if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btn.contains(e.target)) {
+        dd.classList.add('hidden');
+      }
+    });
 
     /* ==============================
        VIEW ROUTER
