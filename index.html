@@ -40,6 +40,7 @@
       box-shadow: 0 1px 4px rgba(0,0,0,0.04);
     }
     .app-title { font-size: 17px; font-weight: 700; color: var(--primary); display: flex; align-items: center; gap: 8px; }
+    .title-short { display: none; }
     .header-date { font-size: 13px; color: var(--text-muted); margin-left: 16px; }
     .header-stats { display: flex; gap: 10px; align-items: center; }
     .stat-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
@@ -700,6 +701,8 @@
       .hamburger-btn { display: flex; align-items: center; justify-content: center; }
       .header-date   { display: none; }
       .app-title     { font-size: 14px; }
+      .title-full    { display: none; }
+      .title-short   { display: inline; }
       .header-stats  { display: none; }
       .header-icon-btn { padding: 5px 7px; font-size: 11px; }
       .sync-chip { font-size: 11px; padding: 4px 7px; }
@@ -826,7 +829,7 @@
   <header class="app-header">
     <div style="display:flex;align-items:center;gap:8px">
       <button class="hamburger-btn" id="hamburgerBtn" onclick="toggleSidebar()">☰</button>
-      <div class="app-title">📋 Program Manager Planner</div>
+      <div class="app-title">📋 <span class="title-full">Program Manager Planner</span><span class="title-short">PMP</span></div>
       <div class="header-date" id="headerDate"></div>
     </div>
     <div style="display:flex;align-items:center;gap:8px">
