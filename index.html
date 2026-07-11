@@ -969,7 +969,8 @@
     let editingProjId    = null;
     let editingFuId      = null;
     let editingNoteId    = null;
-    let filterState      = { search: '', category: '', priority: '', status: '' };
+    let filterState        = { search: '', category: '', priority: '', status: '' };
+    let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
 
     const PROJECT_COLORS = ['#2563eb','#16a34a','#8b5cf6','#ea580c','#dc2626','#0891b2','#d97706','#be185d'];
 
@@ -1381,12 +1382,16 @@ const renderers = {
           </div>`;
       }
 
-      const workProjects     = projects.filter(p => p.type !== 'personal');
-      const personalProjects = projects.filter(p => p.type === 'personal');
+      const showInactive = kanbanShowInactive;
+      const workProjects     = projects.filter(p => p.type !== 'personal' && (showInactive || p.status === 'Active'));
+      const personalProjects = projects.filter(p => p.type === 'personal'  && (showInactive || p.status === 'Active'));
 
       return `
         <div class="view-header">
           <div><div class="view-title">Kanban</div><div class="view-subtitle">Tasks grouped by project &amp; status</div></div>
+          <button class="btn ${showInactive ? 'btn-primary' : 'btn-secondary'} btn-sm" onclick="toggleKanbanInactive()">
+            ${showInactive ? '👁 Hide Inactive' : '👁 Show Inactive'}
+          </button>
         </div>
         <div class="kb2-board">
           ${section('Projects', '#2563eb', '🗂', workProjects)}
@@ -2527,6 +2532,12 @@ const renderers = {
         }
       };
       reader.readAsText(file);
+    }
+
+    function toggleKanbanInactive() {
+      kanbanShowInactive = !kanbanShowInactive;
+      localStorage.setItem('dp_kanban_inactive', JSON.stringify(kanbanShowInactive));
+      showView('kanban');
     }
 
     /* ==============================
