@@ -578,6 +578,14 @@
     .summary-stat.s-neutral { border-top: 3px solid var(--border); }
     .ss-value { font-size: 28px; font-weight: 800; line-height: 1; }
     .ss-label { font-size: 10px; font-weight: 700; color: var(--text-muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    /* Split planned/done layout */
+    .ss-split { display: flex; align-items: baseline; justify-content: center; gap: 3px; line-height: 1; }
+    .ss-split-num { font-size: 26px; font-weight: 800; }
+    .ss-split-slash { font-size: 20px; font-weight: 400; color: var(--border); margin: 0 1px; }
+    .ss-split-done { font-size: 22px; font-weight: 700; color: #16a34a; }
+    .ss-split-labels { display: flex; justify-content: center; gap: 4px; margin-top: 5px; }
+    .ss-split-lbl { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.4px; color: var(--text-muted); }
+    .ss-split-lbl.done { color: #16a34a; }
     .summary-stat.s-danger  .ss-value { color: var(--danger); }
     .summary-stat.s-primary .ss-value { color: var(--primary); }
     .summary-stat.s-warning .ss-value { color: var(--warning); }
@@ -1630,6 +1638,11 @@ const renderers = {
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
       const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
+      // Planned (all, incl. done) & done counts for today and this week
+      const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === today);
+      const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === today);
+      const weekDoneCount = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
+      const weekPlanned   = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const focusNote     = localStorage.getItem('dp_focus') || '';
       const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
 
@@ -1690,12 +1703,30 @@ const renderers = {
             <div class="ss-label">Overdue</div>
           </div>
           <div class="summary-stat s-primary" onclick="showView('today')">
-            <div class="ss-value">${todayList.length}</div>
-            <div class="ss-label">Due Today</div>
+            <div class="ss-split">
+              <span class="ss-split-num" style="color:var(--primary)">${todayPlanned.length}</span>
+              <span class="ss-split-slash">/</span>
+              <span class="ss-split-done">${todayDone.length}</span>
+            </div>
+            <div class="ss-split-labels">
+              <span class="ss-split-lbl">planned</span>
+              <span class="ss-split-lbl">&nbsp;·&nbsp;</span>
+              <span class="ss-split-lbl done">done</span>
+            </div>
+            <div class="ss-label" style="margin-top:3px">Due Today</div>
           </div>
           <div class="summary-stat s-warning" onclick="showView('week')">
-            <div class="ss-value">${weekList.length}</div>
-            <div class="ss-label">This Week</div>
+            <div class="ss-split">
+              <span class="ss-split-num" style="color:var(--warning)">${weekPlanned}</span>
+              <span class="ss-split-slash">/</span>
+              <span class="ss-split-done">${weekDoneCount}</span>
+            </div>
+            <div class="ss-split-labels">
+              <span class="ss-split-lbl">planned</span>
+              <span class="ss-split-lbl">&nbsp;·&nbsp;</span>
+              <span class="ss-split-lbl done">done</span>
+            </div>
+            <div class="ss-label" style="margin-top:3px">This Week</div>
           </div>
           <div class="summary-stat ${blockedList.length > 0 ? 's-danger' : 's-neutral'}" onclick="showView('priorities')">
             <div class="ss-value">${blockedList.length}</div>
