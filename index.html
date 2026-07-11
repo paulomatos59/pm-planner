@@ -2710,6 +2710,7 @@ const renderers = {
       } catch(e) {
         console.error('Gist save failed:', e);
         setSyncChip('error', 'Sync error');
+        alert(`Sync failed: ${e.message}\n\nMake sure your token has the "gist" scope.`);
       }
     }
 
