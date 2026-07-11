@@ -83,6 +83,22 @@
     }
     .btn-add-task:hover { background: #1d4ed8; }
 
+    .add-dropdown {
+      position: absolute; top: calc(100% - 4px); left: 12px;
+      width: calc(100% - 24px);
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 8px; box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+      z-index: 200; overflow: hidden;
+    }
+    .add-dropdown-item {
+      display: flex; align-items: center; gap: 9px;
+      width: 100%; padding: 10px 14px;
+      background: none; border: none; cursor: pointer;
+      font-size: 14px; font-weight: 500; color: var(--text);
+      text-align: left; transition: background 0.1s;
+    }
+    .add-dropdown-item:hover { background: var(--primary-light); color: var(--primary); }
+
     /* ── Main ── */
     .main { flex: 1; padding: 24px; overflow-y: auto; max-width: 1000px; }
     .view-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
@@ -562,8 +578,13 @@
 
     <!-- ── Sidebar ── -->
     <nav class="sidebar">
-      <div style="padding:8px 12px 4px">
-        <button class="btn-add-task" id="sidebarAddBtn" onclick="sidebarAdd()">＋ New Task</button>
+      <div style="padding:8px 12px 4px;position:relative">
+        <button class="btn-add-task" id="sidebarAddBtn" onclick="toggleAddMenu(event)">＋ Add ▾</button>
+        <div class="add-dropdown hidden" id="addDropdown">
+          <button class="add-dropdown-item" onclick="closeAddMenu();openTaskModal()">📋 Task</button>
+          <button class="add-dropdown-item" onclick="closeAddMenu();openFollowupModal()">📌 Follow-up</button>
+          <button class="add-dropdown-item" onclick="closeAddMenu();openNoteModal()">📝 Note</button>
+        </div>
       </div>
 
       <!-- Views section -->
@@ -691,9 +712,9 @@
           </div>
         </div>
         <div class="form-group">
-          <label class="form-label">Link to Project</label>
+          <label class="form-label">Assign to</label>
           <select class="form-select" id="taskProjectLink">
-            <option value="">— No Project —</option>
+            <option value="">— None —</option>
           </select>
         </div>
         <div class="form-row">
@@ -783,7 +804,12 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="followupId">
-        <input type="hidden" id="followupProjectId">
+        <div class="form-group">
+          <label class="form-label">Assign to</label>
+          <select class="form-select" id="followupProjectId">
+            <option value="">— None —</option>
+          </select>
+        </div>
         <div class="form-group">
           <label class="form-label">Topic *</label>
           <input type="text" class="form-input" id="followupTopic" placeholder="What needs to be followed up?" autocomplete="off">
@@ -818,7 +844,12 @@
       </div>
       <div class="modal-body">
         <input type="hidden" id="noteId">
-        <input type="hidden" id="noteProjectId">
+        <div class="form-group">
+          <label class="form-label">Assign to</label>
+          <select class="form-select" id="noteProjectId">
+            <option value="">— None —</option>
+          </select>
+        </div>
         <div class="form-group">
           <label class="form-label">Title *</label>
           <input type="text" class="form-input" id="noteTitle" placeholder="Note title…" autocomplete="off">
@@ -937,17 +968,16 @@
     /* ==============================
        SIDEBAR SMART ADD
     ============================== */
-    function sidebarAdd() {
-      if (currentView === 'projects' || currentView === 'project-detail') {
-        if (currentView === 'project-detail' && activeProjectId) {
-          if (activeProjectTab === 'tasks')    { openTaskModal(null, activeProjectId); return; }
-          if (activeProjectTab === 'followups'){ openFollowupModal(null, activeProjectId); return; }
-          if (activeProjectTab === 'notes')    { openNoteModal(null, activeProjectId); return; }
-        }
-        openProjectModal();
-      } else {
-        openTaskModal();
+    function toggleAddMenu(e) {
+      e.stopPropagation();
+      const dd = document.getElementById('addDropdown');
+      dd.classList.toggle('hidden');
+      if (!dd.classList.contains('hidden')) {
+        setTimeout(() => document.addEventListener('click', closeAddMenu, { once: true }), 0);
       }
+    }
+    function closeAddMenu() {
+      document.getElementById('addDropdown')?.classList.add('hidden');
     }
 
     /* ==============================
@@ -965,19 +995,7 @@
       updateSidebarProjects();
       updateSidebarPersonal();
 
-      // Update sidebar add button label
-      const addBtn = document.getElementById('sidebarAddBtn');
-      if (view === 'projects') { addBtn.textContent = '＋ New Project'; }
-      else if (view === 'personal') { addBtn.textContent = '＋ New Personal Item'; }
-      else if (view === 'project-detail') {
-        const labels = { tasks:'＋ New Task', followups:'＋ New Follow-up', notes:'＋ New Note' };
-        addBtn.textContent = labels[activeProjectTab] || '＋ New';
-      } else if (view === 'personal-detail') {
-        const labels = { tasks:'＋ New Task', followups:'＋ New Follow-up', notes:'＋ New Note' };
-        addBtn.textContent = labels[activeProjectTab] || '＋ New';
-      } else { addBtn.textContent = '＋ New Task'; }
-
-      const renderers = {
+const renderers = {
         summary:          renderSummary,
         priorities:       renderPriorities,
         today:            renderToday,
@@ -1923,10 +1941,8 @@
       document.getElementById('taskHours').value    = t?.estimatedHours || '';
       document.getElementById('taskTitle').style.borderColor = '';
 
-      // Populate project dropdown
-      const sel = document.getElementById('taskProjectLink');
-      sel.innerHTML = '<option value="">— No Project —</option>' +
-        projects.map(p => `<option value="${p.id}" ${(t?.projectId||preProjectId)===p.id?'selected':''}>${esc(p.name)}</option>`).join('');
+      // Populate assign-to dropdown
+      buildAssignOptions(document.getElementById('taskProjectLink'), t?.projectId || preProjectId || '');
 
       document.getElementById('taskModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('taskTitle').focus(), 80);
@@ -2063,19 +2079,37 @@
     /* ==============================
        FOLLOW-UP MODAL
     ============================== */
+    function buildAssignOptions(selectEl, selectedId) {
+      const workProjs = projects.filter(p => p.type !== 'personal');
+      const personal  = projects.filter(p => p.type === 'personal');
+      let html = `<option value="">— None —</option>`;
+      if (workProjs.length > 0) {
+        html += `<optgroup label="Projects">` +
+          workProjs.map(p => `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${esc(p.name)}</option>`).join('') +
+          `</optgroup>`;
+      }
+      if (personal.length > 0) {
+        html += `<optgroup label="Personal">` +
+          personal.map(p => `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${esc(p.name)}</option>`).join('') +
+          `</optgroup>`;
+      }
+      selectEl.innerHTML = html;
+    }
+
     function openFollowupModal(id = null, projectId = null) {
       editingFuId = id;
       const isNew = !id;
       const f     = id ? followups.find(x => x.id === id) : null;
+      const preId = f?.projectId || projectId || '';
 
       document.getElementById('followupModalTitle').textContent    = isNew ? 'New Follow-up' : 'Edit Follow-up';
       document.getElementById('btnDeleteFollowup').style.display   = isNew ? 'none' : 'block';
-      document.getElementById('followupId').value        = f?.id        || '';
-      document.getElementById('followupProjectId').value = f?.projectId || projectId || '';
-      document.getElementById('followupTopic').value     = f?.topic     || '';
-      document.getElementById('followupNotes').value     = f?.notes     || '';
-      document.getElementById('followupStatus').value    = f?.status    || 'Open';
+      document.getElementById('followupId').value    = f?.id    || '';
+      document.getElementById('followupTopic').value = f?.topic || '';
+      document.getElementById('followupNotes').value = f?.notes || '';
+      document.getElementById('followupStatus').value = f?.status || 'Open';
       document.getElementById('followupTopic').style.borderColor = '';
+      buildAssignOptions(document.getElementById('followupProjectId'), preId);
 
       document.getElementById('followupModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('followupTopic').focus(), 80);
@@ -2123,14 +2157,15 @@
       editingNoteId = id;
       const isNew = !id;
       const n     = id ? projectNotes.find(x => x.id === id) : null;
+      const preId = n?.projectId || projectId || '';
 
       document.getElementById('noteModalTitle').textContent    = isNew ? 'New Note' : 'Edit Note';
       document.getElementById('btnDeleteNote').style.display   = isNew ? 'none' : 'block';
-      document.getElementById('noteId').value        = n?.id        || '';
-      document.getElementById('noteProjectId').value = n?.projectId || projectId || '';
-      document.getElementById('noteTitle').value     = n?.title     || '';
-      document.getElementById('noteContent').value   = n?.content   || '';
+      document.getElementById('noteId').value    = n?.id    || '';
+      document.getElementById('noteTitle').value = n?.title || '';
+      document.getElementById('noteContent').value = n?.content || '';
       document.getElementById('noteTitle').style.borderColor = '';
+      buildAssignOptions(document.getElementById('noteProjectId'), preId);
 
       document.getElementById('noteModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('noteTitle').focus(), 80);
