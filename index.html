@@ -1159,7 +1159,7 @@
           </div>
         </div>
         <div id="taskDateError" style="display:none;color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:4px">
-          ⚠ Start date must be before the end date.
+          ⚠ Start date cannot be after the due date.
         </div>
 
         <!-- Work Task only: time, status, hours -->
@@ -3123,7 +3123,7 @@ const renderers = {
       const err   = document.getElementById('taskDateError');
       const startEl = document.getElementById('taskStartDate');
       const dueEl   = document.getElementById('taskDueDate');
-      const invalid = start && due && start >= due;
+      const invalid = start && due && start > due;
       err.style.display       = invalid ? 'block' : 'none';
       startEl.style.borderColor = invalid ? 'var(--danger)' : '';
       dueEl.style.borderColor   = invalid ? 'var(--danger)' : '';
