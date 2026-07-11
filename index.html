@@ -45,6 +45,21 @@
     .stat-chip { display: flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 4px 10px; border-radius: 20px; }
     .header-icon-btn { background: none; border: 1px solid var(--border); border-radius: 6px; padding: 5px 10px; font-size: 12px; font-weight: 600; color: var(--text-muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
     .header-icon-btn:hover { background: var(--primary-light); color: var(--primary); border-color: var(--primary); }
+    /* Sync status chip */
+    .sync-chip { display:flex; align-items:center; gap:5px; font-size:12px; font-weight:600; padding:4px 10px; border-radius:20px; cursor:pointer; border:1px solid transparent; transition: all 0.15s; }
+    .sync-idle    { background:#f1f5f9; color:#64748b; border-color:var(--border); }
+    .sync-syncing { background:#eff6ff; color:#2563eb; border-color:#bfdbfe; }
+    .sync-synced  { background:#f0fdf4; color:#16a34a; border-color:#bbf7d0; }
+    .sync-error   { background:#fef2f2; color:#dc2626; border-color:#fecaca; }
+    .sync-off     { background:#f8fafc; color:#94a3b8; border-color:var(--border); }
+    /* Settings modal */
+    .settings-section { margin-bottom:20px; }
+    .settings-section-title { font-size:13px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px; }
+    .sync-status-box { display:flex; align-items:center; gap:10px; padding:10px 14px; border-radius:8px; background:var(--bg); border:1px solid var(--border); font-size:13px; margin-bottom:12px; }
+    .sync-dot { width:8px; height:8px; border-radius:50%; flex-shrink:0; }
+    .token-input-wrap { position:relative; }
+    .token-input-wrap input { padding-right:36px; }
+    .token-toggle-btn { position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; font-size:14px; color:var(--text-muted); }
     .stat-overdue { background: var(--danger-light); color: var(--danger); }
     .stat-today   { background: var(--primary-light); color: var(--primary); }
     .stat-done    { background: var(--success-light); color: #16a34a; }
@@ -649,10 +664,12 @@
     </div>
     <div style="display:flex;align-items:center;gap:8px">
       <div class="header-stats" id="headerStats"></div>
+      <span class="sync-chip sync-off" id="syncChip" onclick="openSettingsModal()" title="Cloud sync settings">☁ Sync</span>
       <button class="header-icon-btn" onclick="exportData()" title="Export backup">⬇ Export</button>
       <label class="header-icon-btn" title="Import backup" style="cursor:pointer">
         ⬆ Import<input type="file" accept=".json" onchange="importData(event)" style="display:none">
       </label>
+      <button class="header-icon-btn" onclick="openSettingsModal()" title="Settings">⚙ Settings</button>
     </div>
   </header>
 
@@ -952,6 +969,59 @@
     </div>
   </div>
 
+  <!-- ── Settings Modal ── -->
+  <div class="modal-overlay hidden" id="settingsModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title">⚙ Settings</h2>
+        <button class="btn-close" onclick="closeSettingsModal()">×</button>
+      </div>
+      <div class="modal-body">
+
+        <!-- Cloud Sync -->
+        <div class="settings-section">
+          <div class="settings-section-title">☁ Cloud Sync (GitHub Gist)</div>
+          <div class="sync-status-box" id="syncStatusBox">
+            <div class="sync-dot" id="syncDot" style="background:#94a3b8"></div>
+            <span id="syncStatusText">Not connected</span>
+          </div>
+          <div class="form-group">
+            <label class="form-label">GitHub Personal Access Token <span style="color:var(--text-muted);font-weight:400">(needs <code>gist</code> scope)</span></label>
+            <div class="token-input-wrap">
+              <input type="password" class="form-input" id="syncTokenInput" placeholder="ghp_…" autocomplete="off">
+              <button class="token-toggle-btn" type="button" onclick="toggleTokenVisibility()">👁</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:4px">
+              Generate at <strong>github.com → Settings → Developer settings → Personal access tokens → Classic</strong> — select the <strong>gist</strong> scope only.
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-primary btn-sm" onclick="connectSync()">Connect & Sync</button>
+            <button class="btn btn-secondary btn-sm" id="btnForcSync" onclick="forceSyncNow()" style="display:none">🔄 Sync Now</button>
+            <button class="btn btn-danger btn-sm" id="btnDisconnect" onclick="disconnectSync()" style="display:none">Disconnect</button>
+          </div>
+        </div>
+
+        <hr style="border:none;border-top:1px solid var(--border);margin:16px 0">
+
+        <!-- Backup -->
+        <div class="settings-section">
+          <div class="settings-section-title">💾 Backup</div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary btn-sm" onclick="exportData();closeSettingsModal()">⬇ Export JSON</button>
+            <label class="btn btn-secondary btn-sm" style="cursor:pointer">
+              ⬆ Import JSON<input type="file" accept=".json" onchange="importData(event);closeSettingsModal()" style="display:none">
+            </label>
+          </div>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeSettingsModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     /* ==============================
        STATE
@@ -972,12 +1042,18 @@
     let filterState        = { search: '', category: '', priority: '', status: '' };
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
 
+    // Cloud sync state
+    let syncToken  = localStorage.getItem('dp_sync_token')   || '';
+    let syncGistId = localStorage.getItem('dp_sync_gist_id') || '';
+    let syncTimer  = null;
+    let _syncStatus = 'off'; // off | idle | syncing | synced | error
+
     const PROJECT_COLORS = ['#2563eb','#16a34a','#8b5cf6','#ea580c','#dc2626','#0891b2','#d97706','#be185d'];
 
-    function persistTasks()    { localStorage.setItem('dp_tasks_v1',    JSON.stringify(tasks)); }
-    function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects)); }
-    function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups)); }
-    function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); }
+    function persistTasks()    { localStorage.setItem('dp_tasks_v1',    JSON.stringify(tasks));        scheduleGistSave(); }
+    function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects));     scheduleGistSave(); }
+    function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups));    scheduleGistSave(); }
+    function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); }
 
     function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -2475,7 +2551,7 @@ const renderers = {
     });
 
     // Close modals on backdrop click
-    ['taskModal','projectModal','followupModal','noteModal'].forEach(id => {
+    ['taskModal','projectModal','followupModal','noteModal','settingsModal'].forEach(id => {
       document.getElementById(id).addEventListener('click', e => {
         if (e.target === e.currentTarget) {
           closeTaskModal(); closeProjectModal(); closeFollowupModal(); closeNoteModal();
@@ -2534,6 +2610,157 @@ const renderers = {
       reader.readAsText(file);
     }
 
+    /* ==============================
+       CLOUD SYNC — GITHUB GIST
+    ============================== */
+    const GIST_FILE = 'pm-planner-data.json';
+
+    function setSyncChip(status, label) {
+      _syncStatus = status;
+      const chip = document.getElementById('syncChip');
+      if (!chip) return;
+      chip.className = `sync-chip sync-${status}`;
+      const icons = { off:'☁', idle:'☁', syncing:'🔄', synced:'✅', error:'⚠️' };
+      chip.textContent = `${icons[status]||'☁'} ${label}`;
+    }
+
+    function updateSyncStatusBox() {
+      const dot  = document.getElementById('syncDot');
+      const txt  = document.getElementById('syncStatusText');
+      const btnD = document.getElementById('btnDisconnect');
+      const btnF = document.getElementById('btnForcSync');
+      if (!dot) return;
+      if (syncToken && syncGistId) {
+        dot.style.background = '#22c55e';
+        txt.textContent = `Connected · Gist ID: ${syncGistId}`;
+        btnD.style.display = 'inline-flex';
+        btnF.style.display = 'inline-flex';
+      } else if (syncToken) {
+        dot.style.background = '#f59e0b';
+        txt.textContent = 'Token set — not yet synced';
+        btnD.style.display = 'inline-flex';
+        btnF.style.display = 'none';
+      } else {
+        dot.style.background = '#94a3b8';
+        txt.textContent = 'Not connected';
+        btnD.style.display = 'none';
+        btnF.style.display = 'none';
+      }
+    }
+
+    function gistPayload() {
+      return JSON.stringify({
+        version: 2, savedAt: new Date().toISOString(),
+        tasks, projects, followups, projectNotes,
+        focus: localStorage.getItem('dp_focus') || ''
+      }, null, 2);
+    }
+
+    async function loadFromGist() {
+      if (!syncToken || !syncGistId) return false;
+      try {
+        setSyncChip('syncing', 'Loading…');
+        const r = await fetch(`https://api.github.com/gists/${syncGistId}`, {
+          headers: { Authorization: `token ${syncToken}`, 'X-GitHub-Api-Version': '2022-11-28' }
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const gist = await r.json();
+        const raw  = gist.files?.[GIST_FILE]?.content;
+        if (!raw) throw new Error('File not found in Gist');
+        const data = JSON.parse(raw);
+        tasks        = data.tasks        || [];
+        projects     = data.projects     || [];
+        followups    = data.followups    || [];
+        projectNotes = data.projectNotes || [];
+        localStorage.setItem('dp_tasks_v1',     JSON.stringify(tasks));
+        localStorage.setItem('dp_projects_v1',  JSON.stringify(projects));
+        localStorage.setItem('dp_followups_v1', JSON.stringify(followups));
+        localStorage.setItem('dp_notes_v1',     JSON.stringify(projectNotes));
+        if (data.focus) localStorage.setItem('dp_focus', data.focus);
+        setSyncChip('synced', 'Synced');
+        return true;
+      } catch(e) {
+        console.warn('Gist load failed:', e);
+        setSyncChip('error', 'Sync error');
+        return false;
+      }
+    }
+
+    async function saveToGist() {
+      if (!syncToken) return;
+      clearTimeout(syncTimer);
+      setSyncChip('syncing', 'Saving…');
+      try {
+        const body = { description: 'PM Planner Data — auto sync', public: false,
+                       files: { [GIST_FILE]: { content: gistPayload() } } };
+        const url    = syncGistId ? `https://api.github.com/gists/${syncGistId}` : 'https://api.github.com/gists';
+        const method = syncGistId ? 'PATCH' : 'POST';
+        const r = await fetch(url, {
+          method, headers: { Authorization: `token ${syncToken}`, 'Content-Type': 'application/json', 'X-GitHub-Api-Version': '2022-11-28' },
+          body: JSON.stringify(body)
+        });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        const gist = await r.json();
+        if (!syncGistId) {
+          syncGistId = gist.id;
+          localStorage.setItem('dp_sync_gist_id', syncGistId);
+          updateSyncStatusBox();
+        }
+        setSyncChip('synced', 'Synced');
+      } catch(e) {
+        console.error('Gist save failed:', e);
+        setSyncChip('error', 'Sync error');
+      }
+    }
+
+    function scheduleGistSave() {
+      if (!syncToken) return;
+      clearTimeout(syncTimer);
+      setSyncChip('idle', 'Pending…');
+      syncTimer = setTimeout(saveToGist, 1500);
+    }
+
+    async function connectSync() {
+      const token = document.getElementById('syncTokenInput').value.trim();
+      if (!token) { alert('Please enter a GitHub token.'); return; }
+      syncToken  = token;
+      syncGistId = '';
+      localStorage.setItem('dp_sync_token', syncToken);
+      localStorage.removeItem('dp_sync_gist_id');
+      closeSettingsModal();
+      await saveToGist();
+      openSettingsModal();
+    }
+
+    async function forceSyncNow() {
+      closeSettingsModal();
+      const loaded = await loadFromGist();
+      if (loaded) showView(currentView);
+      openSettingsModal();
+    }
+
+    function disconnectSync() {
+      if (!confirm('Disconnect cloud sync? Your local data stays intact.')) return;
+      syncToken = ''; syncGistId = '';
+      localStorage.removeItem('dp_sync_token');
+      localStorage.removeItem('dp_sync_gist_id');
+      setSyncChip('off', 'Sync');
+      updateSyncStatusBox();
+    }
+
+    function openSettingsModal() {
+      document.getElementById('syncTokenInput').value = syncToken ? '•'.repeat(20) : '';
+      updateSyncStatusBox();
+      document.getElementById('settingsModal').classList.remove('hidden');
+    }
+    function closeSettingsModal() {
+      document.getElementById('settingsModal').classList.add('hidden');
+    }
+    function toggleTokenVisibility() {
+      const inp = document.getElementById('syncTokenInput');
+      inp.type = inp.type === 'password' ? 'text' : 'password';
+    }
+
     function toggleKanbanInactive() {
       kanbanShowInactive = !kanbanShowInactive;
       localStorage.setItem('dp_kanban_inactive', JSON.stringify(kanbanShowInactive));
@@ -2544,7 +2771,14 @@ const renderers = {
        BOOT
     ============================== */
     applySectionStates();
-    showView('summary');
+    if (syncToken && syncGistId) {
+      setSyncChip('syncing', 'Loading…');
+      loadFromGist().then(ok => { if (ok) showView('summary'); else showView('summary'); });
+    } else {
+      if (syncToken) setSyncChip('idle', 'Not synced');
+      else setSyncChip('off', 'Sync');
+      showView('summary');
+    }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
   <script>
