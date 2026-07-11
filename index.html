@@ -1339,7 +1339,12 @@ const renderers = {
 
     function switchTab(tab) {
       activeProjectTab = tab;
-      showView('project-detail');
+      // Route to the correct detail view depending on which is active
+      if (activePersonalId && currentView === 'personal-detail') {
+        showView('personal-detail');
+      } else {
+        showView('project-detail');
+      }
     }
 
     function filterByCategory(cat) {
