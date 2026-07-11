@@ -2721,8 +2721,10 @@ const renderers = {
     }
 
     async function connectSync() {
-      const token = document.getElementById('syncTokenInput').value.trim();
-      if (!token) { alert('Please enter a GitHub token.'); return; }
+      const inputVal = document.getElementById('syncTokenInput').value.trim();
+      // If the field still shows placeholder bullets, use the already-stored token
+      const token = /^[•]+$/.test(inputVal) ? syncToken : inputVal;
+      if (!token) { alert('Please enter a GitHub Personal Access Token.'); return; }
       syncToken  = token;
       syncGistId = '';
       localStorage.setItem('dp_sync_token', syncToken);
