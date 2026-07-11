@@ -275,6 +275,23 @@
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+    /* ── Capacity bars ── */
+    .cap-bar-wrap { display:flex; align-items:center; gap:6px; padding:3px 10px 5px; }
+    .cap-bar-track { flex:1; height:4px; background:var(--border); border-radius:2px; overflow:hidden; }
+    .cap-bar-fill  { height:100%; border-radius:2px; transition:width 0.3s; }
+    .cap-bar-label { font-size:10px; font-weight:700; white-space:nowrap; }
+    .cap-bar-month { height:3px; width:100%; background:var(--border); border-radius:0; overflow:hidden; margin-top:2px; }
+    .cap-bar-month-fill { height:100%; }
+    .cap-today-banner { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:12px 16px; margin-bottom:16px; display:flex; align-items:center; gap:12px; }
+    .cap-today-info { flex:1; min-width:0; }
+    .cap-today-label { font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.5px; color:var(--text-muted); margin-bottom:4px; }
+    .cap-today-nums { font-size:13px; font-weight:700; }
+    .cap-today-track { height:6px; background:var(--border); border-radius:3px; overflow:hidden; margin-top:5px; }
+    .cap-today-fill  { height:100%; border-radius:3px; transition:width 0.3s; }
+    /* Capacity planner modal day-chips */
+    .cap-day-chips { display:flex; gap:6px; flex-wrap:wrap; margin-top:4px; }
+    .cap-day-chip { padding:5px 10px; border-radius:6px; font-size:12px; font-weight:700; border:2px solid var(--border); background:var(--bg); color:var(--text-muted); cursor:pointer; user-select:none; transition:all .15s; }
+    .cap-day-chip.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
     .gantt-legend-item { display: flex; align-items: center; gap: 5px; }
 
     /* ── Month grid ── */
@@ -916,6 +933,7 @@
           </label>
           <div class="settings-menu-divider"></div>
           <button class="settings-menu-item" onclick="openSettingsModal();closeSettingsMenu()">☁ Sync settings</button>
+          <button class="settings-menu-item" onclick="openCapacityModal();closeSettingsMenu()">📊 Capacity Planner</button>
         </div>
       </div>
     </div>
@@ -1291,6 +1309,50 @@
   </div>
 
   <!-- ── Settings Modal ── -->
+  <!-- ── Capacity Planner Modal ── -->
+  <div class="modal-overlay hidden" id="capacityModal">
+    <div class="modal" style="max-width:440px">
+      <div class="modal-header">
+        <h2 class="modal-title">📊 Capacity Planner</h2>
+        <button class="btn-close" onclick="closeCapacityModal()">×</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="form-group">
+          <label class="form-label">Working Days</label>
+          <div class="cap-day-chips" id="capDayChips">
+            <div class="cap-day-chip" data-dow="1" onclick="toggleCapDay(1)">Mon</div>
+            <div class="cap-day-chip" data-dow="2" onclick="toggleCapDay(2)">Tue</div>
+            <div class="cap-day-chip" data-dow="3" onclick="toggleCapDay(3)">Wed</div>
+            <div class="cap-day-chip" data-dow="4" onclick="toggleCapDay(4)">Thu</div>
+            <div class="cap-day-chip" data-dow="5" onclick="toggleCapDay(5)">Fri</div>
+            <div class="cap-day-chip" data-dow="6" onclick="toggleCapDay(6)">Sat</div>
+            <div class="cap-day-chip" data-dow="0" onclick="toggleCapDay(0)">Sun</div>
+          </div>
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Hours per working day</label>
+            <input type="number" class="form-input" id="capHours" min="1" max="24" step="0.5" placeholder="8" oninput="updateCapPreview()">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Buffer % (unplanned slack)</label>
+            <input type="number" class="form-input" id="capBuffer" min="0" max="80" step="5" placeholder="20" oninput="updateCapPreview()">
+          </div>
+        </div>
+
+        <div style="background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:12px;font-size:12px;color:var(--text-muted);line-height:1.6" id="capPreview">
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-secondary" onclick="closeCapacityModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveCapacitySettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="settingsModal">
     <div class="modal">
       <div class="modal-header">
@@ -1364,6 +1426,7 @@
     let editingNoteId    = null;
     let filterState        = { search: '', category: '', priority: '', status: '' };
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
+    let capacitySettings   = JSON.parse(localStorage.getItem('dp_capacity') || '{"workingDays":[1,2,3,4,5],"hoursPerDay":8,"bufferPct":20}');
 
     // Cloud sync state
     let syncToken  = localStorage.getItem('dp_sync_token')   || '';
@@ -2237,7 +2300,8 @@ const renderers = {
           <input class="focus-input" type="text" id="focusInput"
             placeholder="My main focus today is…" value="${esc(focusNote)}"
             onchange="localStorage.setItem('dp_focus', this.value)">
-        </div>`;
+        </div>
+        ${dayCapacityBar(today, 'today')}`;
 
       if (overdueTasks.length > 0) {
         html += `
@@ -2291,6 +2355,7 @@ const renderers = {
               <div class="week-day-name">${day.toLocaleDateString('en-US',{weekday:'short'})}</div>
               <div class="week-day-num">${day.getDate()}</div>
             </div>
+            ${dayCapacityBar(dayStr, 'week')}
             <div class="week-tasks">
               ${dayTasks.map(t => `
                 <div class="week-task-item priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
@@ -2388,6 +2453,7 @@ const renderers = {
                        onclick="event.stopPropagation();openTaskModal('${t.id}')"
                        title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
                 ${extra > 0 ? `<div class="month-more" onclick="event.stopPropagation();openTaskModalWithDate('${ds}')">+${extra} more</div>` : ''}
+                ${dayCapacityBar(ds, 'month')}
               </div>`;
           }).join('')}
         </div>`;
@@ -3386,7 +3452,7 @@ const renderers = {
     });
 
     // Close modals on backdrop click
-    ['taskModal','projectModal','followupModal','noteModal','settingsModal'].forEach(id => {
+    ['taskModal','projectModal','followupModal','noteModal','settingsModal','capacityModal'].forEach(id => {
       document.getElementById(id).addEventListener('click', e => {
         if (e.target === e.currentTarget) {
           closeTaskModal(); closeProjectModal(); closeFollowupModal(); closeNoteModal();
@@ -3613,6 +3679,90 @@ const renderers = {
     }
     function closeSettingsModal() {
       document.getElementById('settingsModal').classList.add('hidden');
+    }
+
+    /* ── Capacity Planner ── */
+    function openCapacityModal() {
+      const cap = capacitySettings;
+      // Set chip states
+      document.querySelectorAll('.cap-day-chip').forEach(el => {
+        const dow = parseInt(el.dataset.dow);
+        el.classList.toggle('active', cap.workingDays.includes(dow));
+      });
+      document.getElementById('capHours').value  = cap.hoursPerDay;
+      document.getElementById('capBuffer').value = cap.bufferPct;
+      updateCapPreview();
+      document.getElementById('capacityModal').classList.remove('hidden');
+    }
+    function closeCapacityModal() {
+      document.getElementById('capacityModal').classList.add('hidden');
+    }
+    function toggleCapDay(dow) {
+      const chip = document.querySelector(`.cap-day-chip[data-dow="${dow}"]`);
+      chip.classList.toggle('active');
+      updateCapPreview();
+    }
+    function updateCapPreview() {
+      const h   = parseFloat(document.getElementById('capHours').value)  || 8;
+      const buf = parseFloat(document.getElementById('capBuffer').value) || 20;
+      const safe = (h * (1 - buf / 100)).toFixed(1);
+      document.getElementById('capPreview').innerHTML =
+        `🟢 <strong>Green</strong> — allocated &lt; ${safe}h &nbsp;·&nbsp; ` +
+        `🟡 <strong>Amber</strong> — ${safe}h – ${h}h &nbsp;·&nbsp; ` +
+        `🔴 <strong>Red</strong> — over ${h}h capacity`;
+    }
+    function saveCapacitySettings() {
+      const workingDays = [];
+      document.querySelectorAll('.cap-day-chip.active').forEach(el => workingDays.push(parseInt(el.dataset.dow)));
+      capacitySettings = {
+        workingDays,
+        hoursPerDay: parseFloat(document.getElementById('capHours').value)  || 8,
+        bufferPct:   parseFloat(document.getElementById('capBuffer').value) || 20
+      };
+      localStorage.setItem('dp_capacity', JSON.stringify(capacitySettings));
+      closeCapacityModal();
+      showView(currentView);
+    }
+
+    /* Returns capacity bar HTML for a given date string.
+       mode: 'week' | 'month' | 'today' */
+    function dayCapacityBar(dayStr, mode) {
+      const cap = capacitySettings;
+      const d   = new Date(dayStr + 'T00:00:00');
+      const dow = d.getDay();
+      if (!cap.workingDays.includes(dow)) return '';
+
+      const allocated = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.status !== 'Done' && t.dueDate === dayStr && t.estimatedHours)
+        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
+
+      const h       = cap.hoursPerDay;
+      const safe    = h * (1 - cap.bufferPct / 100);
+      const pct     = Math.min(allocated / h * 100, 100);
+      const color   = allocated > h ? '#ef4444' : allocated >= safe ? '#f59e0b' : '#22c55e';
+      const title   = `${allocated}h scheduled / ${h}h capacity`;
+
+      if (mode === 'month') {
+        if (allocated === 0) return `<div class="cap-bar-month"><div class="cap-bar-month-fill" style="width:0%"></div></div>`;
+        return `<div class="cap-bar-month" title="${title}"><div class="cap-bar-month-fill" style="width:${pct}%;background:${color}"></div></div>`;
+      }
+      if (mode === 'today') {
+        return `
+          <div class="cap-today-banner">
+            <div style="font-size:22px">⚡</div>
+            <div class="cap-today-info">
+              <div class="cap-today-label">Today's Capacity</div>
+              <div class="cap-today-nums" style="color:${allocated===0?'var(--text-muted)':color}">${allocated}h scheduled &nbsp;/&nbsp; ${h}h available</div>
+              <div class="cap-today-track"><div class="cap-today-fill" style="width:${pct}%;background:${color}"></div></div>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap">${Math.round(pct)}%</div>
+          </div>`;
+      }
+      // week mode (default)
+      return `<div class="cap-bar-wrap" title="${title}">
+        <div class="cap-bar-track"><div class="cap-bar-fill" style="width:${pct}%;background:${color}"></div></div>
+        <div class="cap-bar-label" style="color:${allocated===0?'var(--text-muted)':color}">${allocated > 0 ? allocated+'h' : '–'}</div>
+      </div>`;
     }
     function toggleTokenVisibility() {
       const inp = document.getElementById('syncTokenInput');
