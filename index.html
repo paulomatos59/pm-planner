@@ -216,6 +216,29 @@
     .week-add { font-size: 11px; color: var(--text-muted); padding: 3px 7px; cursor: pointer; border-radius: 4px; display: block; }
     .week-add:hover { background: var(--bg); }
 
+    /* ── Month grid ── */
+    .month-nav { display: flex; align-items: center; gap: 10px; }
+    .month-nav-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 16px; cursor: pointer; color: var(--text); line-height: 1; }
+    .month-nav-btn:hover { background: var(--bg); border-color: var(--primary); color: var(--primary); }
+    .month-nav-label { font-size: 18px; font-weight: 700; min-width: 160px; text-align: center; }
+    .month-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .month-dow-header { background: var(--bg); padding: 7px 0; text-align: center; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); border-bottom: 1px solid var(--border); }
+    .month-cell { background: var(--surface); border-right: 1px solid var(--border); border-bottom: 1px solid var(--border); min-height: 110px; padding: 6px; cursor: pointer; transition: background 0.1s; }
+    .month-cell:nth-child(7n) { border-right: none; }
+    .month-cell.other-month { background: var(--bg); opacity: 0.6; }
+    .month-cell.is-today { background: var(--primary-light); }
+    .month-cell.is-today .month-cell-num { color: var(--primary); font-weight: 800; }
+    .month-cell:hover { background: color-mix(in srgb, var(--primary) 6%, var(--surface)); }
+    .month-cell-num { font-size: 13px; font-weight: 600; margin-bottom: 4px; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
+    .month-cell.is-today .month-cell-num { background: var(--primary); color: #fff; }
+    .month-task-chip { font-size: 10px; padding: 2px 5px; border-radius: 3px; margin-bottom: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; cursor: pointer; line-height: 1.4; }
+    .month-task-chip.priority-high   { background: var(--danger-light);  color: var(--danger); }
+    .month-task-chip.priority-medium { background: var(--warning-light); color: #92400e; }
+    .month-task-chip.priority-low    { background: var(--success-light); color: #15803d; }
+    .month-task-chip.done            { opacity: 0.4; text-decoration: line-through; }
+    .month-more { font-size: 10px; color: var(--text-muted); padding: 1px 4px; cursor: pointer; }
+    .month-more:hover { color: var(--primary); }
+
     /* ── All-tasks table ── */
     .filter-bar { display: flex; gap: 8px; margin-bottom: 14px; flex-wrap: wrap; }
     .filter-select, .filter-input {
@@ -739,6 +762,12 @@
       .kb2-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
       .kb2-grid   { min-width: 660px; }
 
+      /* Month: smaller cells on mobile */
+      .month-cell { min-height: 60px; padding: 3px; }
+      .month-cell-num { font-size: 11px; width: 18px; height: 18px; }
+      .month-task-chip { font-size: 9px; padding: 1px 3px; }
+      .month-nav-label { font-size: 14px; min-width: 110px; }
+
       /* Priorities dashboard */
       .dash-grid { grid-template-columns: 1fr; }
 
@@ -850,6 +879,7 @@
         <div class="sidebar-section-body" id="section-planner">
           <button class="nav-item" id="nav-today"   onclick="showView('today')">🗓 Today</button>
           <button class="nav-item" id="nav-week"    onclick="showView('week')">📅 This Week</button>
+          <button class="nav-item" id="nav-month"   onclick="showView('month')">🗃 Month</button>
           <button class="nav-item" id="nav-all"     onclick="showView('all')">📋 All Tasks</button>
           <button class="nav-item" id="nav-overdue" onclick="showView('overdue')">
             🚨 Overdue
@@ -1173,6 +1203,7 @@
     let activeProjectId  = null;
     let activePersonalId = null;
     let activeProjectTab = 'tasks';
+    let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
     let editingTaskId    = null;
     let editingProjId    = null;
     let editingFuId      = null;
@@ -1310,6 +1341,7 @@ const renderers = {
         priorities:       renderPriorities,
         today:            renderToday,
         week:             renderWeek,
+        month:            renderMonth,
         all:              renderAll,
         overdue:          renderOverdue,
         projects:         renderProjects,
@@ -1863,6 +1895,82 @@ const renderers = {
           </div>`;
       }
       html += '</div>';
+      return html;
+    }
+
+    /* ==============================
+       MONTH VIEW
+    ============================== */
+    function navMonth(delta) { monthOffset += delta; showView('month'); }
+
+    function renderMonth() {
+      const now   = new Date(); now.setHours(0,0,0,0);
+      const base  = new Date(now.getFullYear(), now.getMonth() + monthOffset, 1);
+      const year  = base.getFullYear();
+      const month = base.getMonth();
+      const todStr = todayStr();
+
+      const monthLabel = base.toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+
+      // First cell: Monday of the week containing the 1st
+      const firstDay = new Date(year, month, 1);
+      const dow1     = firstDay.getDay(); // 0=Sun
+      const startOffset = dow1 === 0 ? 6 : dow1 - 1; // days to go back to Monday
+      const gridStart = new Date(firstDay);
+      gridStart.setDate(firstDay.getDate() - startOffset);
+
+      // Last day of month
+      const lastDay = new Date(year, month + 1, 0);
+      const dow2    = lastDay.getDay();
+      const endOffset = dow2 === 0 ? 0 : 7 - dow2;
+      const gridEnd = new Date(lastDay);
+      gridEnd.setDate(lastDay.getDate() + endOffset);
+
+      // Build grid cells
+      const cells = [];
+      for (let d = new Date(gridStart); d <= gridEnd; d.setDate(d.getDate() + 1)) {
+        cells.push(new Date(d));
+      }
+
+      const dayNames = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+
+      let html = `
+        <div class="view-header">
+          <div>
+            <div class="view-title">Month</div>
+            <div class="view-subtitle">${monthLabel}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="month-nav">
+              <button class="month-nav-btn" onclick="navMonth(-1)" title="Previous month">‹</button>
+              <span class="month-nav-label">${monthLabel}</span>
+              <button class="month-nav-btn" onclick="navMonth(1)" title="Next month">›</button>
+            </div>
+            ${monthOffset !== 0 ? `<button class="btn btn-secondary btn-sm" onclick="monthOffset=0;showView('month')">Today</button>` : ''}
+            <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+          </div>
+        </div>
+        <div class="month-grid">
+          ${dayNames.map(d => `<div class="month-dow-header">${d}</div>`).join('')}
+          ${cells.map(d => {
+            const ds       = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+            const inMonth  = d.getMonth() === month;
+            const isToday  = ds === todStr;
+            const dayTasks = tasks.filter(t => t.dueDate === ds).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+            const visible  = dayTasks.slice(0, 3);
+            const extra    = dayTasks.length - visible.length;
+            return `
+              <div class="month-cell ${!inMonth ? 'other-month' : ''} ${isToday ? 'is-today' : ''}"
+                   onclick="openTaskModalWithDate('${ds}')">
+                <div class="month-cell-num">${d.getDate()}</div>
+                ${visible.map(t => `
+                  <div class="month-task-chip priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
+                       onclick="event.stopPropagation();openTaskModal('${t.id}')"
+                       title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
+                ${extra > 0 ? `<div class="month-more" onclick="event.stopPropagation();openTaskModalWithDate('${ds}')">+${extra} more</div>` : ''}
+              </div>`;
+          }).join('')}
+        </div>`;
       return html;
     }
 
