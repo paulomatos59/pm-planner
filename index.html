@@ -359,6 +359,88 @@
     .note-add-card:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
     .note-add-icon { font-size: 24px; }
 
+    /* ── Executive Summary ── */
+    .summary-hero {
+      background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
+      border-radius: 12px; padding: 22px 26px; margin-bottom: 16px; color: white;
+    }
+    .summary-greeting { font-size: 21px; font-weight: 700; }
+    .summary-date { font-size: 13px; opacity: 0.75; margin-top: 3px; }
+    .summary-focus { font-size: 13px; margin-top: 12px; background: rgba(255,255,255,0.18); display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; }
+    .summary-focus span { font-weight: 600; }
+    .summary-focus-empty { font-size: 13px; margin-top: 12px; opacity: 0.65; cursor: pointer; display: inline-block; }
+    .summary-focus-empty:hover { opacity: 1; text-decoration: underline; }
+
+    .summary-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+    .summary-stat {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 12px; cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .summary-stat:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+    .summary-stat.s-danger  { border-top: 3px solid var(--danger); }
+    .summary-stat.s-primary { border-top: 3px solid var(--primary); }
+    .summary-stat.s-warning { border-top: 3px solid var(--warning); }
+    .summary-stat.s-success { border-top: 3px solid var(--success); }
+    .summary-stat.s-neutral { border-top: 3px solid var(--border); }
+    .ss-value { font-size: 28px; font-weight: 800; line-height: 1; }
+    .ss-label { font-size: 10px; font-weight: 700; color: var(--text-muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
+    .summary-stat.s-danger  .ss-value { color: var(--danger); }
+    .summary-stat.s-primary .ss-value { color: var(--primary); }
+    .summary-stat.s-warning .ss-value { color: var(--warning); }
+    .summary-stat.s-success .ss-value { color: #16a34a; }
+
+    .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; }
+    .summary-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .summary-card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
+    .summary-card-link { background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
+    .summary-card-link:hover { text-decoration: underline; }
+    .summary-empty { font-size: 13px; color: var(--text-muted); text-align: center; padding: 18px 0; }
+
+    .summary-task-list { display: flex; flex-direction: column; gap: 2px; }
+    .summary-task-item {
+      display: flex; align-items: center; gap: 8px; padding: 7px 8px;
+      border-radius: 7px; cursor: pointer; transition: background 0.1s;
+    }
+    .summary-task-item:hover { background: var(--bg); }
+    .s-task-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .s-dot-high   { background: var(--danger); }
+    .s-dot-medium { background: var(--warning); }
+    .s-dot-low    { background: var(--success); }
+    .summary-task-title { flex: 1; font-size: 13px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .summary-task-title.done-title { text-decoration: line-through; color: var(--text-muted); }
+    .summary-task-due { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .summary-task-due.od { color: var(--danger); font-weight: 700; }
+
+    .summary-proj-row {
+      display: flex; align-items: center; gap: 10px; padding: 8px 6px;
+      border-radius: 7px; cursor: pointer; transition: background 0.1s;
+    }
+    .summary-proj-row:hover { background: var(--bg); }
+    .summary-proj-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .summary-proj-info { flex: 1; min-width: 0; }
+    .summary-proj-name { font-size: 13px; font-weight: 600; margin-bottom: 5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .summary-proj-bar { height: 5px; background: var(--border); border-radius: 3px; overflow: hidden; }
+    .summary-proj-bar-fill { height: 100%; border-radius: 3px; transition: width 0.5s ease; min-width: 2px; }
+    .summary-proj-meta { display: flex; gap: 6px; align-items: center; font-size: 11px; color: var(--text-muted); flex-shrink: 0; }
+    .summary-proj-pct { font-weight: 700; font-size: 12px; }
+    .s-fu-badge { color: var(--warning); font-weight: 700; font-size: 11px; }
+    .s-od-badge { color: var(--danger); font-weight: 700; font-size: 11px; }
+
+    .summary-week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .summary-week-day {
+      text-align: center; padding: 8px 4px; border-radius: 8px; cursor: pointer;
+      transition: background 0.1s; border: 1px solid transparent;
+    }
+    .summary-week-day:hover { background: var(--bg); }
+    .summary-week-day.s-today { background: var(--primary-light); border-color: var(--primary); }
+    .swd-name { font-size: 9px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .swd-num  { font-size: 18px; font-weight: 700; line-height: 1.3; }
+    .summary-week-day.s-today .swd-num { color: var(--primary); }
+    .swd-count { font-size: 11px; font-weight: 700; color: var(--text-muted); margin-top: 3px; height: 18px; display: flex; align-items: center; justify-content: center; }
+    .swd-count.has-tasks { color: white; background: var(--primary); border-radius: 10px; padding: 0 6px; font-size: 10px; }
+    .swd-count.has-overdue { background: var(--danger); color: white; border-radius: 10px; padding: 0 6px; font-size: 10px; }
+
     /* ── Collapsible Sidebar Sections ── */
     .sidebar-section { border-bottom: 1px solid var(--border); }
     .sidebar-section:last-child { border-bottom: none; }
@@ -493,7 +575,8 @@
           </div>
         </div>
         <div class="sidebar-section-body" id="section-views">
-          <button class="nav-item" id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
+          <button class="nav-item active" id="nav-summary"    onclick="showView('summary')">📊 Overview</button>
+          <button class="nav-item"        id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
 
           <!-- Planner sub-group -->
           <div class="sidebar-subgroup">
@@ -872,6 +955,7 @@
       } else { addBtn.textContent = '＋ New Task'; }
 
       const renderers = {
+        summary:        renderSummary,
         priorities:     renderPriorities,
         today:          renderToday,
         week:           renderWeek,
@@ -903,6 +987,176 @@
         const sel = document.getElementById('filterCategory');
         if (sel) sel.value = cat;
       }, 10);
+    }
+
+    /* ==============================
+       EXECUTIVE SUMMARY (default view)
+    ============================== */
+    function renderSummary() {
+      const today = todayStr();
+      const now   = new Date(); now.setHours(0,0,0,0);
+
+      // Week bounds Mon–Sun
+      const dow = now.getDay();
+      const mon = new Date(now); mon.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1));
+      const monStr = `${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`;
+      const sun    = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
+
+      const open          = tasks.filter(t => t.status !== 'Done');
+      const overdueList   = open.filter(isOverdue);
+      const todayList     = open.filter(t => t.dueDate === today);
+      const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
+      const blockedList   = open.filter(t => t.status === 'Blocked');
+      const doneThisWeek  = tasks.filter(t => t.status === 'Done' && t.completedAt && t.completedAt.slice(0,10) >= monStr);
+      const focusNote     = localStorage.getItem('dp_focus') || '';
+      const activeProjs   = projects.filter(p => p.status === 'Active');
+
+      const hour = new Date().getHours();
+      const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+
+      // Week day task counts
+      const weekDays = Array.from({length:7}, (_,i) => {
+        const d   = new Date(mon); d.setDate(mon.getDate() + i);
+        const ds  = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const cnt = open.filter(t => t.dueDate === ds).length;
+        const od  = open.filter(t => t.dueDate === ds && isOverdue({...t, dueDate:ds})).length;
+        return { date: d, str: ds, count: cnt, overdue: ds < today && cnt > 0, isToday: ds === today };
+      });
+
+      // Top tasks for today: overdue first, then today's, sorted by priority
+      const topTasks = [
+        ...overdueList.sort((a,b) => priorityOrder(a) - priorityOrder(b)),
+        ...todayList.filter(t => !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b))
+      ].slice(0, 6);
+
+      // Upcoming (next 7 days, not today, not overdue)
+      const upcoming = open
+        .filter(t => t.dueDate && t.dueDate > today && t.dueDate <= sunStr)
+        .sort((a,b) => a.dueDate.localeCompare(b.dueDate) || priorityOrder(a) - priorityOrder(b))
+        .slice(0, 5);
+
+      return `
+        <div class="summary-hero">
+          <div class="summary-greeting">${greeting}, Paulo 👋</div>
+          <div class="summary-date">${now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+          ${focusNote
+            ? `<div class="summary-focus">🎯 <span>${esc(focusNote)}</span></div>`
+            : `<div class="summary-focus-empty" onclick="showView('today')">＋ Set your daily focus →</div>`}
+        </div>
+
+        <div class="summary-stats">
+          <div class="summary-stat ${overdueList.length > 0 ? 's-danger' : 's-neutral'}" onclick="showView('overdue')">
+            <div class="ss-value">${overdueList.length}</div>
+            <div class="ss-label">Overdue</div>
+          </div>
+          <div class="summary-stat s-primary" onclick="showView('today')">
+            <div class="ss-value">${todayList.length}</div>
+            <div class="ss-label">Due Today</div>
+          </div>
+          <div class="summary-stat s-warning" onclick="showView('week')">
+            <div class="ss-value">${weekList.length}</div>
+            <div class="ss-label">This Week</div>
+          </div>
+          <div class="summary-stat ${blockedList.length > 0 ? 's-danger' : 's-neutral'}" onclick="showView('priorities')">
+            <div class="ss-value">${blockedList.length}</div>
+            <div class="ss-label">Blocked</div>
+          </div>
+          <div class="summary-stat s-success">
+            <div class="ss-value">${doneThisWeek.length}</div>
+            <div class="ss-label">Done This Week</div>
+          </div>
+        </div>
+
+        <div class="summary-grid">
+
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <span class="summary-card-title">Today's Priorities</span>
+              <button class="summary-card-link" onclick="showView('today')">View all →</button>
+            </div>
+            ${topTasks.length === 0
+              ? `<div class="summary-empty">🎉 No open tasks for today</div>`
+              : `<div class="summary-task-list">${topTasks.map(t => {
+                  const od = isOverdue(t);
+                  return `<div class="summary-task-item" onclick="openTaskModal('${t.id}')">
+                    <div class="s-task-dot s-dot-${t.priority.toLowerCase()}"></div>
+                    <div class="summary-task-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
+                    <span class="summary-task-due ${od?'od':''}">${od ? formatDue(t.dueDate) : t.dueTime || ''}</span>
+                    <span class="status-badge status-${statusClass(t.status)}">${t.status}</span>
+                  </div>`;
+                }).join('')}</div>`
+            }
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <span class="summary-card-title">Active Projects</span>
+              <button class="summary-card-link" onclick="showView('projects')">View all →</button>
+            </div>
+            ${activeProjs.length === 0
+              ? `<div class="summary-empty">No active projects</div>`
+              : activeProjs.map(p => {
+                  const ptasks  = tasks.filter(t => t.projectId === p.id);
+                  const pdone   = ptasks.filter(t => t.status === 'Done').length;
+                  const ptotal  = ptasks.length;
+                  const pct     = ptotal > 0 ? Math.round((pdone/ptotal)*100) : 0;
+                  const pfu     = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+                  const pod     = tasks.filter(t => t.projectId === p.id && isOverdue(t)).length;
+                  return `
+                    <div class="summary-proj-row" onclick="openProject('${p.id}')">
+                      <div class="summary-proj-dot" style="background:${esc(p.color||'#2563eb')}"></div>
+                      <div class="summary-proj-info">
+                        <div class="summary-proj-name">${esc(p.name)}</div>
+                        <div class="summary-proj-bar">
+                          <div class="summary-proj-bar-fill" style="width:${pct}%;background:${esc(p.color||'#2563eb')}"></div>
+                        </div>
+                      </div>
+                      <div class="summary-proj-meta">
+                        <span class="summary-proj-pct">${pct}%</span>
+                        ${pfu > 0 ? `<span class="s-fu-badge">📌 ${pfu}</span>` : ''}
+                        ${pod > 0 ? `<span class="s-od-badge">🚨 ${pod}</span>` : ''}
+                      </div>
+                    </div>`;
+                }).join('')
+            }
+          </div>
+        </div>
+
+        <div class="summary-card" style="margin-top:14px">
+          <div class="summary-card-header">
+            <span class="summary-card-title">This Week</span>
+            <button class="summary-card-link" onclick="showView('week')">Full week view →</button>
+          </div>
+          <div class="summary-week-strip">
+            ${weekDays.map(d => `
+              <div class="summary-week-day ${d.isToday ? 's-today' : ''}" onclick="showView('week')">
+                <div class="swd-name">${d.date.toLocaleDateString('en-US',{weekday:'short'})}</div>
+                <div class="swd-num">${d.date.getDate()}</div>
+                <div class="swd-count ${d.overdue ? 'has-overdue' : d.count > 0 ? 'has-tasks' : ''}">
+                  ${d.count > 0 ? d.count : '·'}
+                </div>
+              </div>`).join('')}
+          </div>
+        </div>
+
+        ${upcoming.length > 0 ? `
+        <div class="summary-card" style="margin-top:14px">
+          <div class="summary-card-header">
+            <span class="summary-card-title">Upcoming This Week</span>
+            <button class="summary-card-link" onclick="showView('all')">All tasks →</button>
+          </div>
+          <div class="summary-task-list">
+            ${upcoming.map(t => `
+              <div class="summary-task-item" onclick="openTaskModal('${t.id}')">
+                <div class="s-task-dot s-dot-${t.priority.toLowerCase()}"></div>
+                <div class="summary-task-title">${esc(t.title)}</div>
+                <span class="summary-task-due">${formatDue(t.dueDate)}</span>
+                <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
+              </div>`).join('')}
+          </div>
+        </div>` : ''}
+      `;
     }
 
     /* ==============================
@@ -1795,7 +2049,7 @@
        BOOT
     ============================== */
     applySectionStates();
-    showView('today');
+    showView('summary');
   </script>
 </body>
 </html>
