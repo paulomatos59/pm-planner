@@ -245,6 +245,38 @@
     .week-add { font-size: 11px; color: var(--text-muted); padding: 3px 7px; cursor: pointer; border-radius: 4px; display: block; }
     .week-add:hover { background: var(--bg); }
 
+    /* ── Gantt ── */
+    .gantt-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; border: 1px solid var(--border); border-radius: 10px; background: var(--surface); }
+    .gantt-header { display: flex; border-bottom: 2px solid var(--border); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+    .gantt-label-col { width: 190px; min-width: 190px; padding: 8px 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-right: 1px solid var(--border); flex-shrink: 0; }
+    .gantt-days-header { display: flex; }
+    .gantt-day-hdr { width: 30px; min-width: 30px; text-align: center; border-right: 1px solid var(--border); padding: 4px 0 2px; flex-shrink: 0; }
+    .gantt-day-hdr.is-today { background: var(--primary-light); }
+    .gantt-day-hdr.is-weekend { background: #f8fafc; }
+    .gantt-day-hdr .gd-mon { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px; height: 11px; }
+    .gantt-day-hdr .gd-num { font-size: 11px; font-weight: 700; }
+    .gantt-day-hdr.is-today .gd-num { color: var(--primary); }
+    .gantt-group-hdr { display: flex; align-items: stretch; background: var(--bg); border-bottom: 1px solid var(--border); }
+    .gantt-group-name { width: 190px; min-width: 190px; padding: 5px 12px; font-size: 12px; font-weight: 700; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .gantt-group-band { flex: 1; }
+    .gantt-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); min-height: 34px; }
+    .gantt-row:hover { background: rgba(37,99,235,0.025); }
+    .gantt-task-lbl { width: 190px; min-width: 190px; padding: 0 12px; font-size: 12px; border-right: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .gantt-task-lbl:hover { color: var(--primary); }
+    .gantt-bars-cell { position: relative; flex: 1; min-height: 34px; overflow: hidden; }
+    .gantt-wknd-band { position: absolute; top: 0; bottom: 0; background: rgba(148,163,184,0.07); pointer-events: none; }
+    .gantt-tod-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); z-index: 6; pointer-events: none; }
+    .gantt-tod-line::before { content: '▼'; position: absolute; top: -9px; left: -4px; font-size: 9px; color: var(--danger); }
+    .gantt-timeoff-overlay { position: absolute; top: 0; bottom: 0; background: rgba(8,145,178,0.1); border-left: 2px solid rgba(8,145,178,0.35); pointer-events: none; z-index: 1; }
+    .gantt-bar { position: absolute; height: 22px; top: 6px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; padding: 0 7px; font-size: 10px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.18); transition: filter 0.12s; z-index: 4; }
+    .gantt-bar:hover { filter: brightness(1.1); }
+    .gantt-bar.g-done { opacity: 0.4; }
+    .gantt-bar.g-overdue { box-shadow: 0 0 0 2px var(--danger), 0 1px 4px rgba(0,0,0,0.15); }
+    .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
+    .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
+    .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
+    .gantt-legend-item { display: flex; align-items: center; gap: 5px; }
+
     /* ── Month grid ── */
     .month-nav { display: flex; align-items: center; gap: 10px; }
     .month-nav-btn { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 5px 12px; font-size: 16px; cursor: pointer; color: var(--text); line-height: 1; }
@@ -913,6 +945,7 @@
         <div class="sidebar-section-body" id="section-views">
           <button class="nav-item active" id="nav-summary"    onclick="showView('summary')">📊 Overview</button>
           <button class="nav-item"        id="nav-kanban"     onclick="showView('kanban')">🗃 Kanban</button>
+          <button class="nav-item"        id="nav-gantt"      onclick="showView('gantt')">📊 Gantt</button>
         </div>
       </div>
 
@@ -1324,6 +1357,7 @@
     let activePersonalId = null;
     let activeProjectTab = 'tasks';
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
+    let ganttOffset      = 0;  // weeks offset from current week
     let editingTaskId    = null;
     let editingProjId    = null;
     let editingFuId      = null;
@@ -1468,7 +1502,8 @@ const renderers = {
         'project-detail': () => renderProjectDetail(activeProjectId),
         personal:         renderPersonal,
         'personal-detail':() => renderPersonalDetail(activePersonalId),
-        kanban:           renderKanban
+        kanban:           renderKanban,
+        gantt:            renderGantt
       };
 
       document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
@@ -1753,6 +1788,172 @@ const renderers = {
           </div>
         </div>` : ''}
       `;
+    }
+
+    /* ==============================
+       GANTT VIEW
+    ============================== */
+    function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
+
+    function renderGantt() {
+      const DAYS    = 35; // 5 weeks
+      const DAY_W   = 30; // px per day column
+      const MONTHS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+      // Window start = Monday of (current week + ganttOffset weeks)
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dow = now.getDay();
+      const winStart = new Date(now);
+      winStart.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) + ganttOffset * 7);
+
+      // Build dates array
+      const dates = [];
+      for (let i = 0; i < DAYS; i++) {
+        const d = new Date(winStart); d.setDate(winStart.getDate() + i);
+        dates.push(d);
+      }
+
+      const ds0    = dates[0];
+      const dsN    = dates[DAYS - 1];
+      const winS   = `${ds0.getFullYear()}-${pad(ds0.getMonth()+1)}-${pad(ds0.getDate())}`;
+      const winE   = `${dsN.getFullYear()}-${pad(dsN.getMonth()+1)}-${pad(dsN.getDate())}`;
+      const todStr = todayStr();
+
+      // Convert date string to pixel offset
+      function xOf(ds) {
+        const d = parseLocal(ds);
+        return Math.round((d - ds0) / 86400000) * DAY_W;
+      }
+      function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
+
+      // Work tasks overlapping the window
+      const workTasks = tasks.filter(t => {
+        if (t.taskType === 'timeoff' || t.status === 'Done' && !t.dueDate) return false;
+        const from = t.startDate || t.dueDate;
+        return from && t.dueDate && t.dueDate >= winS && from <= winE;
+      });
+
+      // Time-off events overlapping the window
+      const timeoffs = tasks.filter(t => {
+        if (t.taskType !== 'timeoff') return false;
+        const from = t.startDate || t.dueDate;
+        return from && t.dueDate && t.dueDate >= winS && from <= winE;
+      });
+
+      // Group tasks by project
+      const allProjects = projects.filter(p => ['Active','On Hold'].includes(p.status));
+      const groups = [];
+      allProjects.forEach(p => {
+        const ptasks = workTasks.filter(t => t.projectId === p.id);
+        if (ptasks.length) groups.push({ name: p.name, color: p.color || '#2563eb', tasks: ptasks });
+      });
+      const unassigned = workTasks.filter(t => !t.projectId);
+      if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
+
+      const totalW = DAYS * DAY_W;
+
+      // ── Day header row ──
+      const dayHdrs = dates.map((d, i) => {
+        const isToday   = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` === todStr;
+        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
+        const showMon   = d.getDate() === 1 || i === 0;
+        return `<div class="gantt-day-hdr ${isToday ? 'is-today' : ''} ${isWeekend ? 'is-weekend' : ''}" style="width:${DAY_W}px;min-width:${DAY_W}px">
+          <div class="gd-mon">${showMon ? MONTHS[d.getMonth()] : ''}</div>
+          <div class="gd-num">${d.getDate()}</div>
+        </div>`;
+      }).join('');
+
+      // ── Backdrop: weekend shading + time-off bands + today line ──
+      function backdrop() {
+        const wknd = dates.map((d, i) => {
+          if (d.getDay() !== 0 && d.getDay() !== 6) return '';
+          return `<div class="gantt-wknd-band" style="left:${i * DAY_W}px;width:${DAY_W}px"></div>`;
+        }).join('');
+
+        const toff = timeoffs.map(t => {
+          const from = t.startDate || t.dueDate;
+          const x1 = clamp(xOf(from), 0, totalW);
+          const x2 = clamp(xOf(t.dueDate) + DAY_W, 0, totalW);
+          return `<div class="gantt-timeoff-overlay" style="left:${x1}px;width:${x2 - x1}px" title="🌴 ${esc(t.title)}"></div>`;
+        }).join('');
+
+        const todLine = todStr >= winS && todStr <= winE
+          ? `<div class="gantt-tod-line" style="left:${xOf(todStr) + DAY_W / 2}px"></div>` : '';
+
+        return wknd + toff + todLine;
+      }
+
+      // ── Task bar rows ──
+      function taskBar(t, projColor) {
+        const from = t.startDate || t.dueDate;
+        const isMilestone = !t.startDate || t.startDate === t.dueDate;
+        const x1 = clamp(xOf(from), 0, totalW - 2);
+        const rawW = isMilestone ? DAY_W - 2 : clamp(xOf(t.dueDate) + DAY_W - xOf(from) - 2, DAY_W - 2, totalW);
+        const od = isOverdue(t);
+        const color = t.status === 'Done' ? '#94a3b8' : projColor;
+        const label = rawW > 44 ? esc(t.title) : '';
+        return `
+          <div class="gantt-row">
+            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>
+            <div class="gantt-bars-cell" style="width:${totalW}px">
+              ${backdrop()}
+              <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''} ${isMilestone?'':''}}"
+                   style="left:${x1}px;width:${rawW}px;background:${color}"
+                   onclick="openTaskModal('${t.id}')"
+                   title="${esc(t.title)}  (${from} → ${t.dueDate})">${label}</div>
+            </div>
+          </div>`;
+      }
+
+      // ── Group rows ──
+      const groupRows = groups.length === 0
+        ? `<div class="gantt-empty-row">No tasks with due dates found in this period.<br>
+             <small>Assign start &amp; due dates to tasks to see them on the Gantt.</small></div>`
+        : groups.map(g => `
+            <div class="gantt-group-hdr">
+              <div class="gantt-group-name">
+                <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
+                ${esc(g.name)}
+              </div>
+              <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
+            </div>
+            ${g.tasks.map(t => taskBar(t, g.color)).join('')}
+          `).join('');
+
+      const rangeLabel = `${ds0.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${dsN.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+
+      return `
+        <div class="view-header">
+          <div>
+            <div class="view-title">Gantt</div>
+            <div class="view-subtitle">${rangeLabel}</div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div class="month-nav">
+              <button class="month-nav-btn" onclick="navGantt(-1)" title="Previous 5 weeks">‹</button>
+              <span class="month-nav-label" style="font-size:14px;min-width:200px;text-align:center">${rangeLabel}</span>
+              <button class="month-nav-btn" onclick="navGantt(1)" title="Next 5 weeks">›</button>
+            </div>
+            ${ganttOffset !== 0 ? `<button class="btn btn-secondary btn-sm" onclick="ganttOffset=0;showView('gantt')">Today</button>` : ''}
+            <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+          </div>
+        </div>
+        <div class="gantt-wrap">
+          <div class="gantt-table">
+            <div class="gantt-header">
+              <div class="gantt-label-col">Task</div>
+              <div class="gantt-days-header">${dayHdrs}</div>
+            </div>
+            <div class="gantt-body">${groupRows}</div>
+          </div>
+        </div>
+        <div class="gantt-legend">
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--primary)"></div> Task</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#94a3b8"></div> Done</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--danger);opacity:0.5"></div> Overdue</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;background:rgba(8,145,178,0.18);border-left:2px solid rgba(8,145,178,0.4)"></div> Time Off</div>
+          <div class="gantt-legend-item"><div style="width:2px;height:14px;background:var(--danger)"></div> Today</div>
+        </div>`;
     }
 
     /* ==============================
