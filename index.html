@@ -675,7 +675,7 @@
     .flatpickr-day { color: var(--text); }
     .flatpickr-day:hover { background: var(--primary-light); }
     /* Keep the input looking native */
-    #taskDueDate { cursor: pointer; }
+    #taskStartDate, #taskDueDate { cursor: pointer; }
 
     /* ── Hamburger (hidden on desktop) ── */
     .hamburger-btn {
@@ -992,13 +992,20 @@
         </div>
         <div class="form-row">
           <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-input" id="taskStartDate">
+          </div>
+          <div class="form-group">
             <label class="form-label">Due Date</label>
             <input type="date" class="form-input" id="taskDueDate">
           </div>
+        </div>
+        <div class="form-row">
           <div class="form-group">
             <label class="form-label">Due Time (optional)</label>
             <input type="time" class="form-input" id="taskDueTime">
           </div>
+          <div class="form-group"></div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -2479,6 +2486,7 @@ const renderers = {
       document.getElementById('taskDesc').value     = t?.description || '';
       document.getElementById('taskCategory').value = t?.category || 'Project';
       document.getElementById('taskPriority').value = t?.priority || 'Medium';
+      document.getElementById('taskStartDate').value = t?.startDate || '';
       document.getElementById('taskDueDate').value  = t?.dueDate || todayStr();
       document.getElementById('taskDueTime').value  = t?.dueTime || '';
       document.getElementById('taskStatus').value   = t?.status || 'Todo';
@@ -2519,6 +2527,7 @@ const renderers = {
         category:       document.getElementById('taskCategory').value,
         priority:       document.getElementById('taskPriority').value,
         projectId:      document.getElementById('taskProjectLink').value || null,
+        startDate:      document.getElementById('taskStartDate').value || null,
         dueDate:        document.getElementById('taskDueDate').value,
         dueTime:        document.getElementById('taskDueTime').value,
         status:         document.getElementById('taskStatus').value,
@@ -3104,21 +3113,18 @@ const renderers = {
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
   <script>
-    // Init Flatpickr on the task due-date field — Monday-first, no time
-    let _fpTask = flatpickr('#taskDueDate', {
-      locale:        { firstDayOfWeek: 1 },
-      dateFormat:    'Y-m-d',
-      allowInput:    true,
-      disableMobile: true
-    });
+    const _fpOpts = { locale: { firstDayOfWeek: 1 }, dateFormat: 'Y-m-d', allowInput: true, disableMobile: true };
 
-    // Patch openTaskModal to use flatpickr's setDate
+    // Init Flatpickr on both date fields
+    let _fpStart = flatpickr('#taskStartDate', _fpOpts);
+    let _fpTask  = flatpickr('#taskDueDate',   _fpOpts);
+
+    // Patch openTaskModal to sync both flatpickr instances
     const _origOpenTaskModal = openTaskModal;
     openTaskModal = function(id = null, preProjectId = null) {
       _origOpenTaskModal(id, preProjectId);
-      // After the modal sets the raw value, sync to flatpickr
-      const raw = document.getElementById('taskDueDate').value;
-      _fpTask.setDate(raw || null, false);
+      _fpStart.setDate(document.getElementById('taskStartDate').value || null, false);
+      _fpTask.setDate(document.getElementById('taskDueDate').value   || null, false);
     };
   </script>
 </body>
