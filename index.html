@@ -2245,6 +2245,7 @@ const renderers = {
               return `
                 <div onclick="openProject('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < allProjects.length-1 ? '1px solid var(--border)' : 'none'};transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
                   <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(p.color||'#2563eb')}"></div>
+                  <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}</span>
                   <div style="flex:1;min-width:0">
                     <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
                     <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:2px">
@@ -2254,7 +2255,6 @@ const renderers = {
                       ${odT    > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${odT} overdue</span>` : ''}
                     </div>
                   </div>
-                  <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;margin-left:auto;padding-left:16px">${priDot}${pri !== 'None' ? ' '+pri : ''}</span>
                 </div>`;
             }).join('')}
           </div>`;
