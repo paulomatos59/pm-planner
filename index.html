@@ -1422,8 +1422,19 @@
               style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer">
             Auto-download JSON backup on every save
           </label>
-          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-left:25px">
-            Downloads to your browser's default Downloads folder ~30 s after each change.
+          <!-- Folder picker row -->
+          <div id="autoDownloadFolderRow" style="margin-top:10px;margin-left:25px;display:none">
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px">Save location</div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+              <div id="folderPathBox" style="flex:1;min-width:0;font-size:12px;color:var(--text-muted);background:var(--surface-alt,#f8fafc);border:1px solid var(--border);border-radius:6px;padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
+                No folder selected — files go to Downloads
+              </div>
+              <button class="btn btn-secondary btn-sm" onclick="pickSaveFolder()" id="btnPickFolder">📁 Choose folder…</button>
+              <button class="btn btn-secondary btn-sm" id="btnClearFolder" onclick="clearSaveFolder()" style="display:none;color:#dc2626;border-color:#dc2626">✕</button>
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:5px">
+              Chrome / Edge only. You'll approve the folder once; the app remembers it.
+            </div>
           </div>
         </div>
 
@@ -1475,13 +1486,129 @@
     function scheduleAutoDownload() {
       if (!autoDownload) return;
       clearTimeout(autoDownTimer);
-      autoDownTimer = setTimeout(() => { exportData(); }, 30000); // 30 s after last change
+      autoDownTimer = setTimeout(() => { exportDataToFolder(); }, 30000); // 30 s after last change
     }
 
     function toggleAutoDownload(enabled) {
       autoDownload = enabled;
       localStorage.setItem('dp_auto_download', enabled ? 'true' : 'false');
+      document.getElementById('autoDownloadFolderRow').style.display = enabled ? 'block' : 'none';
     }
+
+    /* ── Folder picker (File System Access API) ── */
+    let _saveDirHandle = null; // in-memory cache of the directory handle
+
+    function _openFolderDB() {
+      return new Promise((res, rej) => {
+        const req = indexedDB.open('dp_settings', 1);
+        req.onupgradeneeded = e => e.target.result.createObjectStore('handles');
+        req.onsuccess = e => res(e.target.result);
+        req.onerror   = e => rej(e);
+      });
+    }
+
+    async function _storeDirHandle(handle) {
+      const db   = await _openFolderDB();
+      const tx   = db.transaction('handles', 'readwrite');
+      tx.objectStore('handles').put(handle, 'saveDir');
+      return new Promise((res, rej) => { tx.oncomplete = res; tx.onerror = rej; });
+    }
+
+    async function _loadDirHandle() {
+      const db = await _openFolderDB();
+      return new Promise((res, rej) => {
+        const tx  = db.transaction('handles', 'readonly');
+        const req = tx.objectStore('handles').get('saveDir');
+        req.onsuccess = e => res(e.target.result || null);
+        req.onerror   = e => rej(e);
+      });
+    }
+
+    async function _clearDirHandle() {
+      const db = await _openFolderDB();
+      return new Promise((res, rej) => {
+        const tx = db.transaction('handles', 'readwrite');
+        tx.objectStore('handles').delete('saveDir');
+        tx.oncomplete = res; tx.onerror = rej;
+      });
+    }
+
+    function _updateFolderUI(name) {
+      const box      = document.getElementById('folderPathBox');
+      const btnClear = document.getElementById('btnClearFolder');
+      if (name) {
+        box.textContent      = '📁 ' + name;
+        box.style.color      = 'var(--text)';
+        btnClear.style.display = 'inline-flex';
+      } else {
+        box.textContent      = 'No folder selected — files go to Downloads';
+        box.style.color      = 'var(--text-muted)';
+        btnClear.style.display = 'none';
+      }
+    }
+
+    async function pickSaveFolder() {
+      if (!window.showDirectoryPicker) {
+        alert('Your browser does not support folder picking.\nUse Chrome or Edge for this feature.\nFiles will download to the default Downloads folder.');
+        return;
+      }
+      try {
+        const handle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        _saveDirHandle = handle;
+        await _storeDirHandle(handle);
+        localStorage.setItem('dp_save_folder_name', handle.name);
+        _updateFolderUI(handle.name);
+      } catch (e) {
+        if (e.name !== 'AbortError') console.warn('Folder pick failed:', e);
+      }
+    }
+
+    async function clearSaveFolder() {
+      _saveDirHandle = null;
+      await _clearDirHandle();
+      localStorage.removeItem('dp_save_folder_name');
+      _updateFolderUI(null);
+    }
+
+    async function exportDataToFolder() {
+      const data = {
+        version: 2, exportedAt: new Date().toISOString(),
+        tasks, projects, followups,
+        projectNotes: projectNotes,
+        focus: localStorage.getItem('dp_focus') || ''
+      };
+      const json = JSON.stringify(data, null, 2);
+      const date = new Date().toISOString().slice(0, 10);
+      const filename = `pm-planner-backup-${date}.json`;
+
+      // Try writing to the chosen folder first
+      let handle = _saveDirHandle;
+      if (!handle) {
+        try { handle = await _loadDirHandle(); _saveDirHandle = handle; } catch(_) {}
+      }
+      if (handle) {
+        try {
+          // Re-request permission if needed (required after page reload)
+          if ((await handle.queryPermission({ mode: 'readwrite' })) !== 'granted') {
+            await handle.requestPermission({ mode: 'readwrite' });
+          }
+          const fh  = await handle.getFileHandle(filename, { create: true });
+          const w   = await fh.createWritable();
+          await w.write(json); await w.close();
+          return; // ✅ saved to folder silently
+        } catch(e) {
+          console.warn('Folder write failed, falling back to download:', e);
+        }
+      }
+      // Fallback: normal browser download
+      exportData();
+    }
+
+    // Restore folder name label on load (handle loaded lazily on first use)
+    (async () => {
+      const savedName = localStorage.getItem('dp_save_folder_name');
+      if (savedName) _updateFolderUI(savedName);
+    })();
 
     function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -3738,6 +3865,9 @@ const renderers = {
       document.getElementById('syncTokenInput').value = syncToken ? '•'.repeat(20) : '';
       updateSyncStatusBox();
       document.getElementById('autoDownloadChk').checked = autoDownload;
+      document.getElementById('autoDownloadFolderRow').style.display = autoDownload ? 'block' : 'none';
+      const savedName = localStorage.getItem('dp_save_folder_name');
+      if (savedName) _updateFolderUI(savedName);
       document.getElementById('settingsModal').classList.remove('hidden');
     }
     function closeSettingsModal() {
