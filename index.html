@@ -1411,11 +1411,19 @@
         <!-- Backup -->
         <div class="settings-section">
           <div class="settings-section-title">💾 Backup</div>
-          <div style="display:flex;gap:8px">
+          <div style="display:flex;gap:8px;margin-bottom:12px">
             <button class="btn btn-secondary btn-sm" onclick="exportData();closeSettingsModal()">⬇ Export JSON</button>
             <label class="btn btn-secondary btn-sm" style="cursor:pointer">
               ⬆ Import JSON<input type="file" accept=".json" onchange="importData(event);closeSettingsModal()" style="display:none">
             </label>
+          </div>
+          <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text)">
+            <input type="checkbox" id="autoDownloadChk" onchange="toggleAutoDownload(this.checked)"
+              style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer">
+            Auto-download JSON backup on every save
+          </label>
+          <div style="font-size:11px;color:var(--text-muted);margin-top:4px;margin-left:25px">
+            Downloads to your browser's default Downloads folder ~30 s after each change.
           </div>
         </div>
 
@@ -1451,16 +1459,29 @@
 
     // Cloud sync state
     let syncToken  = localStorage.getItem('dp_sync_token')   || '';
-    let syncGistId = localStorage.getItem('dp_sync_gist_id') || '';
-    let syncTimer  = null;
-    let _syncStatus = 'off'; // off | idle | syncing | synced | error
+    let syncGistId    = localStorage.getItem('dp_sync_gist_id') || '';
+    let syncTimer     = null;
+    let _syncStatus   = 'off'; // off | idle | syncing | synced | error
+    let autoDownload  = localStorage.getItem('dp_auto_download') === 'true';
+    let autoDownTimer = null;
 
     const PROJECT_COLORS = ['#2563eb','#16a34a','#8b5cf6','#ea580c','#dc2626','#0891b2','#d97706','#be185d'];
 
-    function persistTasks()    { localStorage.setItem('dp_tasks_v1',    JSON.stringify(tasks));        scheduleGistSave(); }
-    function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects));     scheduleGistSave(); }
-    function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups));    scheduleGistSave(); }
-    function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); }
+    function persistTasks()    { localStorage.setItem('dp_tasks_v1',    JSON.stringify(tasks));        scheduleGistSave(); scheduleAutoDownload(); }
+    function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects));     scheduleGistSave(); scheduleAutoDownload(); }
+    function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups));    scheduleGistSave(); scheduleAutoDownload(); }
+    function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); scheduleAutoDownload(); }
+
+    function scheduleAutoDownload() {
+      if (!autoDownload) return;
+      clearTimeout(autoDownTimer);
+      autoDownTimer = setTimeout(() => { exportData(); }, 30000); // 30 s after last change
+    }
+
+    function toggleAutoDownload(enabled) {
+      autoDownload = enabled;
+      localStorage.setItem('dp_auto_download', enabled ? 'true' : 'false');
+    }
 
     function uid() { return Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
 
@@ -3716,6 +3737,7 @@ const renderers = {
     function openSettingsModal() {
       document.getElementById('syncTokenInput').value = syncToken ? '•'.repeat(20) : '';
       updateSyncStatusBox();
+      document.getElementById('autoDownloadChk').checked = autoDownload;
       document.getElementById('settingsModal').classList.remove('hidden');
     }
     function closeSettingsModal() {
