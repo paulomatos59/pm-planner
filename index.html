@@ -2726,14 +2726,17 @@ const renderers = {
       }
 
       if (activeProjectTab === 'notes') {
+        const sortedNotes = pnotes.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         html += `
-          <div class="notes-grid">
-            <div class="note-add-card" onclick="openNoteModal(null,'${pid}')">
-              <div class="note-add-icon">📝</div>
-              <div>New Note</div>
-            </div>
-            ${pnotes.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).map(noteCard).join('')}
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn btn-primary btn-sm" onclick="openNoteModal(null,'${pid}')">＋ Add Note</button>
           </div>`;
+        if (sortedNotes.length === 0) {
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📝</div><h3>No notes yet</h3><p>Add notes to capture context, decisions, and references for this project.</p></div>`;
+        } else {
+          html += `<div class="section-header"><span class="section-title">Notes</span><span class="section-count">${sortedNotes.length}</span></div>
+                   <div class="task-list">${sortedNotes.map(noteCard).join('')}</div>`;
+        }
       }
 
       return html;
@@ -2878,14 +2881,17 @@ const renderers = {
       }
 
       if (activeProjectTab === 'notes') {
+        const sortedNotes = pnotes.sort((a,b) => new Date(b.updatedAt) - new Date(a.updatedAt));
         html += `
-          <div class="notes-grid">
-            <div class="note-add-card" onclick="openNoteModal(null,'${pid}')">
-              <div class="note-add-icon">📝</div>
-              <div>New Note</div>
-            </div>
-            ${pnotes.sort((a,b)=>new Date(b.updatedAt)-new Date(a.updatedAt)).map(noteCard).join('')}
+          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+            <button class="btn btn-primary btn-sm" onclick="openNoteModal(null,'${pid}')">＋ Add Note</button>
           </div>`;
+        if (sortedNotes.length === 0) {
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📝</div><h3>No notes yet</h3><p>Add notes to capture context, decisions, and references.</p></div>`;
+        } else {
+          html += `<div class="section-header"><span class="section-title">Notes</span><span class="section-count">${sortedNotes.length}</span></div>
+                   <div class="task-list">${sortedNotes.map(noteCard).join('')}</div>`;
+        }
       }
 
       return html;
@@ -2937,14 +2943,22 @@ const renderers = {
     }
 
     /* ==============================
-       NOTE CARD
+       NOTE CARD (list row)
     ============================== */
     function noteCard(n) {
       return `
-        <div class="note-card" onclick="openNoteModal('${n.id}')">
-          <div class="note-card-title">${esc(n.title)}</div>
-          <div class="note-card-preview">${esc(n.content)}</div>
-          <div class="note-card-date">${formatTs(n.updatedAt)}</div>
+        <div class="task-card" onclick="openNoteModal('${n.id}')">
+          <div style="font-size:18px;line-height:1;margin-right:4px;opacity:0.7">📝</div>
+          <div class="task-content">
+            <div class="task-title">${esc(n.title)}</div>
+            <div class="task-meta">
+              <span style="font-size:11px;color:var(--text-muted)">${formatTs(n.updatedAt)}</span>
+              ${n.content ? `<span style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${esc(n.content.slice(0,120))}${n.content.length>120?'…':''}</span>` : ''}
+            </div>
+          </div>
+          <div class="task-actions">
+            <button class="btn-icon" onclick="event.stopPropagation();openNoteModal('${n.id}')" title="Edit">✏️</button>
+          </div>
         </div>`;
     }
 
