@@ -1420,10 +1420,27 @@
           <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text)">
             <input type="checkbox" id="autoDownloadChk" onchange="toggleAutoDownload(this.checked)"
               style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer">
-            Auto-download JSON backup on every save
+            Auto-download JSON backup automatically
           </label>
-          <!-- Folder picker row -->
+          <!-- Auto-download options -->
           <div id="autoDownloadFolderRow" style="margin-top:10px;margin-left:25px;display:none">
+            <!-- Frequency -->
+            <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px">Frequency</div>
+            <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-alt,#f8fafc)" id="freqLblSave">
+                <input type="radio" name="backupFreq" value="save" onchange="setBackupFrequency('save')" style="accent-color:var(--primary)"> On every save
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-alt,#f8fafc)" id="freqLblHour">
+                <input type="radio" name="backupFreq" value="hour" onchange="setBackupFrequency('hour')" style="accent-color:var(--primary)"> Every hour
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-alt,#f8fafc)" id="freqLblDay">
+                <input type="radio" name="backupFreq" value="day" onchange="setBackupFrequency('day')" style="accent-color:var(--primary)"> Every day
+              </label>
+              <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;padding:5px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface-alt,#f8fafc)" id="freqLblWeek">
+                <input type="radio" name="backupFreq" value="week" onchange="setBackupFrequency('week')" style="accent-color:var(--primary)"> Every week
+              </label>
+            </div>
+            <div id="nextBackupHint" style="font-size:11px;color:var(--text-muted);margin-bottom:10px"></div>
             <div style="font-size:12px;font-weight:600;color:var(--text);margin-bottom:6px">Save location</div>
             <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
               <div id="folderPathBox" style="flex:1;min-width:0;font-size:12px;color:var(--text-muted);background:var(--surface-alt,#f8fafc);border:1px solid var(--border);border-radius:6px;padding:6px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">
@@ -1473,8 +1490,10 @@
     let syncGistId    = localStorage.getItem('dp_sync_gist_id') || '';
     let syncTimer     = null;
     let _syncStatus   = 'off'; // off | idle | syncing | synced | error
-    let autoDownload  = localStorage.getItem('dp_auto_download') === 'true';
-    let autoDownTimer = null;
+    let autoDownload    = localStorage.getItem('dp_auto_download') === 'true';
+    let autoDownTimer   = null;
+    let autoDownInterval= null;
+    let backupFrequency = localStorage.getItem('dp_backup_freq') || 'save'; // save | hour | day | week
 
     const PROJECT_COLORS = ['#2563eb','#16a34a','#8b5cf6','#ea580c','#dc2626','#0891b2','#d97706','#be185d'];
 
@@ -1484,7 +1503,7 @@
     function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); scheduleAutoDownload(); }
 
     function scheduleAutoDownload() {
-      if (!autoDownload) return;
+      if (!autoDownload || backupFrequency !== 'save') return;
       clearTimeout(autoDownTimer);
       autoDownTimer = setTimeout(() => { exportDataToFolder(); }, 30000); // 30 s after last change
     }
@@ -1493,6 +1512,54 @@
       autoDownload = enabled;
       localStorage.setItem('dp_auto_download', enabled ? 'true' : 'false');
       document.getElementById('autoDownloadFolderRow').style.display = enabled ? 'block' : 'none';
+      if (enabled) startBackupInterval();
+      else         stopBackupInterval();
+    }
+
+    const FREQ_MS = { hour: 3600000, day: 86400000, week: 604800000 };
+
+    function setBackupFrequency(freq) {
+      backupFrequency = freq;
+      localStorage.setItem('dp_backup_freq', freq);
+      stopBackupInterval();
+      if (autoDownload) startBackupInterval();
+      updateNextBackupHint();
+    }
+
+    function startBackupInterval() {
+      stopBackupInterval();
+      if (!autoDownload || backupFrequency === 'save') return;
+      const ms = FREQ_MS[backupFrequency];
+      // Fire immediately if we're past the last backup time, otherwise wait
+      const last = parseInt(localStorage.getItem('dp_last_backup') || '0', 10);
+      const due  = last + ms - Date.now();
+      const wait = due > 0 ? due : 0;
+      autoDownTimer = setTimeout(() => {
+        exportDataToFolder();
+        localStorage.setItem('dp_last_backup', Date.now().toString());
+        updateNextBackupHint();
+        autoDownInterval = setInterval(() => {
+          exportDataToFolder();
+          localStorage.setItem('dp_last_backup', Date.now().toString());
+          updateNextBackupHint();
+        }, ms);
+      }, wait);
+    }
+
+    function stopBackupInterval() {
+      clearTimeout(autoDownTimer);
+      clearInterval(autoDownInterval);
+      autoDownTimer = autoDownInterval = null;
+    }
+
+    function updateNextBackupHint() {
+      const el = document.getElementById('nextBackupHint');
+      if (!el) return;
+      if (!autoDownload || backupFrequency === 'save') { el.textContent = ''; return; }
+      const last = parseInt(localStorage.getItem('dp_last_backup') || '0', 10);
+      if (!last) { el.textContent = 'Next backup: at next change.'; return; }
+      const next = new Date(last + FREQ_MS[backupFrequency]);
+      el.textContent = `Last backup: ${new Date(last).toLocaleString()} · Next: ${next.toLocaleString()}`;
     }
 
     /* ── Folder picker (File System Access API) ── */
@@ -3866,6 +3933,10 @@ const renderers = {
       updateSyncStatusBox();
       document.getElementById('autoDownloadChk').checked = autoDownload;
       document.getElementById('autoDownloadFolderRow').style.display = autoDownload ? 'block' : 'none';
+      // Restore frequency radio
+      const radios = document.querySelectorAll('input[name="backupFreq"]');
+      radios.forEach(r => { r.checked = (r.value === backupFrequency); });
+      updateNextBackupHint();
       const savedName = localStorage.getItem('dp_save_folder_name');
       if (savedName) _updateFolderUI(savedName);
       document.getElementById('settingsModal').classList.remove('hidden');
@@ -4014,6 +4085,9 @@ const renderers = {
       if (_syncStatus === 'syncing') return; // don't overlap with an in-progress save
       await loadFromGist();
     }, 30000);
+
+    // Resume interval-based backup if it was enabled before page reload
+    if (autoDownload && backupFrequency !== 'save') startBackupInterval();
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
   <script>
