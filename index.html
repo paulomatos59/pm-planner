@@ -2089,11 +2089,16 @@ const renderers = {
                 const cap = capacitySettings;
                 const dow = d.date.getDay();
                 const isWorkDay = cap.workingDays.includes(dow);
-                const allocated = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.status !== 'Done' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
-                const pct   = isWorkDay && allocated > 0 ? Math.min(allocated / cap.hoursPerDay * 100, 100) : 0;
-                const safe  = cap.hoursPerDay * (1 - cap.bufferPct / 100);
-                const color = allocated > cap.hoursPerDay ? '#ef4444' : allocated >= safe ? '#f59e0b' : '#22c55e';
-                const capBar = isWorkDay ? `<div class="swd-cap" title="${allocated}h / ${cap.hoursPerDay}h"><div class="swd-cap-fill" style="width:${pct}%;background:${pct>0?color:'transparent'}"></div></div>` : '';
+                const totalH = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
+                const doneH  = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
+                const remH   = totalH - doneH;
+                const h      = cap.hoursPerDay;
+                const safe   = h * (1 - cap.bufferPct / 100);
+                const totalPct = isWorkDay && totalH > 0 ? Math.min(totalH / h * 100, 100) : 0;
+                const donePct  = isWorkDay && doneH  > 0 ? Math.min(doneH  / h * 100, 100) : 0;
+                const remPct   = Math.min(remH / h * 100, Math.max(0, 100 - donePct));
+                const loadColor = totalH > h ? '#ef4444' : totalH >= safe ? '#f59e0b' : '#2563eb';
+                const capBar = isWorkDay ? `<div class="swd-cap" title="${totalH}h total (${remH}h remaining) / ${h}h available" style="overflow:hidden"><div style="display:flex;height:100%;overflow:hidden"><div style="width:${donePct}%;background:#22c55e;height:100%"></div><div style="width:${remPct}%;background:${totalPct>0?loadColor:'transparent'};height:100%"></div></div></div>` : '';
                 return `<div class="summary-week-day ${d.isToday ? 's-today' : ''}" onclick="showView('week')">
                   <div class="swd-name">${d.date.toLocaleDateString('en-US',{weekday:'short'})}</div>
                   <div class="swd-num">${d.date.getDate()}</div>
@@ -3972,9 +3977,10 @@ const renderers = {
       const buf = parseFloat(document.getElementById('capBuffer').value) || 20;
       const safe = (h * (1 - buf / 100)).toFixed(1);
       document.getElementById('capPreview').innerHTML =
-        `🟢 <strong>Green</strong> — allocated &lt; ${safe}h &nbsp;·&nbsp; ` +
-        `🟡 <strong>Amber</strong> — ${safe}h – ${h}h &nbsp;·&nbsp; ` +
-        `🔴 <strong>Red</strong> — over ${h}h capacity`;
+        `🟢 <strong>Green segment</strong> — done tasks &nbsp;·&nbsp; ` +
+        `🔵 <strong>Blue</strong> — remaining &lt; ${safe}h &nbsp;·&nbsp; ` +
+        `🟡 <strong>Amber</strong> — ${safe}h–${h}h &nbsp;·&nbsp; ` +
+        `🔴 <strong>Red</strong> — over ${h}h`;
     }
     function saveCapacitySettings() {
       const workingDays = [];
@@ -3990,43 +3996,71 @@ const renderers = {
     }
 
     /* Returns capacity bar HTML for a given date string.
-       mode: 'week' | 'month' | 'today' */
+       mode: 'week' | 'month' | 'today'
+       % is based on ALL tasks (including Done); bar shows done (green) + remaining (blue/orange/red). */
     function dayCapacityBar(dayStr, mode) {
       const cap = capacitySettings;
       const d   = new Date(dayStr + 'T00:00:00');
       const dow = d.getDay();
       if (!cap.workingDays.includes(dow)) return '';
 
-      const allocated = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.status !== 'Done' && t.dueDate === dayStr && t.estimatedHours)
+      const totalHours = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours)
         .reduce((s, t) => s + (t.estimatedHours || 0), 0);
 
-      const h       = cap.hoursPerDay;
-      const safe    = h * (1 - cap.bufferPct / 100);
-      const pct     = Math.min(allocated / h * 100, 100);
-      const color   = allocated > h ? '#ef4444' : allocated >= safe ? '#f59e0b' : '#22c55e';
-      const title   = `${allocated}h scheduled / ${h}h capacity`;
+      const doneHours = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === dayStr && t.estimatedHours)
+        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
+
+      const remainingHours = totalHours - doneHours;
+
+      const h          = cap.hoursPerDay;
+      const safe       = h * (1 - cap.bufferPct / 100);
+      const totalPct   = Math.min(totalHours / h * 100, 100);
+      const donePct    = Math.min(doneHours / h * 100, 100);
+      const remPct     = Math.min(remainingHours / h * 100, Math.max(0, 100 - donePct));
+      const loadColor  = totalHours > h ? '#ef4444' : totalHours >= safe ? '#f59e0b' : '#2563eb';
+      const title      = `${totalHours}h total (${remainingHours}h remaining) / ${h}h available`;
 
       if (mode === 'month') {
-        if (allocated === 0) return `<div class="cap-bar-month"><div class="cap-bar-month-fill" style="width:0%"></div></div>`;
-        return `<div class="cap-bar-month" title="${title}"><div class="cap-bar-month-fill" style="width:${pct}%;background:${color}"></div></div>`;
+        if (totalHours === 0) return `<div class="cap-bar-month"><div style="width:0%"></div></div>`;
+        return `<div class="cap-bar-month" title="${title}" style="overflow:hidden">
+          <div style="display:flex;height:100%;border-radius:2px;overflow:hidden">
+            <div style="width:${donePct}%;background:#22c55e;height:100%"></div>
+            <div style="width:${remPct}%;background:${loadColor};height:100%"></div>
+          </div>
+        </div>`;
       }
       if (mode === 'today') {
+        const labelColor = totalHours === 0 ? 'var(--text-muted)' : totalHours > h ? '#ef4444' : totalHours >= safe ? '#f59e0b' : 'var(--text)';
         return `
           <div class="cap-today-banner">
             <div style="font-size:22px">⚡</div>
             <div class="cap-today-info">
               <div class="cap-today-label">Today's Capacity</div>
-              <div class="cap-today-nums" style="color:${allocated===0?'var(--text-muted)':color}">${allocated}h scheduled &nbsp;/&nbsp; ${h}h available</div>
-              <div class="cap-today-track"><div class="cap-today-fill" style="width:${pct}%;background:${color}"></div></div>
+              <div class="cap-today-nums" style="color:${labelColor}">
+                ${totalHours}h scheduled &nbsp;/&nbsp; ${h}h available
+                ${remainingHours > 0 ? `<span style="font-size:12px;font-weight:500;color:var(--text-muted)"> &nbsp;·&nbsp; ${remainingHours}h remaining</span>` : doneHours > 0 ? `<span style="font-size:12px;font-weight:500;color:#16a34a"> &nbsp;·&nbsp; All done ✓</span>` : ''}
+              </div>
+              <div class="cap-today-track" style="overflow:hidden">
+                <div style="display:flex;height:100%;border-radius:3px;overflow:hidden">
+                  <div style="width:${donePct}%;background:#22c55e;height:100%;transition:width 0.3s"></div>
+                  <div style="width:${remPct}%;background:${loadColor};height:100%;transition:width 0.3s"></div>
+                </div>
+              </div>
             </div>
-            <div style="font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap">${Math.round(pct)}%</div>
+            <div style="font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap">${Math.round(totalPct)}%</div>
           </div>`;
       }
       // week mode (default)
       return `<div class="cap-bar-wrap" title="${title}">
-        <div class="cap-bar-track"><div class="cap-bar-fill" style="width:${pct}%;background:${color}"></div></div>
-        <div class="cap-bar-label" style="color:${allocated===0?'var(--text-muted)':color}">${allocated > 0 ? allocated+'h' : '–'}</div>
+        <div class="cap-bar-track" style="overflow:hidden">
+          <div style="display:flex;height:100%;border-radius:2px;overflow:hidden">
+            <div style="width:${donePct}%;background:#22c55e;height:100%"></div>
+            <div style="width:${remPct}%;background:${loadColor};height:100%"></div>
+          </div>
+        </div>
+        <div class="cap-bar-label" style="color:${totalHours===0?'var(--text-muted)':loadColor}">${totalHours > 0 ? totalHours+'h' : '–'}</div>
       </div>`;
     }
     function toggleTokenVisibility() {
