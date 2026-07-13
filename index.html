@@ -2560,9 +2560,12 @@ const renderers = {
     ============================== */
     function renderToday() {
       const today        = todayStr();
-      const overdueTasks = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const todayTasks   = tasks.filter(t => (t.dueDate||'').slice(0,10) === today && !isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const focusNote    = localStorage.getItem('dp_focus') || '';
+      const overdueTasks  = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const allTodayTasks = tasks.filter(t => (t.dueDate||'').slice(0,10) === today && !isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId);
+      const todayOpen     = allTodayTasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayDone     = allTodayTasks.filter(t => t.status === 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayTasks    = [...todayOpen, ...todayDone];
+      const focusNote     = localStorage.getItem('dp_focus') || '';
 
       let html = `
         <div class="view-header">
@@ -2600,7 +2603,13 @@ const renderers = {
       } else if (todayTasks.length === 0) {
         html += `<div style="padding:16px;font-size:13px;color:var(--text-muted)">No additional tasks scheduled.</div>`;
       } else {
-        html += `<div class="task-list">${todayTasks.map(taskCardWithSubs).join('')}</div>`;
+        if (todayOpen.length > 0) {
+          html += `<div class="task-list">${todayOpen.map(taskCardWithSubs).join('')}</div>`;
+        }
+        if (todayDone.length > 0) {
+          html += `<div class="section-header" style="margin-top:14px"><span class="section-title">Done</span><span class="section-count">${todayDone.length}</span></div>
+                   <div class="task-list">${todayDone.map(taskCardWithSubs).join('')}</div>`;
+        }
       }
       return html;
     }
