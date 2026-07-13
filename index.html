@@ -3539,8 +3539,12 @@ const renderers = {
     }
 
     function showSubtaskInput() {
-      document.getElementById('subtaskAddRow').style.display = '';
-      document.getElementById('subtaskTitleInput').focus();
+      const row   = document.getElementById('subtaskAddRow');
+      const input = document.getElementById('subtaskTitleInput');
+      row.style.display = '';
+      input.focus();
+      // Scroll the input into view inside the modal
+      setTimeout(() => row.scrollIntoView({ behavior: 'smooth', block: 'nearest' }), 50);
     }
     function hideSubtaskInput() {
       document.getElementById('subtaskAddRow').style.display = 'none';
