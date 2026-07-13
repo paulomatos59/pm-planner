@@ -3213,7 +3213,7 @@ const renderers = {
       let html = taskCard(t);
       if (subs.length > 0) {
         html += `<div class="subtask-rows">` + subs.map(s => `
-          <div class="subtask-row ${s.status==='Done'?'done':''}" onclick="openTaskModal('${s.id}')">
+          <div class="subtask-row ${s.status==='Done'?'done':''}" onclick="event.stopPropagation();openTaskModal('${s.id}')">
             <div class="task-checkbox ${s.status==='Done'?'checked':''}" onclick="event.stopPropagation();toggleDone('${s.id}')"></div>
             <span class="subtask-row-title">${esc(s.title)}</span>
             <span class="status-badge status-${statusClass(s.status)}" style="font-size:10px">${s.status}</span>
