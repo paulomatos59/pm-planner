@@ -761,6 +761,25 @@
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* ── Subtasks ── */
+    .subtask-badge { display:inline-flex; align-items:center; gap:3px; font-size:11px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--bg); border:1px solid var(--border); color:var(--text-muted); cursor:default; }
+    .subtask-badge.has-done { background:var(--success-light); border-color:#bbf7d0; color:#15803d; }
+    .subtask-badge.all-done { background:var(--success-light); border-color:#bbf7d0; color:#15803d; }
+    .subtask-rows { margin-top:2px; margin-left:28px; display:flex; flex-direction:column; gap:3px; }
+    .subtask-row { display:flex; align-items:center; gap:8px; padding:6px 10px; background:var(--bg); border:1px solid var(--border); border-radius:7px; font-size:13px; cursor:pointer; transition:border-color 0.1s; }
+    .subtask-row:hover { border-color:var(--primary); }
+    .subtask-row.done { opacity:0.55; }
+    .subtask-row-title { flex:1; }
+    .subtask-row.done .subtask-row-title { text-decoration:line-through; color:var(--text-muted); }
+    /* Modal subtask section */
+    .subtask-section-divider { height:1px; background:var(--border); margin:16px 0 14px; }
+    .subtask-section-label { font-size:12px; font-weight:700; color:var(--text); display:flex; align-items:center; justify-content:space-between; margin-bottom:10px; }
+    .subtask-item-modal { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--bg); border:1px solid var(--border); border-radius:8px; margin-bottom:5px; }
+    .subtask-modal-title { flex:1; font-size:13px; font-weight:500; }
+    .done-sub { text-decoration:line-through; color:var(--text-muted); }
+    .subtask-parent-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; background:var(--purple-light); color:var(--purple); cursor:pointer; }
+    .subtask-parent-badge:hover { text-decoration:underline; }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
   <style>
@@ -1194,6 +1213,27 @@
             <div class="form-group">
               <label class="form-label">Est. Hours</label>
               <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+            </div>
+          </div>
+        </div>
+        <!-- ── Subtasks section (shown only when editing an existing task) ── -->
+        <div id="subtasksSection" style="display:none">
+          <div class="subtask-section-divider"></div>
+          <!-- Parent indicator (shown only when this task is itself a subtask) -->
+          <div id="parentTaskRow" style="display:none;margin-bottom:10px;font-size:12px;color:var(--text-muted)">
+            ↳ Subtask of &nbsp;<span id="parentTaskLink" class="subtask-parent-badge" onclick="openParentTask()"></span>
+          </div>
+          <div class="subtask-section-label">
+            <span>Subtasks &nbsp;<span id="subtaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
+            <button class="btn btn-secondary btn-sm" onclick="showSubtaskInput()">＋ Add subtask</button>
+          </div>
+          <div id="modalSubtaskList"></div>
+          <div id="subtaskAddRow" style="display:none;margin-top:8px">
+            <div style="display:flex;gap:6px">
+              <input type="text" class="form-input" id="subtaskTitleInput" placeholder="Subtask title…"
+                onkeydown="if(event.key==='Enter')saveSubtaskInline();if(event.key==='Escape')hideSubtaskInput()">
+              <button class="btn btn-primary btn-sm" onclick="saveSubtaskInline()">Add</button>
+              <button class="btn btn-secondary btn-sm" onclick="hideSubtaskInput()">✕</button>
             </div>
           </div>
         </div>
@@ -2482,7 +2522,7 @@ const renderers = {
       }
 
       // ── Section: Activities by priority ──
-      const open = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff');
+      const open = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId);
 
       html += `
         <div class="section-header" style="margin-bottom:16px">
@@ -2504,7 +2544,7 @@ const renderers = {
               <span style="font-size:13px;font-weight:800;color:${priColor[pri]}">${priLabel[pri]}</span>
               <span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--bg);border-radius:10px;padding:1px 8px">${group.length}</span>
             </div>
-            <div class="task-list">${group.map(taskCard).join('')}</div>
+            <div class="task-list">${group.map(taskCardWithSubs).join('')}</div>
           </div>`;
       });
 
@@ -2520,8 +2560,8 @@ const renderers = {
     ============================== */
     function renderToday() {
       const today        = todayStr();
-      const overdueTasks = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const todayTasks   = tasks.filter(t => (t.dueDate||'').slice(0,10) === today && !isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const overdueTasks = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayTasks   = tasks.filter(t => (t.dueDate||'').slice(0,10) === today && !isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const focusNote    = localStorage.getItem('dp_focus') || '';
 
       let html = `
@@ -2551,7 +2591,7 @@ const renderers = {
             </div>
           </div>
           <div class="section-header"><span class="section-title">Overdue</span><span class="section-count">${overdueTasks.length}</span></div>
-          <div class="task-list">${overdueTasks.map(taskCard).join('')}</div>`;
+          <div class="task-list">${overdueTasks.map(taskCardWithSubs).join('')}</div>`;
       }
 
       html += `<div class="section-header"><span class="section-title">Scheduled</span><span class="section-count">${todayTasks.length}</span></div>`;
@@ -2560,7 +2600,7 @@ const renderers = {
       } else if (todayTasks.length === 0) {
         html += `<div style="padding:16px;font-size:13px;color:var(--text-muted)">No additional tasks scheduled.</div>`;
       } else {
-        html += `<div class="task-list">${todayTasks.map(taskCard).join('')}</div>`;
+        html += `<div class="task-list">${todayTasks.map(taskCardWithSubs).join('')}</div>`;
       }
       return html;
     }
@@ -2704,6 +2744,7 @@ const renderers = {
     function renderAll() {
       const fs = filterState;
       const filtered = tasks.filter(t => {
+        if (t.parentId) return false; // subtasks shown under parent, not in main list
         const tt = fs.taskType || 'task';
         if (tt === 'task'    && t.taskType === 'timeoff') return false;
         if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
@@ -2795,7 +2836,7 @@ const renderers = {
        OVERDUE VIEW
     ============================== */
     function renderOverdue() {
-      const list = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff').sort((a,b) => {
+      const list = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => {
         if (a.dueDate < b.dueDate) return -1;
         if (a.dueDate > b.dueDate) return 1;
         return priorityOrder(a) - priorityOrder(b);
@@ -2803,7 +2844,7 @@ const renderers = {
       let html = `<div class="view-header"><div><div class="view-title">🚨 Overdue</div><div class="view-subtitle">${list.length} task${list.length!==1?'s':''} need attention</div></div></div>`;
       html += list.length === 0
         ? `<div class="empty-state"><div class="icon">🎉</div><h3>No overdue tasks!</h3><p>You're all caught up.</p></div>`
-        : `<div class="task-list">${list.map(taskCard).join('')}</div>`;
+        : `<div class="task-list">${list.map(taskCardWithSubs).join('')}</div>`;
       return html;
     }
 
@@ -2865,7 +2906,7 @@ const renderers = {
       const p = projects.find(x => x.id === pid);
       if (!p) return `<div class="empty-state"><div class="icon">⚠️</div><h3>Project not found</h3></div>`;
 
-      const ptasks = tasks.filter(t => t.projectId === pid);
+      const ptasks = tasks.filter(t => t.projectId === pid && !t.parentId);
       const pfu    = followups.filter(f => f.projectId === pid);
       const pnotes = projectNotes.filter(n => n.projectId === pid);
 
@@ -2911,11 +2952,11 @@ const renderers = {
         } else {
           if (open.length > 0) {
             html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
-                     <div class="task-list">${open.map(taskCard).join('')}</div>`;
+                     <div class="task-list">${open.map(taskCardWithSubs).join('')}</div>`;
           }
           if (done.length > 0) {
             html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Done</span><span class="section-count">${done.length}</span></div>
-                     <div class="task-list">${done.map(taskCard).join('')}</div>`;
+                     <div class="task-list">${done.map(taskCardWithSubs).join('')}</div>`;
           }
         }
       }
@@ -3021,7 +3062,7 @@ const renderers = {
       const p = projects.find(x => x.id === pid);
       if (!p) return `<div class="empty-state"><div class="icon">⚠️</div><h3>Item not found</h3></div>`;
 
-      const ptasks = tasks.filter(t => t.projectId === pid);
+      const ptasks = tasks.filter(t => t.projectId === pid && !t.parentId);
       const pfu    = followups.filter(f => f.projectId === pid);
       const pnotes = projectNotes.filter(n => n.projectId === pid);
       const openFu = pfu.filter(f => f.status !== 'Resolved').length;
@@ -3066,11 +3107,11 @@ const renderers = {
         } else {
           if (open.length > 0) {
             html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
-                     <div class="task-list">${open.map(taskCard).join('')}</div>`;
+                     <div class="task-list">${open.map(taskCardWithSubs).join('')}</div>`;
           }
           if (done.length > 0) {
             html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Done</span><span class="section-count">${done.length}</span></div>
-                     <div class="task-list">${done.map(taskCard).join('')}</div>`;
+                     <div class="task-list">${done.map(taskCardWithSubs).join('')}</div>`;
           }
         }
       }
@@ -3122,20 +3163,30 @@ const renderers = {
        TASK CARD
     ============================== */
     function taskCard(t) {
-      const od = isOverdue(t);
+      const od   = isOverdue(t);
       const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
+      const subs = tasks.filter(s => s.parentId === t.id);
+      const doneSubs = subs.filter(s => s.status === 'Done').length;
+      const subBadge = subs.length > 0
+        ? `<span class="subtask-badge ${doneSubs > 0 ? (doneSubs === subs.length ? 'all-done' : 'has-done') : ''}" onclick="event.stopPropagation();openTaskModal('${t.id}')">⊙ ${doneSubs}/${subs.length}</span>`
+        : '';
+      const parentBadge = t.parentId
+        ? `<span class="subtask-parent-badge" onclick="event.stopPropagation();openTaskModal('${t.parentId}')">↳ subtask</span>`
+        : '';
       return `
         <div class="task-card ${od?'overdue':''} ${t.status==='Done'?'done':''}" onclick="openTaskModal('${t.id}')">
           <div class="task-checkbox ${t.status==='Done'?'checked':''}" onclick="event.stopPropagation();toggleDone('${t.id}')"></div>
           <div class="task-content">
             <div class="task-title">${esc(t.title)}</div>
             <div class="task-meta">
+              ${parentBadge}
               <span class="task-chip chip-${chipClass(t.category)}">${t.category}</span>
               <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
               <span class="status-badge status-${statusClass(t.status)}">${t.status}</span>
               ${proj ? `<span class="chip-proj-link" onclick="event.stopPropagation();openProject('${proj.id}')">🗂 ${esc(proj.name)}</span>` : ''}
               ${t.dueDate ? `<span class="task-due ${od?'overdue-text':''}">📅 ${formatDue(t.dueDate)}${t.dueTime?' '+t.dueTime:''}</span>` : ''}
               ${t.estimatedHours ? `<span class="task-due">⏱ ${t.estimatedHours}h</span>` : ''}
+              ${subBadge}
               ${t.recurrence ? `<span class="recurrence-badge">🔁 ${t.recurrence.freq}</span>` : ''}
             </div>
             ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">${esc(t.description)}</div>` : ''}
@@ -3145,6 +3196,22 @@ const renderers = {
             <button class="btn-icon" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="Edit">✏️</button>
           </div>
         </div>`;
+    }
+
+    /* Renders a task card + its subtasks nested below (for list views) */
+    function taskCardWithSubs(t) {
+      const subs = tasks.filter(s => s.parentId === t.id);
+      let html = taskCard(t);
+      if (subs.length > 0) {
+        html += `<div class="subtask-rows">` + subs.map(s => `
+          <div class="subtask-row ${s.status==='Done'?'done':''}" onclick="openTaskModal('${s.id}')">
+            <div class="task-checkbox ${s.status==='Done'?'checked':''}" onclick="event.stopPropagation();toggleDone('${s.id}')"></div>
+            <span class="subtask-row-title">${esc(s.title)}</span>
+            <span class="status-badge status-${statusClass(s.status)}" style="font-size:10px">${s.status}</span>
+            ${s.estimatedHours ? `<span style="font-size:11px;color:var(--text-muted)">⏱ ${s.estimatedHours}h</span>` : ''}
+          </div>`).join('') + `</div>`;
+      }
+      return html;
     }
 
     /* ==============================
@@ -3332,6 +3399,26 @@ const renderers = {
       // Populate assign-to dropdown
       buildAssignOptions(document.getElementById('taskProjectLink'), t?.projectId || preProjectId || '');
 
+      // ── Subtasks section ──
+      const subsSection = document.getElementById('subtasksSection');
+      const parentRow   = document.getElementById('parentTaskRow');
+      if (!isNew && t && t.taskType !== 'timeoff') {
+        subsSection.style.display = '';
+        hideSubtaskInput();
+        renderModalSubtasks(t.id);
+        // Parent indicator
+        if (t.parentId) {
+          const parent = tasks.find(x => x.id === t.parentId);
+          if (parent) {
+            document.getElementById('parentTaskLink').textContent = parent.title;
+            parentRow.style.display = '';
+          } else { parentRow.style.display = 'none'; }
+        } else { parentRow.style.display = 'none'; }
+      } else {
+        subsSection.style.display = 'none';
+        parentRow.style.display = 'none';
+      }
+
       document.getElementById('taskModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('taskTitle').focus(), 80);
     }
@@ -3398,6 +3485,7 @@ const renderers = {
         dueTime:        document.getElementById('taskDueTime').value,
         status:         document.getElementById('taskStatus').value,
         estimatedHours: parseFloat(document.getElementById('taskHours').value) || null,
+        parentId:       existing?.parentId   || null,
         recurrence:     getRecurrenceFromForm(),
         createdAt:      existing?.createdAt  || new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
@@ -3416,11 +3504,111 @@ const renderers = {
     }
 
     function deleteTask() {
-      if (!editingTaskId || !confirm('Delete this task?')) return;
+      if (!editingTaskId || !confirm('Delete this task and its subtasks?')) return;
+      // Delete subtasks first
+      tasks = tasks.filter(t => t.parentId !== editingTaskId);
+      // Delete the task itself
       tasks = tasks.filter(t => t.id !== editingTaskId);
       persistTasks();
       closeTaskModal();
       showView(currentView);
+    }
+
+    /* ==============================
+       SUBTASK FUNCTIONS
+    ============================== */
+    function renderModalSubtasks(parentId) {
+      const subs  = tasks.filter(s => s.parentId === parentId);
+      const done  = subs.filter(s => s.status === 'Done').length;
+      const label = document.getElementById('subtaskCountLabel');
+      const list  = document.getElementById('modalSubtaskList');
+      label.textContent = subs.length > 0 ? `(${done}/${subs.length})` : '';
+      if (subs.length === 0) {
+        list.innerHTML = `<div style="font-size:13px;color:var(--text-muted);padding:4px 0 6px">No subtasks yet.</div>`;
+        return;
+      }
+      list.innerHTML = subs.map(s => `
+        <div class="subtask-item-modal" id="strow-${s.id}">
+          <div class="task-checkbox ${s.status==='Done'?'checked':''}"
+               onclick="toggleSubtaskModal('${s.id}','${parentId}')"></div>
+          <span class="subtask-modal-title ${s.status==='Done'?'done-sub':''}">${esc(s.title)}</span>
+          <span class="status-badge status-${statusClass(s.status)}" style="font-size:10px">${s.status}</span>
+          <button class="btn-icon" onclick="openSubtaskModal('${s.id}')" title="Edit">✏️</button>
+          <button class="btn-icon" onclick="deleteSubtaskModal('${s.id}','${parentId}')" title="Delete">🗑</button>
+        </div>`).join('');
+    }
+
+    function showSubtaskInput() {
+      document.getElementById('subtaskAddRow').style.display = '';
+      document.getElementById('subtaskTitleInput').focus();
+    }
+    function hideSubtaskInput() {
+      document.getElementById('subtaskAddRow').style.display = 'none';
+      document.getElementById('subtaskTitleInput').value = '';
+    }
+
+    function saveSubtaskInline() {
+      const title    = document.getElementById('subtaskTitleInput').value.trim();
+      if (!title) return;
+      const parentId = document.getElementById('taskId').value;
+      if (!parentId) return;
+      const parent   = tasks.find(t => t.id === parentId);
+      const sub = {
+        id: uid(), title,
+        taskType:       'task',
+        description:    '',
+        category:       parent?.category || 'Project',
+        priority:       parent?.priority || 'Medium',
+        projectId:      parent?.projectId || null,
+        startDate:      null,
+        dueDate:        parent?.dueDate || todayStr(),
+        dueTime:        '',
+        status:         'Todo',
+        estimatedHours: null,
+        parentId:       parentId,
+        recurrence:     null,
+        createdAt:      new Date().toISOString(),
+        updatedAt:      new Date().toISOString(),
+        completedAt:    null
+      };
+      tasks.push(sub);
+      persistTasks();
+      hideSubtaskInput();
+      renderModalSubtasks(parentId);
+      showView(currentView);
+    }
+
+    function toggleSubtaskModal(id, parentId) {
+      const s = tasks.find(x => x.id === id);
+      if (!s) return;
+      s.status      = s.status === 'Done' ? 'Todo' : 'Done';
+      s.completedAt = s.status === 'Done' ? new Date().toISOString() : null;
+      s.updatedAt   = new Date().toISOString();
+      persistTasks();
+      renderModalSubtasks(parentId);
+      showView(currentView);
+    }
+
+    function deleteSubtaskModal(id, parentId) {
+      if (!confirm('Delete this subtask?')) return;
+      tasks = tasks.filter(x => x.id !== id);
+      persistTasks();
+      renderModalSubtasks(parentId);
+      showView(currentView);
+    }
+
+    function openSubtaskModal(id) {
+      // Open the subtask itself for full editing
+      closeTaskModal();
+      setTimeout(() => openTaskModal(id), 50);
+    }
+
+    function openParentTask() {
+      const id = document.getElementById('taskId').value;
+      const t  = tasks.find(x => x.id === id);
+      if (!t?.parentId) return;
+      closeTaskModal();
+      setTimeout(() => openTaskModal(t.parentId), 50);
     }
 
     /* ==============================
