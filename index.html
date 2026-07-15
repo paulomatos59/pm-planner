@@ -467,6 +467,26 @@
     .rte-attach-chip a:hover { text-decoration: underline; }
     .rte-attach-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 0 0 0 2px; line-height: 1; }
     .rte-attach-remove:hover { color: var(--danger); }
+    /* ── Work Log ── */
+    .wl-section { margin-top: 16px; padding-top: 14px; border-top: 1px solid var(--border); }
+    .wl-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+    .wl-title { font-size: 11px; font-weight: 700; color: var(--text); text-transform: uppercase; letter-spacing: 0.5px; }
+    .wl-total { font-size: 11px; color: var(--text-muted); font-weight: 600; }
+    .wl-list { margin-bottom: 8px; }
+    .wl-entry {
+      display: flex; align-items: center; gap: 7px;
+      padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px;
+    }
+    .wl-entry:last-child { border-bottom: none; }
+    .wl-entry-date { font-weight: 600; color: var(--text); white-space: nowrap; flex-shrink: 0; }
+    .wl-entry-hours { font-weight: 700; color: var(--primary); flex-shrink: 0; white-space: nowrap; }
+    .wl-entry-note { flex: 1; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-style: italic; }
+    .wl-del { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 0; line-height: 1; flex-shrink: 0; }
+    .wl-del:hover { color: var(--danger); }
+    .wl-add-form { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 10px; margin-top: 6px; display: none; }
+    .wl-add-form.visible { display: block; }
+    .wl-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 8px; }
+    .wl-empty { font-size: 12px; color: var(--text-muted); font-style: italic; padding: 4px 0 8px; }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .btn { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
     .btn-primary   { background: var(--primary); color: white; }
@@ -647,6 +667,51 @@
     .summary-focus span { font-weight: 600; }
     .summary-focus-empty { font-size: 13px; margin-top: 12px; opacity: 0.65; cursor: pointer; display: inline-block; }
     .summary-focus-empty:hover { opacity: 1; text-decoration: underline; }
+    /* ── Timezone clocks ── */
+    .tz-row { display: flex; align-items: center; gap: 8px; margin-top: 14px; flex-wrap: wrap; }
+    .tz-chip {
+      position: relative; display: flex; flex-direction: column; align-items: center;
+      background: rgba(255,255,255,0.13); border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 10px; padding: 7px 14px 6px; min-width: 84px; cursor: default;
+      transition: background 0.15s;
+    }
+    .tz-chip:hover { background: rgba(255,255,255,0.22); }
+    .tz-chip:hover .tz-remove { opacity: 1; }
+    .tz-time { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.1; letter-spacing: 0.5px; }
+    .tz-label { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; }
+    .tz-day-offset { font-size: 9px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+    .tz-remove {
+      position: absolute; top: 4px; right: 5px; background: none; border: none;
+      color: rgba(255,255,255,0.5); cursor: pointer; font-size: 11px; line-height: 1;
+      opacity: 0; transition: opacity 0.15s; padding: 0;
+    }
+    .tz-remove:hover { color: #fff; }
+    .tz-add-btn {
+      background: rgba(255,255,255,0.1); border: 1.5px dashed rgba(255,255,255,0.35);
+      border-radius: 10px; color: rgba(255,255,255,0.6); font-size: 16px; cursor: pointer;
+      padding: 7px 14px; min-width: 40px; height: 56px; transition: all 0.15s; line-height: 1;
+    }
+    .tz-add-btn:hover { background: rgba(255,255,255,0.22); color: #fff; border-color: rgba(255,255,255,0.6); }
+    .tz-add-wrap { position: relative; }
+    .tz-popup {
+      position: absolute; top: calc(100% + 8px); left: 0; z-index: 500;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 28px rgba(0,0,0,0.18); width: 240px; overflow: hidden;
+    }
+    .tz-popup.hidden { display: none; }
+    .tz-popup-search {
+      width: 100%; border: none; border-bottom: 1px solid var(--border);
+      padding: 9px 12px; font-size: 13px; outline: none; font-family: inherit;
+      background: var(--surface); color: var(--text);
+    }
+    .tz-popup-list { max-height: 220px; overflow-y: auto; }
+    .tz-popup-item {
+      display: flex; justify-content: space-between; align-items: center;
+      padding: 8px 12px; font-size: 13px; cursor: pointer; color: var(--text);
+    }
+    .tz-popup-item:hover { background: var(--bg); }
+    .tz-popup-item .tz-pi-label { font-weight: 500; }
+    .tz-popup-item .tz-pi-offset { font-size: 11px; color: var(--text-muted); }
 
     .summary-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
     .summary-stat {
@@ -1166,7 +1231,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.0.2</div>
+      <div class="sidebar-version">v1.0.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1363,6 +1428,38 @@
             <div class="form-group">
               <label class="form-label">Est. Hours</label>
               <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+            </div>
+          </div>
+
+          <!-- Work Log (existing tasks only) -->
+          <div id="workLogSection" style="display:none">
+            <div class="wl-section">
+              <div class="wl-header">
+                <span class="wl-title">⏱ Work Log</span>
+                <span class="wl-total" id="wlTotal"></span>
+              </div>
+              <div class="wl-list" id="wlList"></div>
+              <button class="btn btn-secondary btn-sm" style="width:100%" onclick="wlShowForm()">＋ Log work</button>
+              <div class="wl-add-form" id="wlAddForm">
+                <div class="wl-form-row">
+                  <div>
+                    <label class="form-label">Date</label>
+                    <input type="date" class="form-input" id="wlDate">
+                  </div>
+                  <div>
+                    <label class="form-label">Hours</label>
+                    <input type="number" class="form-input" id="wlHours" placeholder="e.g. 2" min="0.25" step="0.25">
+                  </div>
+                </div>
+                <div class="form-group" style="margin-bottom:8px">
+                  <label class="form-label">Note (optional)</label>
+                  <input type="text" class="form-input" id="wlNote" placeholder="What did you work on?">
+                </div>
+                <div style="display:flex;gap:6px">
+                  <button class="btn btn-primary btn-sm" style="flex:1" onclick="wlSaveEntry()">Save</button>
+                  <button class="btn btn-secondary btn-sm" onclick="wlHideForm()">Cancel</button>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -2003,6 +2100,289 @@
     });
     /* ── End RTE ── */
 
+    /* ── Timezone Clocks ── */
+    let _tzInterval = null;
+
+    const TZ_PRESETS = [
+      { label: 'Lisbon',        tz: 'Europe/Lisbon' },
+      { label: 'London',        tz: 'Europe/London' },
+      { label: 'Paris',         tz: 'Europe/Paris' },
+      { label: 'Amsterdam',     tz: 'Europe/Amsterdam' },
+      { label: 'Berlin',        tz: 'Europe/Berlin' },
+      { label: 'Warsaw',        tz: 'Europe/Warsaw' },
+      { label: 'Helsinki',      tz: 'Europe/Helsinki' },
+      { label: 'Istanbul',      tz: 'Europe/Istanbul' },
+      { label: 'Dubai',         tz: 'Asia/Dubai' },
+      { label: 'Riyadh',        tz: 'Asia/Riyadh' },
+      { label: 'Kolkata',       tz: 'Asia/Kolkata' },
+      { label: 'Dhaka',         tz: 'Asia/Dhaka' },
+      { label: 'Bangkok',       tz: 'Asia/Bangkok' },
+      { label: 'Singapore',     tz: 'Asia/Singapore' },
+      { label: 'Shanghai',      tz: 'Asia/Shanghai' },
+      { label: 'Tokyo',         tz: 'Asia/Tokyo' },
+      { label: 'Seoul',         tz: 'Asia/Seoul' },
+      { label: 'Sydney',        tz: 'Australia/Sydney' },
+      { label: 'Melbourne',     tz: 'Australia/Melbourne' },
+      { label: 'Auckland',      tz: 'Pacific/Auckland' },
+      { label: 'UTC',           tz: 'UTC' },
+      { label: 'New York',      tz: 'America/New_York' },
+      { label: 'Chicago',       tz: 'America/Chicago' },
+      { label: 'Denver',        tz: 'America/Denver' },
+      { label: 'Los Angeles',   tz: 'America/Los_Angeles' },
+      { label: 'Toronto',       tz: 'America/Toronto' },
+      { label: 'Vancouver',     tz: 'America/Vancouver' },
+      { label: 'Mexico City',   tz: 'America/Mexico_City' },
+      { label: 'São Paulo',     tz: 'America/Sao_Paulo' },
+      { label: 'Buenos Aires',  tz: 'America/Argentina/Buenos_Aires' },
+      { label: 'Bogotá',        tz: 'America/Bogota' },
+      { label: 'Santiago',      tz: 'America/Santiago' },
+      { label: 'Reykjavik',     tz: 'Atlantic/Reykjavik' },
+      { label: 'Cape Town',     tz: 'Africa/Johannesburg' },
+      { label: 'Nairobi',       tz: 'Africa/Nairobi' },
+      { label: 'Lagos',         tz: 'Africa/Lagos' },
+      { label: 'Cairo',         tz: 'Africa/Cairo' },
+      { label: 'Karachi',       tz: 'Asia/Karachi' },
+      { label: 'Islamabad',     tz: 'Asia/Karachi' },
+      { label: 'Colombo',       tz: 'Asia/Colombo' },
+      { label: 'Kathmandu',     tz: 'Asia/Kathmandu' },
+      { label: 'Almaty',        tz: 'Asia/Almaty' },
+      { label: 'Taipei',        tz: 'Asia/Taipei' },
+      { label: 'Hong Kong',     tz: 'Asia/Hong_Kong' },
+      { label: 'Jakarta',       tz: 'Asia/Jakarta' },
+      { label: 'Manila',        tz: 'Asia/Manila' },
+      { label: 'Honolulu',      tz: 'Pacific/Honolulu' },
+      { label: 'Anchorage',     tz: 'America/Anchorage' },
+    ];
+
+    const TZ_STORAGE_KEY = 'dp_timezones';
+    const TZ_DEFAULT = [
+      { label: 'Lisbon',      tz: 'Europe/Lisbon' },
+      { label: 'London',      tz: 'Europe/London' },
+      { label: 'New York',    tz: 'America/New_York' },
+      { label: 'San José',    tz: 'America/Costa_Rica' },
+    ];
+
+    function tzLoad() {
+      try {
+        const stored = localStorage.getItem(TZ_STORAGE_KEY);
+        return stored ? JSON.parse(stored) : [...TZ_DEFAULT];
+      } catch { return [...TZ_DEFAULT]; }
+    }
+    function tzSave(list) {
+      localStorage.setItem(TZ_STORAGE_KEY, JSON.stringify(list));
+    }
+
+    function tzGetTime(tz) {
+      const now = new Date();
+      return new Intl.DateTimeFormat('en-GB', {
+        hour: '2-digit', minute: '2-digit', timeZone: tz, hour12: false
+      }).format(now);
+    }
+
+    function tzDayOffset(tz) {
+      const now   = new Date();
+      const local = new Date(now.toLocaleDateString('en-CA', { timeZone: Intl.DateTimeFormat().resolvedOptions().timeZone }));
+      const remote= new Date(now.toLocaleDateString('en-CA', { timeZone: tz }));
+      const diff  = Math.round((remote - local) / 86400000);
+      if (diff === 0)  return '';
+      if (diff === 1)  return '+1 day';
+      if (diff === -1) return '-1 day';
+      return diff > 0 ? `+${diff} days` : `${diff} days`;
+    }
+
+    function tzGetOffset(tz) {
+      const now = new Date();
+      const utcMs  = now.getTime() + now.getTimezoneOffset() * 60000;
+      const remote = new Date(new Intl.DateTimeFormat('en-US', {
+        timeZone: tz, year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false
+      }).format(now).replace(/(\d+)\/(\d+)\/(\d+),\s(\d+):(\d+):(\d+)/, '$3-$1-$2T$4:$5:$6'));
+      const offsetMin = Math.round((remote.getTime() - now.getTime()) / 60000) + now.getTimezoneOffset();
+      const h = Math.floor(Math.abs(offsetMin) / 60);
+      const m = Math.abs(offsetMin) % 60;
+      const sign = offsetMin >= 0 ? '+' : '−';
+      return `UTC${sign}${h}${m ? ':' + String(m).padStart(2,'0') : ''}`;
+    }
+
+    function tzRenderChips() {
+      const row = document.getElementById('tzRow');
+      if (!row) return;
+      const list = tzLoad();
+      row.innerHTML = list.map((item, i) => {
+        const time   = tzGetTime(item.tz);
+        const offset = tzDayOffset(item.tz);
+        return `<div class="tz-chip">
+          <button class="tz-remove" onclick="tzRemove(${i})" title="Remove">×</button>
+          <div class="tz-time" id="tz-t-${i}">${time}</div>
+          <div class="tz-label">${esc(item.label)}</div>
+          ${offset ? `<div class="tz-day-offset">${offset}</div>` : '<div class="tz-day-offset">&nbsp;</div>'}
+        </div>`;
+      }).join('') + `
+        <div class="tz-add-wrap">
+          <button class="tz-add-btn" onclick="tzTogglePopup(event)" title="Add timezone">＋</button>
+          <div class="tz-popup hidden" id="tzPopup">
+            <input class="tz-popup-search" id="tzSearch" type="text" placeholder="Search city…" oninput="tzFilterList(this.value)">
+            <div class="tz-popup-list" id="tzPopupList"></div>
+          </div>
+        </div>`;
+      tzFillPopupList('');
+    }
+
+    function tzTick() {
+      const list = tzLoad();
+      list.forEach((item, i) => {
+        const el = document.getElementById(`tz-t-${i}`);
+        if (el) el.textContent = tzGetTime(item.tz);
+      });
+    }
+
+    function tzInit() {
+      tzRenderChips();
+      _tzInterval = setInterval(tzTick, 1000);
+    }
+
+    function tzRemove(i) {
+      const list = tzLoad();
+      list.splice(i, 1);
+      tzSave(list);
+      tzRenderChips();
+    }
+
+    function tzTogglePopup(e) {
+      e.stopPropagation();
+      const popup = document.getElementById('tzPopup');
+      if (!popup) return;
+      popup.classList.toggle('hidden');
+      if (!popup.classList.contains('hidden')) {
+        const input = document.getElementById('tzSearch');
+        if (input) { input.value = ''; input.focus(); }
+        tzFillPopupList('');
+      }
+    }
+
+    function tzFillPopupList(filter) {
+      const container = document.getElementById('tzPopupList');
+      if (!container) return;
+      const current = tzLoad().map(x => x.tz);
+      const q = filter.toLowerCase();
+      const filtered = TZ_PRESETS.filter(p =>
+        !current.includes(p.tz) &&
+        (p.label.toLowerCase().includes(q) || p.tz.toLowerCase().includes(q))
+      );
+      if (filtered.length === 0) {
+        container.innerHTML = `<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">No results</div>`;
+        return;
+      }
+      const now = new Date();
+      container.innerHTML = filtered.map(p => {
+        const time = tzGetTime(p.tz);
+        return `<div class="tz-popup-item" onclick="tzAdd('${p.tz}','${p.label.replace(/'/,"\\'")}')">
+          <span class="tz-pi-label">${esc(p.label)}</span>
+          <span class="tz-pi-offset">${time}</span>
+        </div>`;
+      }).join('');
+    }
+
+    function tzFilterList(val) {
+      tzFillPopupList(val);
+    }
+
+    function tzAdd(tz, label) {
+      const list = tzLoad();
+      if (!list.find(x => x.tz === tz)) {
+        list.push({ label, tz });
+        tzSave(list);
+      }
+      const popup = document.getElementById('tzPopup');
+      if (popup) popup.classList.add('hidden');
+      tzRenderChips();
+    }
+
+    // Close popup on outside click
+    document.addEventListener('click', e => {
+      const popup = document.getElementById('tzPopup');
+      if (popup && !popup.closest('.tz-add-wrap').contains(e.target)) {
+        popup.classList.add('hidden');
+      }
+    });
+    /* ── End Timezone Clocks ── */
+
+    /* ── Work Log ── */
+    function wlRender() {
+      const taskId = document.getElementById('taskId')?.value;
+      const task   = tasks.find(t => t.id === taskId);
+      const log    = task?.workLog || [];
+      const totalH = log.reduce((s, e) => s + (e.hours || 0), 0);
+
+      document.getElementById('wlTotal').textContent =
+        totalH > 0 ? `${totalH}h logged` : '';
+
+      const list = document.getElementById('wlList');
+      if (!list) return;
+      if (log.length === 0) {
+        list.innerHTML = `<div class="wl-empty">No work logged yet.</div>`;
+      } else {
+        list.innerHTML = log.map(e => {
+          const d = new Date(e.date + 'T00:00:00');
+          const label = d.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+          return `<div class="wl-entry">
+            <span class="wl-entry-date">${label}</span>
+            <span class="wl-entry-hours">${e.hours}h</span>
+            ${e.note ? `<span class="wl-entry-note">${esc(e.note)}</span>` : '<span class="wl-entry-note"></span>'}
+            <button class="wl-del" onclick="wlDeleteEntry('${e.id}')" title="Remove">×</button>
+          </div>`;
+        }).join('');
+      }
+    }
+
+    function wlShowForm() {
+      const form = document.getElementById('wlAddForm');
+      if (!form) return;
+      form.classList.add('visible');
+      // Default date = today
+      const today = new Date();
+      document.getElementById('wlDate').value =
+        `${today.getFullYear()}-${pad(today.getMonth()+1)}-${pad(today.getDate())}`;
+      document.getElementById('wlHours').value = '';
+      document.getElementById('wlNote').value  = '';
+      document.getElementById('wlHours').focus();
+    }
+    function wlHideForm() {
+      const form = document.getElementById('wlAddForm');
+      if (form) form.classList.remove('visible');
+    }
+
+    function wlSaveEntry() {
+      const taskId = document.getElementById('taskId')?.value;
+      if (!taskId) return;
+      const date  = document.getElementById('wlDate').value;
+      const hours = parseFloat(document.getElementById('wlHours').value);
+      const note  = document.getElementById('wlNote').value.trim();
+      if (!date || !hours || hours <= 0) {
+        alert('Please enter a valid date and hours.');
+        return;
+      }
+      const task = tasks.find(t => t.id === taskId);
+      if (!task) return;
+      if (!task.workLog) task.workLog = [];
+      task.workLog.push({ id: uid(), date, hours, note });
+      task.workLog.sort((a, b) => a.date.localeCompare(b.date));
+      saveTasks();
+      wlHideForm();
+      wlRender();
+    }
+
+    function wlDeleteEntry(entryId) {
+      const taskId = document.getElementById('taskId')?.value;
+      if (!taskId) return;
+      const task = tasks.find(t => t.id === taskId);
+      if (!task?.workLog) return;
+      task.workLog = task.workLog.filter(e => e.id !== entryId);
+      saveTasks();
+      wlRender();
+    }
+    /* ── End Work Log ── */
+
     function chipClass(cat) {
       return { Meeting:'meeting', Project:'project', Admin:'admin', 'Follow-up':'followup', Personal:'personal' }[cat] || 'admin';
     }
@@ -2083,7 +2463,9 @@ const renderers = {
         gantt:            renderGantt
       };
 
+      if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
       document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
+      if (view === 'summary') tzInit();
       updateHeader();
     }
 
@@ -2198,6 +2580,7 @@ const renderers = {
           ${focusNote
             ? `<div class="summary-focus">🎯 <span>${esc(focusNote)}</span></div>`
             : `<div class="summary-focus-empty" onclick="showView('today')">＋ Set your daily focus →</div>`}
+          <div class="tz-row" id="tzRow"></div>
         </div>
 
         <div class="summary-stats">
@@ -3625,6 +4008,8 @@ const renderers = {
 
       document.getElementById('modalTitle').textContent  = isNew ? 'New Task' : 'Edit Task';
       document.getElementById('btnDelete').style.display = isNew ? 'none' : 'block';
+      document.getElementById('workLogSection').style.display = isNew ? 'none' : 'block';
+      if (!isNew) setTimeout(wlRender, 0);
       document.getElementById('taskId').value       = t?.id    || '';
       document.getElementById('taskTitle').value    = t?.title || '';
       document.getElementById('taskDesc').innerHTML  = t?.description || '';
@@ -3734,6 +4119,7 @@ const renderers = {
         status:         document.getElementById('taskStatus').value,
         estimatedHours: parseFloat(document.getElementById('taskHours').value) || null,
         parentId:       existing?.parentId   || null,
+        workLog:        existing?.workLog    || [],
         recurrence:     getRecurrenceFromForm(),
         createdAt:      existing?.createdAt  || new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
@@ -4444,23 +4830,48 @@ const renderers = {
       const dow = d.getDay();
       if (!cap.workingDays.includes(dow)) return '';
 
-      const totalHours = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours)
+      // Estimated hours: tasks due this day (skip if task has any workLog — those distribute separately)
+      const estHours = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours && !(t.workLog?.length))
         .reduce((s, t) => s + (t.estimatedHours || 0), 0);
 
-      const doneHours = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === dayStr && t.estimatedHours)
-        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
+      // Effective (logged) hours: workLog entries across ALL tasks for this day
+      const logHours = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.workLog?.length)
+        .reduce((s, t) => s + t.workLog
+          .filter(e => e.date === dayStr)
+          .reduce((a, e) => a + (e.hours || 0), 0), 0);
 
-      const remainingHours = totalHours - doneHours;
+      // Total for the bar = est (for tasks without worklog) + logged (for tasks with worklog)
+      const totalHours     = Math.round((estHours + logHours) * 100) / 100;
+
+      // Done: tasks with dueDate=day, no worklog, status=Done
+      const doneHoursEst = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === dayStr && t.estimatedHours && !(t.workLog?.length))
+        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
+      // Logged hours from Done tasks
+      const doneHoursLog = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.workLog?.length)
+        .reduce((s, t) => s + t.workLog
+          .filter(e => e.date === dayStr)
+          .reduce((a, e) => a + (e.hours || 0), 0), 0);
+      const doneHours      = Math.round((doneHoursEst + doneHoursLog) * 100) / 100;
+      const remainingHours = Math.round((totalHours - doneHours) * 100) / 100;
+      const hasLog         = logHours > 0;
 
       const h          = cap.hoursPerDay;
       const safe       = h * (1 - cap.bufferPct / 100);
       const totalPct   = Math.min(totalHours / h * 100, 100);
-      const donePct    = Math.min(doneHours / h * 100, 100);
+      const donePct    = Math.min(doneHours  / h * 100, 100);
+      const logPct     = Math.min(logHours   / h * 100, 100);
       const remPct     = Math.min(remainingHours / h * 100, Math.max(0, 100 - donePct));
       const loadColor  = totalHours > h ? '#ef4444' : totalHours >= safe ? '#f59e0b' : '#2563eb';
-      const title      = `${totalHours}h total (${remainingHours}h remaining) / ${h}h available`;
+      const title      = `Est: ${estHours}h · Logged: ${logHours}h · Available: ${h}h`;
+
+      const effectiveLine = hasLog
+        ? `<span style="color:#16a34a;font-weight:600">↳ ${logHours}h logged</span>`
+        : '';
+      const estLine = `${estHours}h est`;
 
       if (mode === 'month') {
         if (totalHours === 0) return `<div class="cap-bar-month"><div style="width:0%"></div></div>`;
@@ -4479,14 +4890,18 @@ const renderers = {
             <div class="cap-today-info">
               <div class="cap-today-label">Today's Capacity</div>
               <div class="cap-today-nums" style="color:${labelColor}">
-                ${totalHours}h scheduled &nbsp;/&nbsp; ${h}h available
+                ${h}h available
                 ${remainingHours > 0 ? `<span style="font-size:12px;font-weight:500;color:var(--text-muted)"> &nbsp;·&nbsp; ${remainingHours}h remaining</span>` : doneHours > 0 ? `<span style="font-size:12px;font-weight:500;color:#16a34a"> &nbsp;·&nbsp; All done ✓</span>` : ''}
               </div>
-              <div class="cap-today-track" style="overflow:hidden">
+              <div class="cap-today-track" style="overflow:hidden;position:relative">
                 <div style="display:flex;height:100%;border-radius:3px;overflow:hidden">
                   <div style="width:${donePct}%;background:#22c55e;height:100%;transition:width 0.3s"></div>
                   <div style="width:${remPct}%;background:${loadColor};height:100%;transition:width 0.3s"></div>
                 </div>
+              </div>
+              <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;flex-wrap:wrap">
+                <span style="color:var(--text-muted)">📋 Est: <b style="color:${loadColor}">${estHours + logHours}h</b></span>
+                ${hasLog ? `<span style="color:#16a34a">✓ Logged: <b>${logHours}h</b></span>` : ''}
               </div>
             </div>
             <div style="font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap">${Math.round(totalPct)}%</div>
@@ -4500,7 +4915,10 @@ const renderers = {
             <div style="width:${remPct}%;background:${loadColor};height:100%"></div>
           </div>
         </div>
-        <div class="cap-bar-label" style="color:${totalHours===0?'var(--text-muted)':loadColor}">${totalHours > 0 ? totalHours+'h' : '–'}</div>
+        <div class="cap-bar-label" style="font-size:10px;display:flex;flex-direction:column;gap:1px;align-items:flex-end">
+          <span style="color:${totalHours===0?'var(--text-muted)':loadColor};font-weight:700">${totalHours > 0 ? totalHours+'h' : '–'}</span>
+          ${hasLog ? `<span style="color:#16a34a;font-size:9px">${logHours}h ✓</span>` : ''}
+        </div>
       </div>`;
     }
     function toggleTokenVisibility() {
