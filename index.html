@@ -408,6 +408,61 @@
     }
     .form-textarea { resize: vertical; min-height: 72px; }
     .form-textarea-tall { min-height: 160px; }
+    /* ── Rich Text Editor ── */
+    .rte-wrapper {
+      border: 1px solid var(--border); border-radius: 8px; overflow: hidden;
+      transition: border-color 0.15s;
+    }
+    .rte-wrapper:focus-within { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,0.1); }
+    .rte-toolbar {
+      display: flex; align-items: center; gap: 2px; flex-wrap: wrap;
+      padding: 5px 8px; border-bottom: 1px solid var(--border); background: var(--bg);
+    }
+    .rte-btn {
+      background: none; border: none; cursor: pointer; border-radius: 4px;
+      padding: 3px 7px; font-size: 13px; color: var(--text); line-height: 1;
+      display: flex; align-items: center; justify-content: center;
+      min-width: 26px; height: 26px; flex-shrink: 0;
+    }
+    .rte-btn:hover { background: var(--border); }
+    .rte-btn.rte-active { background: var(--primary); color: #fff; border-radius: 4px; }
+    .rte-divider { width: 1px; height: 16px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+    .rte-editor {
+      padding: 10px 12px; min-height: 180px; max-height: 360px; overflow-y: auto;
+      outline: none; font-size: 14px; font-family: inherit; color: var(--text);
+      line-height: 1.6; background: var(--surface);
+    }
+    .rte-editor:empty::before {
+      content: attr(data-placeholder); color: var(--text-muted); pointer-events: none;
+    }
+    .rte-editor ul, .rte-editor ol { padding-left: 22px; margin: 4px 0; }
+    .rte-editor li { margin: 2px 0; }
+    .rte-editor a { color: var(--primary); text-decoration: underline; }
+    .rte-editor b, .rte-editor strong { font-weight: 700; }
+    .rte-color-wrap { position: relative; }
+    .rte-color-popup {
+      position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      padding: 8px; display: grid; grid-template-columns: repeat(6, 22px); gap: 4px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.18);
+    }
+    .rte-color-popup.hidden { display: none; }
+    .rte-color-swatch {
+      width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid transparent;
+      cursor: pointer; transition: transform 0.1s;
+    }
+    .rte-color-swatch:hover { border-color: var(--text); transform: scale(1.15); }
+    .rte-attachments { display: flex; flex-wrap: wrap; gap: 6px; padding: 6px 10px 8px; }
+    .rte-attachments:empty { display: none; }
+    .rte-attach-chip {
+      display: flex; align-items: center; gap: 5px;
+      background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+      padding: 3px 8px; font-size: 12px; color: var(--text); max-width: 260px;
+    }
+    .rte-attach-chip a { color: var(--primary); text-decoration: none; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 200px; }
+    .rte-attach-chip a:hover { text-decoration: underline; }
+    .rte-attach-remove { background: none; border: none; cursor: pointer; color: var(--text-muted); font-size: 13px; padding: 0 0 0 2px; line-height: 1; }
+    .rte-attach-remove:hover { color: var(--danger); }
     .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
     .btn { padding: 8px 18px; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; border: none; transition: all 0.15s; }
     .btn-primary   { background: var(--primary); color: white; }
@@ -1174,7 +1229,47 @@
           <!-- Description -->
           <div class="form-group">
             <label class="form-label">Description / Notes</label>
-            <textarea class="form-textarea" id="taskDesc" placeholder="Details, links, context…"></textarea>
+            <div class="rte-wrapper">
+              <div class="rte-toolbar">
+                <button type="button" class="rte-btn" id="rteBoldBtn" title="Bold" onmousedown="event.preventDefault();rteExec('bold');rteUpdateToolbar()"><b style="font-size:14px">B</b></button>
+                <div class="rte-divider"></div>
+                <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();rteExec('insertUnorderedList')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();rteExec('insertOrderedList')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <div class="rte-divider"></div>
+                <div class="rte-color-wrap">
+                  <button type="button" class="rte-btn" id="rteColorBtn" title="Text color" onmousedown="event.preventDefault();rteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
+                    <span style="font-weight:700;font-size:13px;line-height:1">A</span>
+                    <span id="rteColorBar" style="display:block;height:3px;width:16px;border-radius:2px;background:#e53e3e"></span>
+                  </button>
+                  <div class="rte-color-popup hidden" id="rteColorPicker">
+                    <div class="rte-color-swatch" style="background:#111827" title="Black"       onmousedown="event.preventDefault();rteSetColor('#111827')"></div>
+                    <div class="rte-color-swatch" style="background:#e53e3e" title="Red"         onmousedown="event.preventDefault();rteSetColor('#e53e3e')"></div>
+                    <div class="rte-color-swatch" style="background:#dd6b20" title="Orange"      onmousedown="event.preventDefault();rteSetColor('#dd6b20')"></div>
+                    <div class="rte-color-swatch" style="background:#d69e2e" title="Yellow"      onmousedown="event.preventDefault();rteSetColor('#d69e2e')"></div>
+                    <div class="rte-color-swatch" style="background:#38a169" title="Green"       onmousedown="event.preventDefault();rteSetColor('#38a169')"></div>
+                    <div class="rte-color-swatch" style="background:#3182ce" title="Blue"        onmousedown="event.preventDefault();rteSetColor('#3182ce')"></div>
+                    <div class="rte-color-swatch" style="background:#805ad5" title="Purple"      onmousedown="event.preventDefault();rteSetColor('#805ad5')"></div>
+                    <div class="rte-color-swatch" style="background:#d53f8c" title="Pink"        onmousedown="event.preventDefault();rteSetColor('#d53f8c')"></div>
+                    <div class="rte-color-swatch" style="background:#718096" title="Gray"        onmousedown="event.preventDefault();rteSetColor('#718096')"></div>
+                    <div class="rte-color-swatch" style="background:#a0aec0" title="Light gray"  onmousedown="event.preventDefault();rteSetColor('#a0aec0')"></div>
+                    <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" title="White" onmousedown="event.preventDefault();rteSetColor('#ffffff')"></div>
+                    <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" title="Remove color" onmousedown="event.preventDefault();rteRemoveColor()">✕</div>
+                  </div>
+                </div>
+                <div class="rte-divider"></div>
+                <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();rteAddLink()">🔗</button>
+                <label class="rte-btn" title="Attach file" style="cursor:pointer" onmousedown="event.preventDefault()">
+                  📎<input type="file" id="rteFileInput" style="display:none" onchange="rteAttachFile(this)" multiple>
+                </label>
+              </div>
+              <div class="rte-editor" id="taskDesc" contenteditable="true" data-placeholder="Details, links, context…"
+                   onkeyup="rteUpdateToolbar()" onmouseup="rteUpdateToolbar()" onfocus="rteUpdateToolbar()" onclick="rteCloseColorPicker()"></div>
+              <div class="rte-attachments" id="rteAttachments"></div>
+            </div>
           </div>
 
           <!-- Subtasks -->
@@ -1794,6 +1889,107 @@
     function esc(s) {
       return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
     }
+    function stripHtml(html) {
+      if (!html) return '';
+      const d = document.createElement('div');
+      d.innerHTML = html;
+      return d.textContent || d.innerText || '';
+    }
+
+    /* ── Rich Text Editor (RTE) ── */
+    let _rteCurrentColor = '#e53e3e';
+    let _rteAttachments  = []; // [{name, type, url}]
+
+    function rteExec(cmd, val) {
+      document.getElementById('taskDesc').focus();
+      document.execCommand(cmd, false, val || null);
+    }
+
+    function rteUpdateToolbar() {
+      const boldBtn = document.getElementById('rteBoldBtn');
+      if (boldBtn) boldBtn.classList.toggle('rte-active', document.queryCommandState('bold'));
+    }
+
+    function rteToggleColorPicker() {
+      document.getElementById('rteColorPicker').classList.toggle('hidden');
+    }
+    function rteCloseColorPicker() {
+      const p = document.getElementById('rteColorPicker');
+      if (p) p.classList.add('hidden');
+    }
+    function rteSetColor(hex) {
+      _rteCurrentColor = hex;
+      document.getElementById('rteColorBar').style.background = hex;
+      document.getElementById('rteColorPicker').classList.add('hidden');
+      document.getElementById('taskDesc').focus();
+      document.execCommand('foreColor', false, hex);
+    }
+    function rteRemoveColor() {
+      document.getElementById('rteColorPicker').classList.add('hidden');
+      document.getElementById('taskDesc').focus();
+      document.execCommand('removeFormat', false, null);
+    }
+
+    function rteAddLink() {
+      const sel = window.getSelection();
+      const selText = sel && !sel.isCollapsed ? sel.toString() : '';
+      const url = prompt('Enter URL:', 'https://');
+      if (!url || url === 'https://') return;
+      document.getElementById('taskDesc').focus();
+      if (selText) {
+        document.execCommand('createLink', false, url);
+      } else {
+        const txt = prompt('Link text:', url) || url;
+        document.execCommand('insertHTML', false,
+          `<a href="${url.replace(/"/g,'&quot;')}" target="_blank">${esc(txt)}</a>`);
+      }
+    }
+
+    function rteAttachFile(input) {
+      const MAX = 3 * 1024 * 1024; // 3 MB per file
+      Array.from(input.files).forEach(file => {
+        if (file.size > MAX) { alert(`"${file.name}" exceeds 3 MB and was skipped.`); return; }
+        const reader = new FileReader();
+        reader.onload = e => {
+          _rteAttachments.push({ name: file.name, type: file.type, url: e.target.result });
+          rteRenderAttachments();
+        };
+        reader.readAsDataURL(file);
+      });
+      input.value = '';
+    }
+    function rteRenderAttachments() {
+      const el = document.getElementById('rteAttachments');
+      if (!el) return;
+      el.innerHTML = _rteAttachments.map((a, i) => `
+        <div class="rte-attach-chip">
+          <span>📎</span>
+          <a href="${a.url}" download="${esc(a.name)}" title="${esc(a.name)}">${esc(a.name)}</a>
+          <button class="rte-attach-remove" onclick="rteRemoveAttachment(${i})" title="Remove">×</button>
+        </div>`).join('');
+    }
+    function rteRemoveAttachment(i) {
+      _rteAttachments.splice(i, 1);
+      rteRenderAttachments();
+    }
+    function rteLoadAttachments(arr) {
+      _rteAttachments = arr ? [...arr] : [];
+      rteRenderAttachments();
+    }
+    function rteGetAttachments() {
+      return [..._rteAttachments];
+    }
+
+    // Close color picker on outside click
+    document.addEventListener('click', e => {
+      const picker = document.getElementById('rteColorPicker');
+      const btn    = document.getElementById('rteColorBtn');
+      if (picker && btn && !picker.contains(e.target) && !btn.contains(e.target)) {
+        picker.classList.add('hidden');
+      }
+    });
+    /* ── End RTE ── */
+
     function chipClass(cat) {
       return { Meeting:'meeting', Project:'project', Admin:'admin', 'Follow-up':'followup', Personal:'personal' }[cat] || 'admin';
     }
@@ -2786,7 +2982,7 @@ const renderers = {
         if (tt === 'task'    && t.taskType === 'timeoff') return false;
         if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
         if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
-                           !(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
+                           !stripHtml(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
         if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
         if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
         if (fs.status   && t.status !== fs.status)   return false;
@@ -3226,7 +3422,7 @@ const renderers = {
               ${subBadge}
               ${t.recurrence ? `<span class="recurrence-badge">🔁 ${t.recurrence.freq}</span>` : ''}
             </div>
-            ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">${esc(t.description)}</div>` : ''}
+            ${t.description ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:600px">${esc(stripHtml(t.description))}</div>` : ''}
           </div>
           <div class="task-actions">
             <button class="btn-icon" onclick="event.stopPropagation();reschedule('${t.id}')" title="Reschedule">📅</button>
@@ -3418,7 +3614,8 @@ const renderers = {
       document.getElementById('btnDelete').style.display = isNew ? 'none' : 'block';
       document.getElementById('taskId').value       = t?.id    || '';
       document.getElementById('taskTitle').value    = t?.title || '';
-      document.getElementById('taskDesc').value     = t?.description || '';
+      document.getElementById('taskDesc').innerHTML  = t?.description || '';
+      rteLoadAttachments(t?.attachments || []);
       document.getElementById('taskCategory').value = t?.category || 'Project';
       document.getElementById('taskPriority').value = t?.priority || 'Medium';
       document.getElementById('taskStartDate').value = t?.startDate || (isNew ? todayStr() : '');
@@ -3513,7 +3710,8 @@ const renderers = {
       const task = {
         id, title,
         taskType:       document.getElementById('typeBtnTimeoff').classList.contains('active') ? 'timeoff' : 'task',
-        description:    document.getElementById('taskDesc').value.trim(),
+        description:    document.getElementById('taskDesc').innerHTML.trim(),
+        attachments:    rteGetAttachments(),
         category:       document.getElementById('taskCategory').value,
         priority:       document.getElementById('taskPriority').value,
         projectId:      document.getElementById('taskProjectLink').value || null,
