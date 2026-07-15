@@ -437,6 +437,10 @@
     }
     .rte-editor ul, .rte-editor ol { padding-left: 22px; margin: 4px 0; }
     .rte-editor li { margin: 2px 0; }
+    .rte-editor ul ul  { list-style-type: circle; }
+    .rte-editor ul ul ul { list-style-type: square; }
+    .rte-editor ol ol  { list-style-type: lower-alpha; }
+    .rte-editor ol ol ol { list-style-type: lower-roman; }
     .rte-editor a { color: var(--primary); text-decoration: underline; }
     .rte-editor b, .rte-editor strong { font-weight: 700; }
     .rte-color-wrap { position: relative; }
@@ -1270,7 +1274,7 @@
                 </label>
               </div>
               <div class="rte-editor" id="taskDesc" contenteditable="true" data-placeholder="Details, links, context…"
-                   onkeyup="rteUpdateToolbar()" onmouseup="rteUpdateToolbar()" onfocus="rteUpdateToolbar()" onclick="rteCloseColorPicker()"></div>
+                   onkeydown="rteKeyDown(event)" onkeyup="rteUpdateToolbar()" onmouseup="rteUpdateToolbar()" onfocus="rteUpdateToolbar()" onclick="rteCloseColorPicker()"></div>
               <div class="rte-attachments" id="rteAttachments"></div>
             </div>
           </div>
@@ -1906,6 +1910,12 @@
     function rteExec(cmd, val) {
       document.getElementById('taskDesc').focus();
       document.execCommand(cmd, false, val || null);
+    }
+    function rteKeyDown(e) {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        document.execCommand(e.shiftKey ? 'outdent' : 'indent');
+      }
     }
 
     function rteUpdateToolbar() {
