@@ -707,11 +707,12 @@
     .tz-popup-list { max-height: 220px; overflow-y: auto; }
     .tz-popup-item {
       display: flex; justify-content: space-between; align-items: center;
-      padding: 8px 12px; font-size: 13px; cursor: pointer; color: var(--text);
+      padding: 7px 12px; font-size: 13px; cursor: pointer; color: var(--text); gap: 8px;
     }
     .tz-popup-item:hover { background: var(--bg); }
-    .tz-popup-item .tz-pi-label { font-weight: 500; }
-    .tz-popup-item .tz-pi-offset { font-size: 11px; color: var(--text-muted); }
+    .tz-popup-item .tz-pi-label { font-weight: 600; white-space: nowrap; }
+    .tz-popup-item .tz-pi-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .tz-popup-item .tz-pi-time { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; margin-left: auto; }
 
     .summary-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
     .summary-stat {
@@ -1231,7 +1232,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.0.6</div>
+      <div class="sidebar-version">v1.0.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2260,6 +2261,24 @@
       }
     }
 
+    function tzGetInfo(tz) {
+      const now = new Date();
+      // Abbreviation (e.g. BST, EST, PDT)
+      const abbrParts = new Intl.DateTimeFormat('en', {
+        timeZone: tz, timeZoneName: 'short'
+      }).formatToParts(now);
+      const abbr = abbrParts.find(p => p.type === 'timeZoneName')?.value || '';
+      // UTC offset via locale string diff
+      const utcDate = new Date(now.toLocaleString('en-US', { timeZone: 'UTC' }));
+      const tzDate  = new Date(now.toLocaleString('en-US', { timeZone: tz }));
+      const diffMin = Math.round((tzDate - utcDate) / 60000);
+      const sign    = diffMin >= 0 ? '+' : '−';
+      const h       = Math.floor(Math.abs(diffMin) / 60);
+      const m       = Math.abs(diffMin) % 60;
+      const offset  = `UTC${sign}${h}${m ? ':' + String(m).padStart(2,'0') : ''}`;
+      return { abbr, offset };
+    }
+
     function tzFillPopupList(filter) {
       const container = document.getElementById('tzPopupList');
       if (!container) return;
@@ -2273,12 +2292,14 @@
         container.innerHTML = `<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">No results</div>`;
         return;
       }
-      const now = new Date();
       container.innerHTML = filtered.map(p => {
         const time = tzGetTime(p.tz);
+        const { abbr, offset } = tzGetInfo(p.tz);
+        const meta = abbr && abbr !== offset.replace('UTC','GMT') ? `${abbr}, ${offset}` : offset;
         return `<div class="tz-popup-item" onclick="tzAdd('${p.tz}','${p.label.replace(/'/,"\\'")}')">
           <span class="tz-pi-label">${esc(p.label)}</span>
-          <span class="tz-pi-offset">${time}</span>
+          <span class="tz-pi-meta">${meta}</span>
+          <span class="tz-pi-time">${time}</span>
         </div>`;
       }).join('');
     }
