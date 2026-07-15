@@ -373,6 +373,29 @@
       display: flex; gap: 8px; justify-content: flex-end;
       position: sticky; bottom: 0; background: var(--surface);
     }
+    /* ── Full-screen task modal ── */
+    #taskModal { padding: 0; align-items: stretch; justify-content: stretch; }
+    #taskModal .modal {
+      max-width: 100%; width: 100%; max-height: 100vh; height: 100vh;
+      border-radius: 0; margin: 0; overflow-y: unset;
+      display: flex; flex-direction: column;
+    }
+    #taskModal .modal-header { flex-shrink: 0; padding: 16px 24px 12px; }
+    #taskModal .modal-footer { flex-shrink: 0; }
+    #taskModal .modal-body-split {
+      flex: 1; overflow: hidden; padding: 0;
+      display: grid; grid-template-columns: 1fr 300px;
+    }
+    #taskModal .modal-main-col {
+      padding: 20px 28px 24px; overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    #taskModal .modal-sidebar-col {
+      padding: 20px 20px 24px; overflow-y: auto;
+      background: var(--bg);
+    }
+    #taskModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
+    #taskModal .form-textarea { min-height: 180px; }
     .form-group { margin-bottom: 14px; }
     .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
     .form-input, .form-select, .form-textarea {
@@ -878,6 +901,10 @@
         max-height: 92vh;
       }
       .modal-body { max-height: calc(92vh - 120px); overflow-y: auto; }
+      /* Task modal on mobile: stack columns vertically */
+      #taskModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
+      #taskModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
+      #taskModal .modal-sidebar-col { background: var(--bg); }
 
       /* Kanban: let it scroll horizontally */
       .kb2-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1084,122 +1111,98 @@
     <main class="main" id="mainContent"></main>
   </div>
 
-  <!-- ── Task Modal ── -->
+  <!-- ── Task Modal (full-screen) ── -->
   <div class="modal-overlay hidden" id="taskModal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title" id="modalTitle">New Task</h2>
+        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+          <h2 class="modal-title" id="modalTitle">New Task</h2>
+          <div class="task-type-toggle" style="margin:0;flex-shrink:0">
+            <button class="task-type-btn active" id="typeBtnTask" onclick="setTaskType('task')">📋 Work Task</button>
+            <button class="task-type-btn" id="typeBtnTimeoff" onclick="setTaskType('timeoff')">🌴 Time Off / Event</button>
+          </div>
+        </div>
         <button class="btn-close" onclick="closeTaskModal()">×</button>
       </div>
-      <div class="modal-body">
-        <input type="hidden" id="taskId">
-        <input type="hidden" id="taskProjectId">
 
-        <!-- Task type toggle -->
-        <div class="task-type-toggle">
-          <button class="task-type-btn active" id="typeBtnTask" onclick="setTaskType('task')">📋 Work Task</button>
-          <button class="task-type-btn" id="typeBtnTimeoff" onclick="setTaskType('timeoff')">🌴 Time Off / Event</button>
-        </div>
+      <div class="modal-body modal-body-split">
+        <!-- ── Left: main content ── -->
+        <div class="modal-main-col">
+          <input type="hidden" id="taskId">
+          <input type="hidden" id="taskProjectId">
 
-        <!-- Recurring (shown at top for quick access) -->
-        <div class="form-group" style="margin-bottom:8px">
-          <label class="recurrence-toggle" id="recurrenceToggleLabel">
-            <input type="checkbox" id="taskRecurring" onchange="toggleRecurrenceUI()">
-            🔁 Recurring task
-          </label>
-          <div id="recurrenceBody" style="display:none" class="recurrence-body">
-            <div class="form-group" style="margin:0;flex:1;min-width:120px">
-              <label class="form-label" style="margin-bottom:4px">Repeat every</label>
-              <div style="display:flex;gap:6px;align-items:center">
-                <input type="number" class="form-input" id="recurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
-                <select class="form-select" id="recurrenceFreq" onchange="toggleRecurrenceUI()" style="flex:1">
-                  <option value="daily">Day(s)</option>
-                  <option value="weekly" selected>Week(s)</option>
-                  <option value="monthly">Month(s)</option>
-                  <option value="yearly">Year(s)</option>
-                </select>
+          <!-- Recurring -->
+          <div class="form-group" style="margin-bottom:8px">
+            <label class="recurrence-toggle" id="recurrenceToggleLabel">
+              <input type="checkbox" id="taskRecurring" onchange="toggleRecurrenceUI()">
+              🔁 Recurring task
+            </label>
+            <div id="recurrenceBody" style="display:none" class="recurrence-body">
+              <div class="form-group" style="margin:0;flex:1;min-width:120px">
+                <label class="form-label" style="margin-bottom:4px">Repeat every</label>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="form-input" id="recurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
+                  <select class="form-select" id="recurrenceFreq" onchange="toggleRecurrenceUI()" style="flex:1">
+                    <option value="daily">Day(s)</option>
+                    <option value="weekly" selected>Week(s)</option>
+                    <option value="monthly">Month(s)</option>
+                    <option value="yearly">Year(s)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" id="recurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
+                <label class="form-label" style="margin-bottom:4px">On days</label>
+                <div style="display:flex;gap:4px;flex-wrap:wrap" id="recurrenceDayPicker">
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="1" style="display:none"><span class="recur-day-btn" data-day="1">Mo</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="2" style="display:none"><span class="recur-day-btn" data-day="2">Tu</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="3" style="display:none"><span class="recur-day-btn" data-day="3">We</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="4" style="display:none"><span class="recur-day-btn" data-day="4">Th</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="5" style="display:none"><span class="recur-day-btn" data-day="5">Fr</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
+                </div>
               </div>
             </div>
-            <div class="form-group" id="recurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
-              <label class="form-label" style="margin-bottom:4px">On days</label>
-              <div style="display:flex;gap:4px;flex-wrap:wrap" id="recurrenceDayPicker">
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="1" style="display:none"><span class="recur-day-btn" data-day="1">Mo</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="2" style="display:none"><span class="recur-day-btn" data-day="2">Tu</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="3" style="display:none"><span class="recur-day-btn" data-day="3">We</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="4" style="display:none"><span class="recur-day-btn" data-day="4">Th</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="5" style="display:none"><span class="recur-day-btn" data-day="5">Fr</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
-                <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
+          </div>
+
+          <!-- Title -->
+          <div class="form-group">
+            <label class="form-label" id="titleLabel">Task Title *</label>
+            <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
+          </div>
+
+          <!-- Description -->
+          <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <textarea class="form-textarea" id="taskDesc" placeholder="Details, links, context…"></textarea>
+          </div>
+
+          <!-- Subtasks -->
+          <div id="subtasksSection" style="display:none">
+            <div class="subtask-section-divider"></div>
+            <div id="parentTaskRow" style="display:none;margin-bottom:10px;font-size:12px;color:var(--text-muted)">
+              ↳ Subtask of &nbsp;<span id="parentTaskLink" class="subtask-parent-badge" onclick="openParentTask()"></span>
+            </div>
+            <div class="subtask-section-label">
+              <span>Subtasks &nbsp;<span id="subtaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
+              <button class="btn btn-secondary btn-sm" onclick="showSubtaskInput()">＋ Add subtask</button>
+            </div>
+            <div id="modalSubtaskList"></div>
+            <div id="subtaskAddRow" style="display:none;margin-top:8px">
+              <div style="display:flex;gap:6px">
+                <input type="text" class="form-input" id="subtaskTitleInput" placeholder="Subtask title…"
+                  onkeydown="if(event.key==='Enter')saveSubtaskInline();if(event.key==='Escape')hideSubtaskInput()">
+                <button class="btn btn-primary btn-sm" onclick="saveSubtaskInline()">Add</button>
+                <button class="btn btn-secondary btn-sm" onclick="hideSubtaskInput()">✕</button>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Shared: title -->
-        <div class="form-group">
-          <label class="form-label" id="titleLabel">Task Title *</label>
-          <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Description / Notes</label>
-          <textarea class="form-textarea" id="taskDesc" placeholder="Details, links, context…"></textarea>
-        </div>
-
-        <!-- Work Task fields -->
-        <div id="workFields">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Category</label>
-              <select class="form-select" id="taskCategory">
-                <option value="Project">🚀 Project</option>
-                <option value="Meeting">🤝 Meeting</option>
-                <option value="Admin">⚙️ Admin</option>
-                <option value="Follow-up">📌 Follow-up</option>
-                <option value="Personal">👤 Personal</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Priority</label>
-              <select class="form-select" id="taskPriority">
-                <option value="High">🔴 High</option>
-                <option value="Medium" selected>🟡 Medium</option>
-                <option value="Low">🟢 Low</option>
-              </select>
-            </div>
-          </div>
-          <div class="form-group">
-            <label class="form-label">Assign to</label>
-            <select class="form-select" id="taskProjectLink">
-              <option value="">— None —</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Dates (shared but labels change) -->
-        <div class="form-row">
-          <div class="form-group">
-            <label class="form-label" id="startDateLabel">Start Date</label>
-            <input type="date" class="form-input" id="taskStartDate" onchange="validateTaskDates()">
-          </div>
-          <div class="form-group">
-            <label class="form-label" id="dueDateLabel">Due Date</label>
-            <input type="date" class="form-input" id="taskDueDate" onchange="validateTaskDates()">
-          </div>
-        </div>
-        <div id="taskDateError" style="display:none;color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:4px">
-          ⚠ Start date cannot be after the due date.
-        </div>
-
-        <!-- Work Task only: time, status, hours -->
-        <div id="workOnlyFields">
-          <div class="form-row">
-            <div class="form-group">
-              <label class="form-label">Due Time (optional)</label>
-              <input type="time" class="form-input" id="taskDueTime">
-            </div>
-            <div class="form-group"></div>
-          </div>
-          <div class="form-row">
+        <!-- ── Right: sidebar (metadata) ── -->
+        <div class="modal-sidebar-col">
+          <!-- Work Task fields -->
+          <div id="workFields">
             <div class="form-group">
               <label class="form-label">Status</label>
               <select class="form-select" id="taskStatus">
@@ -1211,33 +1214,58 @@
               </select>
             </div>
             <div class="form-group">
+              <label class="form-label">Priority</label>
+              <select class="form-select" id="taskPriority">
+                <option value="High">🔴 High</option>
+                <option value="Medium" selected>🟡 Medium</option>
+                <option value="Low">🟢 Low</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Category</label>
+              <select class="form-select" id="taskCategory">
+                <option value="Project">🚀 Project</option>
+                <option value="Meeting">🤝 Meeting</option>
+                <option value="Admin">⚙️ Admin</option>
+                <option value="Follow-up">📌 Follow-up</option>
+                <option value="Personal">👤 Personal</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Assign to</label>
+              <select class="form-select" id="taskProjectLink">
+                <option value="">— None —</option>
+              </select>
+            </div>
+          </div>
+
+          <!-- Dates -->
+          <div class="form-group">
+            <label class="form-label" id="startDateLabel">Start Date</label>
+            <input type="date" class="form-input" id="taskStartDate" onchange="validateTaskDates()">
+          </div>
+          <div class="form-group">
+            <label class="form-label" id="dueDateLabel">Due Date</label>
+            <input type="date" class="form-input" id="taskDueDate" onchange="validateTaskDates()">
+          </div>
+          <div id="taskDateError" style="display:none;color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:8px">
+            ⚠ Start date cannot be after the due date.
+          </div>
+
+          <!-- Work-only: time + hours -->
+          <div id="workOnlyFields">
+            <div class="form-group">
+              <label class="form-label">Due Time (optional)</label>
+              <input type="time" class="form-input" id="taskDueTime">
+            </div>
+            <div class="form-group">
               <label class="form-label">Est. Hours</label>
               <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
             </div>
           </div>
         </div>
-        <!-- ── Subtasks section (shown only when editing an existing task) ── -->
-        <div id="subtasksSection" style="display:none">
-          <div class="subtask-section-divider"></div>
-          <!-- Parent indicator (shown only when this task is itself a subtask) -->
-          <div id="parentTaskRow" style="display:none;margin-bottom:10px;font-size:12px;color:var(--text-muted)">
-            ↳ Subtask of &nbsp;<span id="parentTaskLink" class="subtask-parent-badge" onclick="openParentTask()"></span>
-          </div>
-          <div class="subtask-section-label">
-            <span>Subtasks &nbsp;<span id="subtaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
-            <button class="btn btn-secondary btn-sm" onclick="showSubtaskInput()">＋ Add subtask</button>
-          </div>
-          <div id="modalSubtaskList"></div>
-          <div id="subtaskAddRow" style="display:none;margin-top:8px">
-            <div style="display:flex;gap:6px">
-              <input type="text" class="form-input" id="subtaskTitleInput" placeholder="Subtask title…"
-                onkeydown="if(event.key==='Enter')saveSubtaskInline();if(event.key==='Escape')hideSubtaskInput()">
-              <button class="btn btn-primary btn-sm" onclick="saveSubtaskInline()">Add</button>
-              <button class="btn btn-secondary btn-sm" onclick="hideSubtaskInput()">✕</button>
-            </div>
-          </div>
-        </div>
       </div>
+
       <div class="modal-footer">
         <button class="btn btn-danger" id="btnDelete" style="display:none;margin-right:auto" onclick="deleteTask()">Delete</button>
         <button class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
