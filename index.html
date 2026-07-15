@@ -679,7 +679,7 @@
     .tz-chip:hover .tz-remove { opacity: 1; }
     .tz-time { font-size: 17px; font-weight: 700; color: #fff; line-height: 1.1; letter-spacing: 0.5px; }
     .tz-label { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 2px; text-transform: uppercase; letter-spacing: 0.6px; white-space: nowrap; }
-    .tz-day-offset { font-size: 9px; color: rgba(255,255,255,0.45); margin-top: 1px; }
+    .tz-day-offset { font-size: 9px; color: rgba(255,255,255,0.55); margin-top: 2px; white-space: nowrap; }
     .tz-remove {
       position: absolute; top: 4px; right: 5px; background: none; border: none;
       color: rgba(255,255,255,0.5); cursor: pointer; font-size: 11px; line-height: 1;
@@ -1232,7 +1232,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.0.7</div>
+      <div class="sidebar-version">v1.0.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2210,13 +2210,15 @@
       if (!row) return;
       const list = tzLoad();
       row.innerHTML = list.map((item, i) => {
-        const time   = tzGetTime(item.tz);
-        const offset = tzDayOffset(item.tz);
+        const time      = tzGetTime(item.tz);
+        const dayOffset = tzDayOffset(item.tz);
+        const { abbr, offset } = tzGetInfo(item.tz);
+        const tzMeta    = abbr ? `${abbr} · ${offset}` : offset;
         return `<div class="tz-chip">
           <button class="tz-remove" onclick="tzRemove(${i})" title="Remove">×</button>
           <div class="tz-time" id="tz-t-${i}">${time}</div>
           <div class="tz-label">${esc(item.label)}</div>
-          ${offset ? `<div class="tz-day-offset">${offset}</div>` : '<div class="tz-day-offset">&nbsp;</div>'}
+          <div class="tz-day-offset">${tzMeta}${dayOffset ? ' · ' + dayOffset : ''}</div>
         </div>`;
       }).join('') + `
         <div class="tz-add-wrap">
