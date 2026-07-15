@@ -1232,7 +1232,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.0</div>
+      <div class="sidebar-version">v1.1.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2390,7 +2390,7 @@
       if (!task.workLog) task.workLog = [];
       task.workLog.push({ id: uid(), date, hours, note });
       task.workLog.sort((a, b) => a.date.localeCompare(b.date));
-      saveTasks();
+      persistTasks();
       wlHideForm();
       wlRender();
     }
@@ -2401,7 +2401,7 @@
       const task = tasks.find(t => t.id === taskId);
       if (!task?.workLog) return;
       task.workLog = task.workLog.filter(e => e.id !== entryId);
-      saveTasks();
+      persistTasks();
       wlRender();
     }
     /* ── End Work Log ── */
