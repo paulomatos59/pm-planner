@@ -1231,7 +1231,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.0.4</div>
+      <div class="sidebar-version">v1.0.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1257,6 +1257,12 @@
         <div class="modal-main-col">
           <input type="hidden" id="taskId">
           <input type="hidden" id="taskProjectId">
+
+          <!-- Title -->
+          <div class="form-group">
+            <label class="form-label" id="titleLabel">Task Title *</label>
+            <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
+          </div>
 
           <!-- Recurring -->
           <div class="form-group" style="margin-bottom:8px">
@@ -1290,12 +1296,6 @@
                 </div>
               </div>
             </div>
-          </div>
-
-          <!-- Title -->
-          <div class="form-group">
-            <label class="form-label" id="titleLabel">Task Title *</label>
-            <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
           </div>
 
           <!-- Description -->
