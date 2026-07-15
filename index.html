@@ -1232,7 +1232,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.0.8</div>
+      <div class="sidebar-version">v1.0.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4855,94 +4855,107 @@ const renderers = {
       const dow = d.getDay();
       if (!cap.workingDays.includes(dow)) return '';
 
-      // Estimated hours: tasks due this day (skip if task has any workLog — those distribute separately)
+      const h    = cap.hoursPerDay;
+      const safe = h * (1 - cap.bufferPct / 100);
+
+      // ── Estimate bar: ALL estimatedHours for tasks due this day ──
       const estHours = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours && !(t.workLog?.length))
+        .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours)
+        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
+      const estDoneHours = tasks
+        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === dayStr && t.estimatedHours)
         .reduce((s, t) => s + (t.estimatedHours || 0), 0);
 
-      // Effective (logged) hours: workLog entries across ALL tasks for this day
+      // ── Effective bar: workLog entries across all tasks for this day ──
       const logHours = tasks
         .filter(t => t.taskType !== 'timeoff' && t.workLog?.length)
         .reduce((s, t) => s + t.workLog
           .filter(e => e.date === dayStr)
           .reduce((a, e) => a + (e.hours || 0), 0), 0);
 
-      // Total for the bar = est (for tasks without worklog) + logged (for tasks with worklog)
-      const totalHours     = Math.round((estHours + logHours) * 100) / 100;
+      const r = v => Math.round(v * 100) / 100;
+      const estRemHours = r(estHours - estDoneHours);
+      const hasLog      = logHours > 0;
 
-      // Done: tasks with dueDate=day, no worklog, status=Done
-      const doneHoursEst = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === dayStr && t.estimatedHours && !(t.workLog?.length))
-        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
-      // Logged hours from Done tasks
-      const doneHoursLog = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.workLog?.length)
-        .reduce((s, t) => s + t.workLog
-          .filter(e => e.date === dayStr)
-          .reduce((a, e) => a + (e.hours || 0), 0), 0);
-      const doneHours      = Math.round((doneHoursEst + doneHoursLog) * 100) / 100;
-      const remainingHours = Math.round((totalHours - doneHours) * 100) / 100;
-      const hasLog         = logHours > 0;
+      // Est bar percentages
+      const estLoadColor = estHours > h ? '#ef4444' : estHours >= safe ? '#f59e0b' : '#2563eb';
+      const estDonePct   = Math.min(estDoneHours / h * 100, 100);
+      const estRemPct    = Math.min(estRemHours  / h * 100, Math.max(0, 100 - estDonePct));
+      const estTotalPct  = Math.min(estHours / h * 100, 100);
 
-      const h          = cap.hoursPerDay;
-      const safe       = h * (1 - cap.bufferPct / 100);
-      const totalPct   = Math.min(totalHours / h * 100, 100);
-      const donePct    = Math.min(doneHours  / h * 100, 100);
-      const logPct     = Math.min(logHours   / h * 100, 100);
-      const remPct     = Math.min(remainingHours / h * 100, Math.max(0, 100 - donePct));
-      const loadColor  = totalHours > h ? '#ef4444' : totalHours >= safe ? '#f59e0b' : '#2563eb';
-      const title      = `Est: ${estHours}h · Logged: ${logHours}h · Available: ${h}h`;
+      // Log bar percentage (solid #16a34a)
+      const logPct = Math.min(logHours / h * 100, 100);
+      const logColor = logHours > h ? '#ef4444' : logHours >= safe ? '#f59e0b' : '#16a34a';
 
-      const effectiveLine = hasLog
-        ? `<span style="color:#16a34a;font-weight:600">↳ ${logHours}h logged</span>`
-        : '';
-      const estLine = `${estHours}h est`;
+      const title = `Est: ${estHours}h · Logged: ${logHours}h · Available: ${h}h`;
+
+      // helper: a labeled two-segment bar row
+      const barRow = (label, donePct, remPct, color, valueStr, subLabel) => `
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:5px">
+          <div style="font-size:11px;color:var(--text-muted);width:64px;flex-shrink:0">${label}</div>
+          <div style="flex:1;height:7px;background:var(--border);border-radius:4px;overflow:hidden">
+            <div style="display:flex;height:100%">
+              <div style="width:${donePct}%;background:#22c55e;transition:width 0.3s"></div>
+              <div style="width:${remPct}%;background:${color};transition:width 0.3s"></div>
+            </div>
+          </div>
+          <div style="font-size:11px;font-weight:700;color:${color || 'var(--text-muted)'};width:32px;text-align:right;flex-shrink:0">${valueStr}</div>
+          ${subLabel ? `<div style="font-size:10px;color:var(--text-muted);flex-shrink:0">${subLabel}</div>` : ''}
+        </div>`;
 
       if (mode === 'month') {
-        if (totalHours === 0) return `<div class="cap-bar-month"><div style="width:0%"></div></div>`;
-        return `<div class="cap-bar-month" title="${title}" style="overflow:hidden">
-          <div style="display:flex;height:100%;border-radius:2px;overflow:hidden">
-            <div style="width:${donePct}%;background:#22c55e;height:100%"></div>
-            <div style="width:${remPct}%;background:${loadColor};height:100%"></div>
+        if (estHours === 0 && logHours === 0)
+          return `<div class="cap-bar-month"><div style="width:0%"></div></div>`;
+        return `<div class="cap-bar-month" title="${title}" style="display:flex;flex-direction:column;gap:2px;height:auto;padding:1px 0">
+          <div style="display:flex;height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+            <div style="width:${estDonePct}%;background:#22c55e"></div>
+            <div style="width:${estRemPct}%;background:${estLoadColor}"></div>
           </div>
+          ${hasLog ? `<div style="height:4px;background:var(--border);border-radius:2px;overflow:hidden">
+            <div style="width:${logPct}%;background:${logColor};height:100%"></div>
+          </div>` : ''}
         </div>`;
       }
+
       if (mode === 'today') {
-        const labelColor = totalHours === 0 ? 'var(--text-muted)' : totalHours > h ? '#ef4444' : totalHours >= safe ? '#f59e0b' : 'var(--text)';
         return `
           <div class="cap-today-banner">
             <div style="font-size:22px">⚡</div>
             <div class="cap-today-info">
-              <div class="cap-today-label">Today's Capacity</div>
-              <div class="cap-today-nums" style="color:${labelColor}">
-                ${h}h available
-                ${remainingHours > 0 ? `<span style="font-size:12px;font-weight:500;color:var(--text-muted)"> &nbsp;·&nbsp; ${remainingHours}h remaining</span>` : doneHours > 0 ? `<span style="font-size:12px;font-weight:500;color:#16a34a"> &nbsp;·&nbsp; All done ✓</span>` : ''}
+              <div style="display:flex;align-items:baseline;justify-content:space-between;margin-bottom:8px">
+                <div class="cap-today-label">Today's Capacity</div>
+                <div style="font-size:12px;color:var(--text-muted)">${h}h available</div>
               </div>
-              <div class="cap-today-track" style="overflow:hidden;position:relative">
-                <div style="display:flex;height:100%;border-radius:3px;overflow:hidden">
-                  <div style="width:${donePct}%;background:#22c55e;height:100%;transition:width 0.3s"></div>
-                  <div style="width:${remPct}%;background:${loadColor};height:100%;transition:width 0.3s"></div>
-                </div>
-              </div>
-              <div style="display:flex;gap:12px;margin-top:4px;font-size:11px;flex-wrap:wrap">
-                <span style="color:var(--text-muted)">📋 Est: <b style="color:${loadColor}">${estHours + logHours}h</b></span>
-                ${hasLog ? `<span style="color:#16a34a">✓ Logged: <b>${logHours}h</b></span>` : ''}
-              </div>
+              ${barRow('📋 Estimate',
+                estDonePct, estRemPct, estLoadColor,
+                estHours > 0 ? estHours + 'h' : '–',
+                estHours > 0 ? `${Math.round(estTotalPct)}%` : '')}
+              ${barRow('⏱ Effective',
+                0, logPct, logColor,
+                hasLog ? logHours + 'h' : '–',
+                hasLog ? `${Math.round(logPct)}%` : '')}
             </div>
-            <div style="font-size:11px;color:var(--text-muted);text-align:right;white-space:nowrap">${Math.round(totalPct)}%</div>
           </div>`;
       }
+
       // week mode (default)
-      return `<div class="cap-bar-wrap" title="${title}">
-        <div class="cap-bar-track" style="overflow:hidden">
-          <div style="display:flex;height:100%;border-radius:2px;overflow:hidden">
-            <div style="width:${donePct}%;background:#22c55e;height:100%"></div>
-            <div style="width:${remPct}%;background:${loadColor};height:100%"></div>
+      return `<div class="cap-bar-wrap" title="${title}" style="flex-direction:column;align-items:stretch;gap:3px">
+        <div style="display:flex;align-items:center;gap:4px">
+          <div style="font-size:9px;color:var(--text-muted);width:22px;flex-shrink:0">Est</div>
+          <div class="cap-bar-track" style="overflow:hidden;flex:1">
+            <div style="display:flex;height:100%;border-radius:2px;overflow:hidden">
+              <div style="width:${estDonePct}%;background:#22c55e;height:100%"></div>
+              <div style="width:${estRemPct}%;background:${estLoadColor};height:100%"></div>
+            </div>
           </div>
+          <div style="font-size:10px;font-weight:700;color:${estHours===0?'var(--text-muted)':estLoadColor};min-width:24px;text-align:right">${estHours > 0 ? estHours+'h' : '–'}</div>
         </div>
-        <div class="cap-bar-label" style="font-size:10px;display:flex;flex-direction:column;gap:1px;align-items:flex-end">
-          <span style="color:${totalHours===0?'var(--text-muted)':loadColor};font-weight:700">${totalHours > 0 ? totalHours+'h' : '–'}</span>
-          ${hasLog ? `<span style="color:#16a34a;font-size:9px">${logHours}h ✓</span>` : ''}
+        <div style="display:flex;align-items:center;gap:4px">
+          <div style="font-size:9px;color:var(--text-muted);width:22px;flex-shrink:0">Log</div>
+          <div class="cap-bar-track" style="overflow:hidden;flex:1">
+            <div style="width:${logPct}%;background:${logColor};height:100%;border-radius:2px"></div>
+          </div>
+          <div style="font-size:10px;font-weight:700;color:${hasLog?logColor:'var(--text-muted)'};min-width:24px;text-align:right">${hasLog ? logHours+'h' : '–'}</div>
         </div>
       </div>`;
     }
