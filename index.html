@@ -1231,7 +1231,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.0.5</div>
+      <div class="sidebar-version">v1.0.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2574,13 +2574,15 @@ const renderers = {
       }).slice(0, 7);
 
       return `
-        <div class="summary-hero">
-          <div class="summary-greeting">${greeting}, Paulo 👋</div>
-          <div class="summary-date">${now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
-          ${focusNote
-            ? `<div class="summary-focus">🎯 <span>${esc(focusNote)}</span></div>`
-            : `<div class="summary-focus-empty" onclick="showView('today')">＋ Set your daily focus →</div>`}
-          <div class="tz-row" id="tzRow"></div>
+        <div class="summary-hero" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
+          <div>
+            <div class="summary-greeting">${greeting}, Paulo 👋</div>
+            <div class="summary-date">${now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
+            ${focusNote
+              ? `<div class="summary-focus">🎯 <span>${esc(focusNote)}</span></div>`
+              : `<div class="summary-focus-empty" onclick="showView('today')">＋ Set your daily focus →</div>`}
+          </div>
+          <div class="tz-row" id="tzRow" style="margin-top:0;flex-shrink:0;justify-content:flex-end"></div>
         </div>
 
         <div class="summary-stats">
