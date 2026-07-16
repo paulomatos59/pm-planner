@@ -1310,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.8</div>
+      <div class="sidebar-version">v1.1.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1680,6 +1680,11 @@
           <div class="form-group">
             <label class="form-label">Duration (min)</label>
             <input type="number" class="form-input" id="commDuration" placeholder="e.g. 30" min="1" step="5">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Organizer / Sent by</label>
+            <input type="text" class="form-input" id="commOrganizer" placeholder="e.g. Alice">
           </div>
 
           <div class="form-group">
@@ -4145,7 +4150,8 @@ const renderers = {
       const icon  = COMM_ICONS[c.type] || '💬';
       const proj  = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
       const pers  = c.personalId ? projects.find(p => p.id === c.personalId) : null;
-      const dur   = c.duration ? `⏱ ${c.duration} min` : '';
+      const dur   = c.duration     ? `⏱ ${c.duration} min`      : '';
+      const org   = c.organizer    ? `📌 ${esc(c.organizer)}`   : '';
       const parts = c.participants ? `👥 ${esc(c.participants)}` : '';
       const isDone = c.status === 'Done';
       const statusBadge = isDone
@@ -4162,6 +4168,7 @@ const renderers = {
               ${statusBadge}
               <span class="comm-tag">${c.type || 'Meeting'}</span>
               ${dur   ? `<span>${dur}</span>`   : ''}
+              ${org   ? `<span>${org}</span>`   : ''}
               ${parts ? `<span>${parts}</span>` : ''}
               ${proj  ? `<span>📁 ${esc(proj.name)}</span>` : ''}
               ${pers  ? `<span>👤 ${esc(pers.name)}</span>` : ''}
@@ -4182,6 +4189,7 @@ const renderers = {
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
       document.getElementById('commDuration').value     = c?.duration     || '30';
+      document.getElementById('commOrganizer').value    = c?.organizer    || '';
       document.getElementById('commParticipants').value = c?.participants || '';
 
       // Description RTE
@@ -4273,6 +4281,7 @@ const renderers = {
         status:       document.getElementById('commStatus').value       || 'Planned',
         date:         document.getElementById('commDate').value         || '',
         duration:     document.getElementById('commDuration').value     || '',
+        organizer:    document.getElementById('commOrganizer').value.trim()    || '',
         participants: document.getElementById('commParticipants').value.trim() || '',
         type:         activeTypeBtn ? activeTypeBtn.dataset.type : 'Meeting',
         projectId:    document.getElementById('commProject').value      || '',
