@@ -1310,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.7</div>
+      <div class="sidebar-version">v1.1.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3453,6 +3453,7 @@ const renderers = {
       const todayOpen     = allTodayTasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayDone     = allTodayTasks.filter(t => t.status === 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayTasks    = [...todayOpen, ...todayDone];
+      const todayComms    = comms.filter(c => c.date === today).sort((a,b) => (a.title||'').localeCompare(b.title||''));
       const focusNote     = localStorage.getItem('dp_focus') || '';
 
       let html = `
@@ -3499,6 +3500,16 @@ const renderers = {
                    <div class="task-list">${todayDone.map(taskCardWithSubs).join('')}</div>`;
         }
       }
+
+      // Comms section
+      if (todayComms.length > 0) {
+        html += `<div class="section-header" style="margin-top:14px">
+          <span class="section-title">💬 Communications</span>
+          <span class="section-count">${todayComms.length}</span>
+        </div>
+        <div class="comm-list">${todayComms.map(commCard).join('')}</div>`;
+      }
+
       return html;
     }
 
@@ -3523,6 +3534,7 @@ const renderers = {
         const dayStr = `${day.getFullYear()}-${pad(day.getMonth()+1)}-${pad(day.getDate())}`;
         const isTdy  = dayStr === todayStr();
         const dayTasks = tasks.filter(t => t.dueDate === dayStr).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+        const dayComms = comms.filter(c => c.date === dayStr);
 
         html += `
           <div class="week-day ${isTdy ? 'today' : ''}">
@@ -3535,6 +3547,10 @@ const renderers = {
               ${dayTasks.map(t => `
                 <div class="week-task-item priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
                      onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
+              ${dayComms.map(c => `
+                <div class="week-task-item ${c.status==='Done'?'done':''}"
+                     style="background:${c.status==='Done'?'#f0fdf4':'#eff6ff'};color:${c.status==='Done'?'#15803d':'#1d4ed8'};border-left:3px solid ${c.status==='Done'?'#22c55e':'#3b82f6'}"
+                     onclick="openCommModal('${c.id}')" title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`).join('')}
               <span class="week-add" onclick="openTaskModalWithDate('${dayStr}')">＋ add</span>
             </div>
           </div>`;
@@ -3603,8 +3619,10 @@ const renderers = {
             const isToday   = ds === todStr;
             // Work tasks: due on this day
             const dayTasks  = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === ds).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+            const dayCommsM = comms.filter(c => c.date === ds);
+            const totalItems = dayTasks.length + dayCommsM.length;
             const visible   = dayTasks.slice(0, 2);
-            const extra     = dayTasks.length - visible.length;
+            const extra     = totalItems - visible.length - Math.min(dayCommsM.length, 1);
             // Time-off events: span includes this day (startDate <= ds <= dueDate)
             const timeoffs  = tasks.filter(t => {
               if (t.taskType !== 'timeoff') return false;
@@ -3627,6 +3645,11 @@ const renderers = {
                   <div class="month-task-chip priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
                        onclick="event.stopPropagation();openTaskModal('${t.id}')"
                        title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
+                ${dayCommsM.slice(0,1).map(c => `
+                  <div class="month-task-chip ${c.status==='Done'?'done':''}"
+                       style="background:${c.status==='Done'?'#f0fdf4':'#eff6ff'};color:${c.status==='Done'?'#15803d':'#1d4ed8'};border:none"
+                       onclick="event.stopPropagation();openCommModal('${c.id}')"
+                       title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`).join('')}
                 ${extra > 0 ? `<div class="month-more" onclick="event.stopPropagation();openTaskModalWithDate('${ds}')">+${extra} more</div>` : ''}
                 ${dayCapacityBar(ds, 'month')}
               </div>`;
@@ -5354,17 +5377,25 @@ const renderers = {
       const h    = cap.hoursPerDay;
       const safe = h * (1 - cap.bufferPct / 100);
 
-      // Estimate: all estimatedHours for tasks due this day
-      const estHours = Math.round(tasks
+      // Estimate: task estimated hours + Planned comm hours for this day
+      const taskEst = tasks
         .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours)
-        .reduce((s, t) => s + (t.estimatedHours || 0), 0) * 100) / 100;
+        .reduce((s, t) => s + (t.estimatedHours || 0), 0);
+      const commEst = comms
+        .filter(c => c.date === dayStr && c.status !== 'Done' && c.duration)
+        .reduce((s, c) => s + (parseFloat(c.duration) || 0) / 60, 0);
+      const estHours = Math.round((taskEst + commEst) * 100) / 100;
 
-      // Effective: workLog entries for this day
-      const logHours = Math.round(tasks
+      // Effective: workLog entries + Done comm hours for this day
+      const taskLog = tasks
         .filter(t => t.taskType !== 'timeoff' && t.workLog?.length)
         .reduce((s, t) => s + t.workLog
           .filter(e => e.date === dayStr)
-          .reduce((a, e) => a + (e.hours || 0), 0), 0) * 100) / 100;
+          .reduce((a, e) => a + (e.hours || 0), 0), 0);
+      const commLog = comms
+        .filter(c => c.date === dayStr && c.status === 'Done' && c.duration)
+        .reduce((s, c) => s + (parseFloat(c.duration) || 0) / 60, 0);
+      const logHours = Math.round((taskLog + commLog) * 100) / 100;
 
       const hasLog = logHours > 0;
 
