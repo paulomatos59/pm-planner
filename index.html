@@ -1310,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.0</div>
+      <div class="sidebar-version">v1.2.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1649,6 +1649,25 @@
                    onkeyup="commRteUpdateToolbar()" onmouseup="commRteUpdateToolbar()" onfocus="commRteUpdateToolbar()" onclick="commRteCloseColorPicker()"></div>
             </div>
           </div>
+
+          <!-- Linked Tasks -->
+          <div id="commTasksSection" style="display:none">
+            <div class="subtask-section-divider"></div>
+            <div class="subtask-section-label">
+              <span>Tasks &nbsp;<span id="commTaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
+              <button class="btn btn-secondary btn-sm" onclick="showCommTaskInput()">＋ Add task</button>
+            </div>
+            <div id="commTaskList"></div>
+            <div id="commTaskAddRow" style="display:none;margin-top:8px">
+              <div style="display:flex;gap:6px">
+                <input type="text" class="form-input" id="commTaskTitleInput" placeholder="Task title…"
+                  onkeydown="if(event.key==='Enter')saveCommTaskInline();if(event.key==='Escape')hideCommTaskInput()">
+                <button class="btn btn-primary btn-sm" onclick="saveCommTaskInline()">Add</button>
+                <button class="btn btn-secondary btn-sm" onclick="hideCommTaskInput()">✕</button>
+              </div>
+            </div>
+          </div>
+
         </div>
 
         <!-- ── Right: sidebar (metadata) ── -->
@@ -4207,7 +4226,11 @@ const renderers = {
       const statusBadge = isDone
         ? `<span style="font-size:11px;font-weight:600;color:#16a34a;background:#f0fdf4;border-radius:4px;padding:1px 7px">✅ Done</span>`
         : `<span style="font-size:11px;font-weight:600;color:#2563eb;background:#eff6ff;border-radius:4px;padding:1px 7px">📅 Planned</span>`;
-      const recurBadge = c.recurrence ? `<span style="font-size:11px;color:var(--text-muted)">🔁 Recurring</span>` : '';
+      const recurBadge  = c.recurrence ? `<span style="font-size:11px;color:var(--text-muted)">🔁 Recurring</span>` : '';
+      const linkedTasks = tasks.filter(t => t.commId === c.id);
+      const tasksDone   = linkedTasks.filter(t => t.status === 'Done').length;
+      const tasksBadge  = linkedTasks.length > 0
+        ? `<span style="font-size:11px;color:var(--text-muted)">📋 ${tasksDone}/${linkedTasks.length}</span>` : '';
       const notesText = stripHtml(c.notes || '');
       return `
         <div class="comm-card ${isDone ? 'done' : ''}" onclick="openCommModal('${c.id}')">
@@ -4223,6 +4246,7 @@ const renderers = {
               ${proj  ? `<span>📁 ${esc(proj.name)}</span>` : ''}
               ${pers  ? `<span>👤 ${esc(pers.name)}</span>` : ''}
               ${recurBadge}
+              ${tasksBadge}
             </div>
             ${notesText ? `<div class="comm-card-notes">${esc(notesText)}</div>` : ''}
           </div>
@@ -4289,6 +4313,12 @@ const renderers = {
         ).join('');
 
       document.getElementById('commBtnDelete').style.display = c ? 'inline-flex' : 'none';
+
+      // Tasks section — only for existing comms
+      const tasksSection = document.getElementById('commTasksSection');
+      tasksSection.style.display = c ? 'block' : 'none';
+      if (c) setTimeout(commTasksRender, 0);
+
       document.getElementById('commModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('commTitle').focus(), 50);
     }
@@ -4389,6 +4419,68 @@ const renderers = {
     function commRteAddLink() {
       const url = prompt('Enter URL:');
       if (url) { document.getElementById('commDesc').focus(); document.execCommand('createLink', false, url); }
+    }
+
+    /* ── Comm linked tasks ── */
+    function commTasksRender() {
+      if (!editingCommId) return;
+      const linked = tasks.filter(t => t.commId === editingCommId && !t.parentId);
+      const label  = document.getElementById('commTaskCountLabel');
+      const list   = document.getElementById('commTaskList');
+      if (!label || !list) return;
+      const done = linked.filter(t => t.status === 'Done').length;
+      label.textContent = linked.length ? `${done}/${linked.length}` : '';
+      list.innerHTML = linked.map(t => `
+        <div class="subtask-item-modal">
+          <div class="task-checkbox ${t.status==='Done'?'checked':''}" style="width:18px;height:18px;flex-shrink:0"
+               onclick="commTaskToggle('${t.id}')"></div>
+          <span class="subtask-modal-title ${t.status==='Done'?'done-title':''}"
+                onclick="openTaskModal('${t.id}')" style="cursor:pointer">${esc(t.title)}</span>
+          <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">${t.dueDate ? formatDue(t.dueDate) : ''}</span>
+          <button class="btn-icon" style="color:var(--danger);opacity:0.6" onclick="commTaskDelete('${t.id}')" title="Remove">✕</button>
+        </div>`).join('');
+    }
+
+    function commTaskToggle(taskId) {
+      const t = tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.status = t.status === 'Done' ? 'Todo' : 'Done';
+      if (t.status === 'Done') t.completedAt = new Date().toISOString();
+      persistTasks();
+      commTasksRender();
+    }
+
+    function commTaskDelete(taskId) {
+      tasks = tasks.filter(t => t.id !== taskId);
+      persistTasks();
+      commTasksRender();
+    }
+
+    function showCommTaskInput() {
+      document.getElementById('commTaskAddRow').style.display = '';
+      setTimeout(() => document.getElementById('commTaskTitleInput').focus(), 0);
+    }
+
+    function hideCommTaskInput() {
+      document.getElementById('commTaskAddRow').style.display = 'none';
+      document.getElementById('commTaskTitleInput').value = '';
+    }
+
+    function saveCommTaskInline() {
+      const title = document.getElementById('commTaskTitleInput').value.trim();
+      if (!title || !editingCommId) return;
+      tasks.push({
+        id: uid(), title,
+        commId:    editingCommId,
+        projectId: document.getElementById('commProject').value  || '',
+        status:    'Todo', priority: 'Medium', category: 'Meeting',
+        taskType:  'task',
+        dueDate: '', startDate: '', estimatedHours: '', workLog: [],
+        createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
+      });
+      persistTasks();
+      hideCommTaskInput();
+      commTasksRender();
     }
 
     /* ==============================
