@@ -1310,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.9</div>
+      <div class="sidebar-version">v1.2.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3834,6 +3834,7 @@ const renderers = {
       const ptasks = tasks.filter(t => t.projectId === pid && !t.parentId);
       const pfu    = followups.filter(f => f.projectId === pid);
       const pnotes = projectNotes.filter(n => n.projectId === pid);
+      const pcomms = comms.filter(c => c.projectId === pid);
 
       const openFu = pfu.filter(f => f.status !== 'Resolved').length;
 
@@ -3862,6 +3863,9 @@ const renderers = {
           </button>
           <button class="tab-btn ${activeProjectTab==='notes'?'active':''}" onclick="switchTab('notes')">
             📝 Notes <span class="tab-count">${pnotes.length}</span>
+          </button>
+          <button class="tab-btn ${activeProjectTab==='comms'?'active':''}" onclick="switchTab('comms')">
+            💬 Comms <span class="tab-count">${pcomms.length}</span>
           </button>
         </div>`;
 
@@ -3924,6 +3928,10 @@ const renderers = {
           html += `<div class="section-header"><span class="section-title">Notes</span><span class="section-count">${sortedNotes.length}</span></div>
                    <div class="task-list">${sortedNotes.map(noteCard).join('')}</div>`;
         }
+      }
+
+      if (activeProjectTab === 'comms') {
+        html += renderCommsTab(pcomms, pid, 'project');
       }
 
       return html;
@@ -3990,6 +3998,7 @@ const renderers = {
       const ptasks = tasks.filter(t => t.projectId === pid && !t.parentId);
       const pfu    = followups.filter(f => f.projectId === pid);
       const pnotes = projectNotes.filter(n => n.projectId === pid);
+      const pcomms = comms.filter(c => c.personalId === pid);
       const openFu = pfu.filter(f => f.status !== 'Resolved').length;
 
       let html = `
@@ -4017,6 +4026,9 @@ const renderers = {
           </button>
           <button class="tab-btn ${activeProjectTab==='notes'?'active':''}" onclick="switchTab('notes')">
             📝 Notes <span class="tab-count">${pnotes.length}</span>
+          </button>
+          <button class="tab-btn ${activeProjectTab==='comms'?'active':''}" onclick="switchTab('comms')">
+            💬 Comms <span class="tab-count">${pcomms.length}</span>
           </button>
         </div>`;
 
@@ -4081,6 +4093,10 @@ const renderers = {
         }
       }
 
+      if (activeProjectTab === 'comms') {
+        html += renderCommsTab(pcomms, pid, 'personal');
+      }
+
       return html;
     }
 
@@ -4090,6 +4106,40 @@ const renderers = {
     let commTypeFilter = 'All';
 
     const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
+
+    // Shared helper: renders comms tab content inside project/personal detail
+    function renderCommsTab(pcomms, pid, linkField) {
+      const sorted = [...pcomms].sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      // Pre-fill the correct project/personal field when opening the modal
+      const openFn = linkField === 'project'
+        ? `openCommModalForProject('${pid}')`
+        : `openCommModalForPersonal('${pid}')`;
+      let html = `
+        <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <button class="btn btn-primary btn-sm" onclick="${openFn}">＋ Add Comm</button>
+        </div>`;
+      if (sorted.length === 0) {
+        return html + `<div class="empty-state" style="padding:32px 0"><div class="icon">💬</div><h3>No communications yet</h3><p>Log meetings, calls, emails and messages linked to this ${linkField === 'project' ? 'project' : 'item'}.</p></div>`;
+      }
+      // Group by date
+      const groups = {};
+      sorted.forEach(c => { const d = c.date || 'No date'; if (!groups[d]) groups[d] = []; groups[d].push(c); });
+      Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(d => {
+        const label = d === 'No date' ? 'No Date' : formatCommDate(d);
+        html += `<div class="section-header"><span class="section-title">${label}</span><span class="section-count">${groups[d].length}</span></div>
+                 <div class="comm-list">${groups[d].map(commCard).join('')}</div>`;
+      });
+      return html;
+    }
+
+    function openCommModalForProject(pid) {
+      openCommModal();
+      setTimeout(() => { document.getElementById('commProject').value = pid; }, 50);
+    }
+    function openCommModalForPersonal(pid) {
+      openCommModal();
+      setTimeout(() => { document.getElementById('commPersonal').value = pid; }, 50);
+    }
 
     function renderComms() {
       const filtered = commTypeFilter === 'All'
