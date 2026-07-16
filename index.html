@@ -597,6 +597,41 @@
     .note-add-card:hover { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
     .note-add-icon { font-size: 24px; }
 
+    /* ── Comms ── */
+    .comm-type-group { display: flex; gap: 8px; flex-wrap: wrap; }
+    .comm-type-btn {
+      padding: 6px 14px; border-radius: 20px; border: 1.5px solid var(--border);
+      background: var(--surface); cursor: pointer; font-size: 13px; font-weight: 500;
+      color: var(--text-secondary); transition: all 0.15s;
+    }
+    .comm-type-btn:hover  { border-color: var(--primary); color: var(--primary); background: var(--primary-light); }
+    .comm-type-btn.active { border-color: var(--primary); color: var(--primary); background: var(--primary-light); font-weight: 600; }
+    .comm-list { display: flex; flex-direction: column; gap: 8px; }
+    .comm-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: 10px; padding: 14px 16px; cursor: pointer;
+      transition: all 0.15s; display: flex; align-items: flex-start; gap: 12px;
+    }
+    .comm-card:hover { border-color: var(--primary); box-shadow: 0 2px 8px rgba(37,99,235,0.08); }
+    .comm-card-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
+    .comm-card-body { flex: 1; min-width: 0; }
+    .comm-card-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .comm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
+    .comm-card-meta span { font-size: 12px; color: var(--text-muted); }
+    .comm-card-meta .comm-tag {
+      background: var(--primary-light); color: var(--primary);
+      border-radius: 4px; padding: 1px 7px; font-size: 11px; font-weight: 600;
+    }
+    .comm-card-notes { font-size: 12px; color: var(--text-muted); margin-top: 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+    .comm-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+    .comm-filter-chip {
+      padding: 4px 12px; border-radius: 16px; border: 1.5px solid var(--border);
+      background: var(--surface); cursor: pointer; font-size: 12px; font-weight: 500;
+      color: var(--text-secondary); transition: all 0.15s;
+    }
+    .comm-filter-chip:hover  { border-color: var(--primary); color: var(--primary); }
+    .comm-filter-chip.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+
     /* ── Kanban ── */
     .kb2-board { display: flex; flex-direction: column; gap: 28px; }
     .kb2-section { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; overflow: hidden; }
@@ -1215,6 +1250,22 @@
         </div>
       </div>
 
+      <!-- Comms section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('comms')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-comms">▶</span>
+            <span>Comms</span>
+          </div>
+          <div class="sidebar-section-right">
+            <button class="section-add-btn" onclick="event.stopPropagation();openCommModal()" title="New communication">＋</button>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-comms">
+          <button class="nav-item" id="nav-comms" onclick="showView('comms')">💬 All Comms</button>
+        </div>
+      </div>
+
       <!-- Categories section -->
       <div class="sidebar-section">
         <div class="sidebar-section-header" onclick="toggleSection('categories')">
@@ -1232,7 +1283,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.3</div>
+      <div class="sidebar-version">v1.1.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1470,6 +1521,75 @@
         <button class="btn btn-danger" id="btnDelete" style="display:none;margin-right:auto" onclick="deleteTask()">Delete</button>
         <button class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
         <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Comms Modal ── -->
+  <div class="modal-overlay hidden" id="commModal">
+    <div class="modal" style="max-width:560px;width:100%">
+      <div class="modal-header">
+        <div class="modal-title" id="commModalTitle">New Communication</div>
+        <button class="modal-close" onclick="closeCommModal()">✕</button>
+      </div>
+      <div class="modal-body">
+
+        <div class="form-group">
+          <label class="form-label">Title <span style="color:var(--danger)">*</span></label>
+          <input type="text" class="form-input" id="commTitle" placeholder="e.g. Sprint planning sync">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Date</label>
+            <input type="date" class="form-input" id="commDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Duration (min)</label>
+            <input type="number" class="form-input" id="commDuration" placeholder="e.g. 30" min="1" step="5">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Type of Contact</label>
+          <div class="comm-type-group" id="commTypeGroup">
+            <button type="button" class="comm-type-btn active" data-type="Meeting"  onclick="selectCommType(this)">🤝 Meeting</button>
+            <button type="button" class="comm-type-btn"        data-type="Slack"    onclick="selectCommType(this)">💬 Slack</button>
+            <button type="button" class="comm-type-btn"        data-type="Email"    onclick="selectCommType(this)">📧 Email</button>
+            <button type="button" class="comm-type-btn"        data-type="Phone"    onclick="selectCommType(this)">📞 Phone</button>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Participants</label>
+          <input type="text" class="form-input" id="commParticipants" placeholder="e.g. Alice, Bob, Carlos">
+        </div>
+
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <select class="form-select" id="commProject">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Personal</label>
+            <select class="form-select" id="commPersonal">
+              <option value="">— None —</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea class="form-textarea" id="commNotes" placeholder="Key points, decisions, action items…" rows="4"></textarea>
+        </div>
+
+      </div>
+      <div class="modal-footer">
+        <button class="btn btn-danger" id="commBtnDelete" style="display:none;margin-right:auto" onclick="deleteComm()">Delete</button>
+        <button class="btn btn-secondary" onclick="closeCommModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="saveComm()">Save</button>
       </div>
     </div>
   </div>
@@ -1739,6 +1859,7 @@
     let projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
     let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
     let projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
+    let comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
 
     let currentView      = 'today';
     let activeProjectId  = null;
@@ -1770,6 +1891,7 @@
     function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects));     scheduleGistSave(); scheduleAutoDownload(); }
     function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups));    scheduleGistSave(); scheduleAutoDownload(); }
     function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); scheduleAutoDownload(); }
+    function persistComms()    { localStorage.setItem('dp_comms_v1',    JSON.stringify(comms));        scheduleGistSave(); scheduleAutoDownload(); }
 
     function scheduleAutoDownload() {
       if (!autoDownload || backupFrequency !== 'save') return;
@@ -2485,7 +2607,8 @@ const renderers = {
         personal:         renderPersonal,
         'personal-detail':() => renderPersonalDetail(activePersonalId),
         kanban:           renderKanban,
-        gantt:            renderGantt
+        gantt:            renderGantt,
+        comms:            renderComms
       };
 
       if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
@@ -3813,6 +3936,177 @@ const renderers = {
       }
 
       return html;
+    }
+
+    /* ==============================
+       COMMS VIEW
+    ============================== */
+    let commTypeFilter = 'All';
+
+    const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
+
+    function renderComms() {
+      const filtered = commTypeFilter === 'All'
+        ? [...comms]
+        : comms.filter(c => c.type === commTypeFilter);
+
+      filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+
+      const typeButtons = ['All', 'Meeting', 'Slack', 'Email', 'Phone'].map(t =>
+        `<button class="comm-filter-chip ${commTypeFilter === t ? 'active' : ''}" onclick="setCommFilter('${t}')">${t === 'All' ? '🗂 All' : COMM_ICONS[t] + ' ' + t}</button>`
+      ).join('');
+
+      let html = `
+        <div class="view-header">
+          <div>
+            <div class="view-title">💬 Comms</div>
+            <div class="view-subtitle">${comms.length} record${comms.length !== 1 ? 's' : ''}</div>
+          </div>
+          <button class="btn btn-primary" onclick="openCommModal()">＋ New Comm</button>
+        </div>
+        <div class="comm-filter-bar">${typeButtons}</div>`;
+
+      if (filtered.length === 0) {
+        html += `<div class="empty-state"><div class="icon">💬</div><h3>${comms.length === 0 ? 'No communications yet' : 'No results for this filter'}</h3><p>${comms.length === 0 ? 'Log meetings, calls, emails and Slack threads to keep a full comms history.' : 'Try a different filter.'}</p></div>`;
+      } else {
+        // Group by date
+        const groups = {};
+        filtered.forEach(c => {
+          const d = c.date || 'No date';
+          if (!groups[d]) groups[d] = [];
+          groups[d].push(c);
+        });
+        Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(d => {
+          const label = d === 'No date' ? 'No Date' : formatCommDate(d);
+          html += `<div class="section-header"><span class="section-title">${label}</span><span class="section-count">${groups[d].length}</span></div>
+                   <div class="comm-list">${groups[d].map(commCard).join('')}</div>`;
+        });
+      }
+      return html;
+    }
+
+    function setCommFilter(type) {
+      commTypeFilter = type;
+      showView('comms');
+    }
+
+    function formatCommDate(d) {
+      if (!d) return '';
+      const dt = parseLocal(d);
+      const today = new Date(); today.setHours(0,0,0,0);
+      const yest  = new Date(today); yest.setDate(today.getDate() - 1);
+      if (dt.getTime() === today.getTime()) return 'Today';
+      if (dt.getTime() === yest.getTime())  return 'Yesterday';
+      return dt.toLocaleDateString('en-GB', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function commCard(c) {
+      const icon = COMM_ICONS[c.type] || '💬';
+      const proj = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
+      const pers = c.personalId ? projects.find(p => p.id === c.personalId) : null;
+      const dur  = c.duration ? `⏱ ${c.duration} min` : '';
+      const parts = c.participants ? `👥 ${esc(c.participants)}` : '';
+      return `
+        <div class="comm-card" onclick="openCommModal('${c.id}')">
+          <div class="comm-card-icon">${icon}</div>
+          <div class="comm-card-body">
+            <div class="comm-card-title">${esc(c.title)}</div>
+            <div class="comm-card-meta">
+              <span class="comm-tag">${c.type || 'Meeting'}</span>
+              ${dur   ? `<span>${dur}</span>`   : ''}
+              ${parts ? `<span>${parts}</span>` : ''}
+              ${proj  ? `<span>📁 ${esc(proj.name)}</span>` : ''}
+              ${pers  ? `<span>👤 ${esc(pers.name)}</span>` : ''}
+            </div>
+            ${c.notes ? `<div class="comm-card-notes">${esc(c.notes)}</div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    let editingCommId = null;
+
+    function openCommModal(id) {
+      editingCommId = id || null;
+      const c = id ? comms.find(x => x.id === id) : null;
+
+      document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
+      document.getElementById('commTitle').value        = c?.title        || '';
+      document.getElementById('commDate').value         = c?.date         || todayStr();
+      document.getElementById('commDuration').value     = c?.duration     || '';
+      document.getElementById('commParticipants').value = c?.participants || '';
+      document.getElementById('commNotes').value        = c?.notes        || '';
+
+      // Type buttons
+      document.querySelectorAll('.comm-type-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.type === (c?.type || 'Meeting'));
+      });
+
+      // Project dropdown
+      const projSel = document.getElementById('commProject');
+      projSel.innerHTML = '<option value="">— None —</option>' +
+        projects.filter(p => p.type !== 'personal').map(p =>
+          `<option value="${p.id}" ${c?.projectId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+        ).join('');
+
+      // Personal dropdown
+      const persSel = document.getElementById('commPersonal');
+      persSel.innerHTML = '<option value="">— None —</option>' +
+        projects.filter(p => p.type === 'personal').map(p =>
+          `<option value="${p.id}" ${c?.personalId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+        ).join('');
+
+      document.getElementById('commBtnDelete').style.display = c ? 'inline-flex' : 'none';
+      document.getElementById('commModal').classList.remove('hidden');
+    }
+
+    function closeCommModal() {
+      document.getElementById('commModal').classList.add('hidden');
+      editingCommId = null;
+    }
+
+    function selectCommType(btn) {
+      document.querySelectorAll('.comm-type-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    }
+
+    function saveComm() {
+      const title = document.getElementById('commTitle').value.trim();
+      if (!title) { document.getElementById('commTitle').focus(); return; }
+
+      const activeTypeBtn = document.querySelector('.comm-type-btn.active');
+      const entry = {
+        id:           editingCommId || uid(),
+        title,
+        date:         document.getElementById('commDate').value         || '',
+        duration:     document.getElementById('commDuration').value     || '',
+        participants: document.getElementById('commParticipants').value.trim() || '',
+        type:         activeTypeBtn ? activeTypeBtn.dataset.type : 'Meeting',
+        projectId:    document.getElementById('commProject').value      || '',
+        personalId:   document.getElementById('commPersonal').value     || '',
+        notes:        document.getElementById('commNotes').value.trim() || '',
+        createdAt:    editingCommId ? (comms.find(c => c.id === editingCommId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        updatedAt:    new Date().toISOString()
+      };
+
+      if (editingCommId) {
+        const idx = comms.findIndex(c => c.id === editingCommId);
+        if (idx > -1) comms[idx] = entry;
+      } else {
+        comms.push(entry);
+      }
+
+      persistComms();
+      closeCommModal();
+      if (currentView === 'comms') showView('comms');
+    }
+
+    function deleteComm() {
+      if (!editingCommId) return;
+      if (!confirm('Delete this communication record?')) return;
+      comms = comms.filter(c => c.id !== editingCommId);
+      persistComms();
+      closeCommModal();
+      if (currentView === 'comms') showView('comms');
     }
 
     /* ==============================
