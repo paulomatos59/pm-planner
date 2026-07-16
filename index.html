@@ -1232,7 +1232,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.1</div>
+      <div class="sidebar-version">v1.1.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2105,54 +2105,54 @@
     let _tzInterval = null;
 
     const TZ_PRESETS = [
-      { label: 'Lisbon',        tz: 'Europe/Lisbon' },
-      { label: 'London',        tz: 'Europe/London' },
-      { label: 'Paris',         tz: 'Europe/Paris' },
-      { label: 'Amsterdam',     tz: 'Europe/Amsterdam' },
-      { label: 'Berlin',        tz: 'Europe/Berlin' },
-      { label: 'Warsaw',        tz: 'Europe/Warsaw' },
-      { label: 'Helsinki',      tz: 'Europe/Helsinki' },
-      { label: 'Istanbul',      tz: 'Europe/Istanbul' },
-      { label: 'Dubai',         tz: 'Asia/Dubai' },
-      { label: 'Riyadh',        tz: 'Asia/Riyadh' },
-      { label: 'Kolkata',       tz: 'Asia/Kolkata' },
-      { label: 'Dhaka',         tz: 'Asia/Dhaka' },
-      { label: 'Bangkok',       tz: 'Asia/Bangkok' },
-      { label: 'Singapore',     tz: 'Asia/Singapore' },
-      { label: 'Shanghai',      tz: 'Asia/Shanghai' },
-      { label: 'Tokyo',         tz: 'Asia/Tokyo' },
-      { label: 'Seoul',         tz: 'Asia/Seoul' },
-      { label: 'Sydney',        tz: 'Australia/Sydney' },
-      { label: 'Melbourne',     tz: 'Australia/Melbourne' },
-      { label: 'Auckland',      tz: 'Pacific/Auckland' },
-      { label: 'UTC',           tz: 'UTC' },
-      { label: 'New York',      tz: 'America/New_York' },
-      { label: 'Chicago',       tz: 'America/Chicago' },
-      { label: 'Denver',        tz: 'America/Denver' },
-      { label: 'Los Angeles',   tz: 'America/Los_Angeles' },
-      { label: 'Toronto',       tz: 'America/Toronto' },
-      { label: 'Vancouver',     tz: 'America/Vancouver' },
-      { label: 'Mexico City',   tz: 'America/Mexico_City' },
-      { label: 'São Paulo',     tz: 'America/Sao_Paulo' },
-      { label: 'Buenos Aires',  tz: 'America/Argentina/Buenos_Aires' },
-      { label: 'Bogotá',        tz: 'America/Bogota' },
-      { label: 'Santiago',      tz: 'America/Santiago' },
-      { label: 'Reykjavik',     tz: 'Atlantic/Reykjavik' },
-      { label: 'Cape Town',     tz: 'Africa/Johannesburg' },
-      { label: 'Nairobi',       tz: 'Africa/Nairobi' },
-      { label: 'Lagos',         tz: 'Africa/Lagos' },
-      { label: 'Cairo',         tz: 'Africa/Cairo' },
-      { label: 'Karachi',       tz: 'Asia/Karachi' },
-      { label: 'Islamabad',     tz: 'Asia/Karachi' },
-      { label: 'Colombo',       tz: 'Asia/Colombo' },
-      { label: 'Kathmandu',     tz: 'Asia/Kathmandu' },
-      { label: 'Almaty',        tz: 'Asia/Almaty' },
-      { label: 'Taipei',        tz: 'Asia/Taipei' },
-      { label: 'Hong Kong',     tz: 'Asia/Hong_Kong' },
-      { label: 'Jakarta',       tz: 'Asia/Jakarta' },
-      { label: 'Manila',        tz: 'Asia/Manila' },
-      { label: 'Honolulu',      tz: 'Pacific/Honolulu' },
-      { label: 'Anchorage',     tz: 'America/Anchorage' },
+      { label: 'Lisbon',        country: 'Portugal',    tz: 'Europe/Lisbon' },
+      { label: 'London',        country: 'UK',          tz: 'Europe/London' },
+      { label: 'Paris',         country: 'France',      tz: 'Europe/Paris' },
+      { label: 'Amsterdam',     country: 'Netherlands', tz: 'Europe/Amsterdam' },
+      { label: 'Berlin',        country: 'Germany',     tz: 'Europe/Berlin' },
+      { label: 'Warsaw',        country: 'Poland',      tz: 'Europe/Warsaw' },
+      { label: 'Helsinki',      country: 'Finland',     tz: 'Europe/Helsinki' },
+      { label: 'Istanbul',      country: 'Turkey',      tz: 'Europe/Istanbul' },
+      { label: 'Dubai',         country: 'UAE',         tz: 'Asia/Dubai' },
+      { label: 'Riyadh',        country: 'Saudi Arabia',tz: 'Asia/Riyadh' },
+      { label: 'Kolkata',       country: 'India',       tz: 'Asia/Kolkata' },
+      { label: 'Dhaka',         country: 'Bangladesh',  tz: 'Asia/Dhaka' },
+      { label: 'Bangkok',       country: 'Thailand',    tz: 'Asia/Bangkok' },
+      { label: 'Singapore',     country: 'Singapore',   tz: 'Asia/Singapore' },
+      { label: 'Shanghai',      country: 'China',       tz: 'Asia/Shanghai' },
+      { label: 'Tokyo',         country: 'Japan',       tz: 'Asia/Tokyo' },
+      { label: 'Seoul',         country: 'South Korea', tz: 'Asia/Seoul' },
+      { label: 'Sydney',        country: 'Australia',   tz: 'Australia/Sydney' },
+      { label: 'Melbourne',     country: 'Australia',   tz: 'Australia/Melbourne' },
+      { label: 'Auckland',      country: 'New Zealand', tz: 'Pacific/Auckland' },
+      { label: 'UTC',           country: 'Universal',   tz: 'UTC' },
+      { label: 'New York',      country: 'USA',         tz: 'America/New_York' },
+      { label: 'Chicago',       country: 'USA',         tz: 'America/Chicago' },
+      { label: 'Denver',        country: 'USA',         tz: 'America/Denver' },
+      { label: 'Los Angeles',   country: 'USA',         tz: 'America/Los_Angeles' },
+      { label: 'Toronto',       country: 'Canada',      tz: 'America/Toronto' },
+      { label: 'Vancouver',     country: 'Canada',      tz: 'America/Vancouver' },
+      { label: 'Mexico City',   country: 'Mexico',      tz: 'America/Mexico_City' },
+      { label: 'São Paulo',     country: 'Brazil',      tz: 'America/Sao_Paulo' },
+      { label: 'Buenos Aires',  country: 'Argentina',   tz: 'America/Argentina/Buenos_Aires' },
+      { label: 'Bogotá',        country: 'Colombia',    tz: 'America/Bogota' },
+      { label: 'Santiago',      country: 'Chile',       tz: 'America/Santiago' },
+      { label: 'Reykjavik',     country: 'Iceland',     tz: 'Atlantic/Reykjavik' },
+      { label: 'Cape Town',     country: 'South Africa',tz: 'Africa/Johannesburg' },
+      { label: 'Nairobi',       country: 'Kenya',       tz: 'Africa/Nairobi' },
+      { label: 'Lagos',         country: 'Nigeria',     tz: 'Africa/Lagos' },
+      { label: 'Cairo',         country: 'Egypt',       tz: 'Africa/Cairo' },
+      { label: 'Karachi',       country: 'Pakistan',    tz: 'Asia/Karachi' },
+      { label: 'Islamabad',     country: 'Pakistan',    tz: 'Asia/Karachi' },
+      { label: 'Colombo',       country: 'Sri Lanka',   tz: 'Asia/Colombo' },
+      { label: 'Kathmandu',     country: 'Nepal',       tz: 'Asia/Kathmandu' },
+      { label: 'Almaty',        country: 'Kazakhstan',  tz: 'Asia/Almaty' },
+      { label: 'Taipei',        country: 'Taiwan',      tz: 'Asia/Taipei' },
+      { label: 'Hong Kong',     country: 'Hong Kong',   tz: 'Asia/Hong_Kong' },
+      { label: 'Jakarta',       country: 'Indonesia',   tz: 'Asia/Jakarta' },
+      { label: 'Manila',        country: 'Philippines', tz: 'Asia/Manila' },
+      { label: 'Honolulu',      country: 'USA',         tz: 'Pacific/Honolulu' },
+      { label: 'Anchorage',     country: 'USA',         tz: 'America/Anchorage' },
     ];
 
     const TZ_STORAGE_KEY = 'dp_timezones';
@@ -2288,7 +2288,7 @@
       const q = filter.toLowerCase();
       const filtered = TZ_PRESETS.filter(p =>
         !current.includes(p.tz) &&
-        (p.label.toLowerCase().includes(q) || p.tz.toLowerCase().includes(q))
+        (p.label.toLowerCase().includes(q) || p.tz.toLowerCase().includes(q) || (p.country||'').toLowerCase().includes(q))
       );
       if (filtered.length === 0) {
         container.innerHTML = `<div style="padding:10px 12px;font-size:12px;color:var(--text-muted)">No results</div>`;
@@ -2299,8 +2299,10 @@
         const { abbr, offset } = tzGetInfo(p.tz);
         const meta = abbr && abbr !== offset.replace('UTC','GMT') ? `${abbr}, ${offset}` : offset;
         return `<div class="tz-popup-item" onclick="tzAdd('${p.tz}','${p.label.replace(/'/,"\\'")}')">
-          <span class="tz-pi-label">${esc(p.label)}</span>
-          <span class="tz-pi-meta">${meta}</span>
+          <div style="display:flex;flex-direction:column;gap:1px;min-width:0">
+            <span class="tz-pi-label">${esc(p.label)}</span>
+            <span style="font-size:10px;color:var(--text-muted)">${esc(p.country || '')} · ${meta}</span>
+          </div>
           <span class="tz-pi-time">${time}</span>
         </div>`;
       }).join('');
