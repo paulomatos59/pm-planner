@@ -396,6 +396,28 @@
     }
     #taskModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
     #taskModal .form-textarea { min-height: 180px; }
+    /* ── Full-screen comm modal ── */
+    #commModal { padding: 0; align-items: stretch; justify-content: stretch; }
+    #commModal .modal {
+      max-width: 100%; width: 100%; max-height: 100vh; height: 100vh;
+      border-radius: 0; margin: 0; overflow-y: unset;
+      display: flex; flex-direction: column;
+    }
+    #commModal .modal-header { flex-shrink: 0; padding: 16px 24px 12px; }
+    #commModal .modal-footer { flex-shrink: 0; }
+    #commModal .modal-body-split {
+      flex: 1; overflow: hidden; padding: 0;
+      display: grid; grid-template-columns: 1fr 300px;
+    }
+    #commModal .modal-main-col {
+      padding: 20px 28px 24px; overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    #commModal .modal-sidebar-col {
+      padding: 20px 20px 24px; overflow-y: auto;
+      background: var(--bg);
+    }
+    #commModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
     .form-group { margin-bottom: 14px; }
     .form-label { display: block; font-size: 12px; font-weight: 600; color: var(--text); margin-bottom: 5px; }
     .form-input, .form-select, .form-textarea {
@@ -1066,6 +1088,10 @@
       #taskModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
       #taskModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
       #taskModal .modal-sidebar-col { background: var(--bg); }
+      /* Comm modal on mobile */
+      #commModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
+      #commModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
+      #commModal .modal-sidebar-col { background: var(--bg); }
 
       /* Kanban: let it scroll horizontally */
       .kb2-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1284,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.6</div>
+      <div class="sidebar-version">v1.1.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1526,71 +1552,162 @@
     </div>
   </div>
 
-  <!-- ── Comms Modal ── -->
+  <!-- ── Comms Modal (full-screen) ── -->
   <div class="modal-overlay hidden" id="commModal">
-    <div class="modal" style="max-width:560px;width:100%">
+    <div class="modal">
       <div class="modal-header">
-        <div class="modal-title" id="commModalTitle">New Communication</div>
-        <button class="modal-close" onclick="closeCommModal()">✕</button>
+        <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
+          <h2 class="modal-title" id="commModalTitle">New Communication</h2>
+        </div>
+        <button class="btn-close" onclick="closeCommModal()">×</button>
       </div>
-      <div class="modal-body">
 
-        <div class="form-group">
-          <label class="form-label">Title <span style="color:var(--danger)">*</span></label>
-          <input type="text" class="form-input" id="commTitle" placeholder="e.g. Sprint planning sync">
+      <div class="modal-body modal-body-split">
+        <!-- ── Left: main content ── -->
+        <div class="modal-main-col">
+          <input type="hidden" id="commId">
+
+          <!-- Title -->
+          <div class="form-group">
+            <label class="form-label">Title <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-input" id="commTitle" placeholder="e.g. Sprint planning sync" autocomplete="off">
+          </div>
+
+          <!-- Recurring -->
+          <div class="form-group" style="margin-bottom:8px">
+            <label class="recurrence-toggle" id="commRecurrenceToggleLabel">
+              <input type="checkbox" id="commRecurring" onchange="toggleCommRecurrenceUI()">
+              🔁 Recurring meeting
+            </label>
+            <div id="commRecurrenceBody" style="display:none" class="recurrence-body">
+              <div class="form-group" style="margin:0;flex:1;min-width:120px">
+                <label class="form-label" style="margin-bottom:4px">Repeat every</label>
+                <div style="display:flex;gap:6px;align-items:center">
+                  <input type="number" class="form-input" id="commRecurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
+                  <select class="form-select" id="commRecurrenceFreq" onchange="toggleCommRecurrenceUI()" style="flex:1">
+                    <option value="daily">Day(s)</option>
+                    <option value="weekly" selected>Week(s)</option>
+                    <option value="monthly">Month(s)</option>
+                    <option value="yearly">Year(s)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="form-group" id="commRecurrenceDaysGroup" style="margin:0;flex:1;min-width:160px">
+                <label class="form-label" style="margin-bottom:4px">On days</label>
+                <div style="display:flex;gap:4px;flex-wrap:wrap" id="commRecurrenceDayPicker">
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="1" style="display:none"><span class="recur-day-btn" data-day="1">Mo</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="2" style="display:none"><span class="recur-day-btn" data-day="2">Tu</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="3" style="display:none"><span class="recur-day-btn" data-day="3">We</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="4" style="display:none"><span class="recur-day-btn" data-day="4">Th</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="5" style="display:none"><span class="recur-day-btn" data-day="5">Fr</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
+                  <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Description / Notes (RTE) -->
+          <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <div class="rte-wrapper">
+              <div class="rte-toolbar">
+                <button type="button" class="rte-btn" id="commRteBoldBtn" title="Bold" onmousedown="event.preventDefault();commRteExec('bold');commRteUpdateToolbar()"><b style="font-size:14px">B</b></button>
+                <div class="rte-divider"></div>
+                <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();commRteExec('insertUnorderedList')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();commRteExec('insertOrderedList')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <div class="rte-divider"></div>
+                <div class="rte-color-wrap">
+                  <button type="button" class="rte-btn" id="commRteColorBtn" title="Text color" onmousedown="event.preventDefault();commRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
+                    <span style="font-weight:700;font-size:13px;line-height:1">A</span>
+                    <span id="commRteColorBar" style="display:block;height:3px;width:16px;border-radius:2px;background:#e53e3e"></span>
+                  </button>
+                  <div class="rte-color-popup hidden" id="commRteColorPicker">
+                    <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();commRteSetColor('#111827')"></div>
+                    <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();commRteSetColor('#e53e3e')"></div>
+                    <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();commRteSetColor('#dd6b20')"></div>
+                    <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();commRteSetColor('#d69e2e')"></div>
+                    <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();commRteSetColor('#38a169')"></div>
+                    <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();commRteSetColor('#3182ce')"></div>
+                    <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();commRteSetColor('#805ad5')"></div>
+                    <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();commRteSetColor('#d53f8c')"></div>
+                    <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();commRteSetColor('#718096')"></div>
+                    <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();commRteSetColor('#a0aec0')"></div>
+                    <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();commRteSetColor('#ffffff')"></div>
+                    <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();commRteRemoveColor()">✕</div>
+                  </div>
+                </div>
+                <div class="rte-divider"></div>
+                <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();commRteAddLink()">🔗</button>
+              </div>
+              <div class="rte-editor" id="commDesc" contenteditable="true" data-placeholder="Key points, decisions, action items…"
+                   onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
+                   onkeyup="commRteUpdateToolbar()" onmouseup="commRteUpdateToolbar()" onfocus="commRteUpdateToolbar()" onclick="commRteCloseColorPicker()"></div>
+            </div>
+          </div>
         </div>
 
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <!-- ── Right: sidebar (metadata) ── -->
+        <div class="modal-sidebar-col">
+
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="commStatus">
+              <option value="Planned">📅 Planned</option>
+              <option value="Done">✅ Done</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Type of Contact</label>
+            <div class="comm-type-group" id="commTypeGroup">
+              <button type="button" class="comm-type-btn active" data-type="Meeting" onclick="selectCommType(this)">🤝 Meeting</button>
+              <button type="button" class="comm-type-btn"        data-type="Slack"   onclick="selectCommType(this)">💬 Slack</button>
+              <button type="button" class="comm-type-btn"        data-type="Email"   onclick="selectCommType(this)">📧 Email</button>
+              <button type="button" class="comm-type-btn"        data-type="Phone"   onclick="selectCommType(this)">📞 Phone</button>
+            </div>
+          </div>
+
           <div class="form-group">
             <label class="form-label">Date</label>
             <input type="date" class="form-input" id="commDate">
           </div>
+
           <div class="form-group">
             <label class="form-label">Duration (min)</label>
             <input type="number" class="form-input" id="commDuration" placeholder="e.g. 30" min="1" step="5">
           </div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">Type of Contact</label>
-          <div class="comm-type-group" id="commTypeGroup">
-            <button type="button" class="comm-type-btn active" data-type="Meeting"  onclick="selectCommType(this)">🤝 Meeting</button>
-            <button type="button" class="comm-type-btn"        data-type="Slack"    onclick="selectCommType(this)">💬 Slack</button>
-            <button type="button" class="comm-type-btn"        data-type="Email"    onclick="selectCommType(this)">📧 Email</button>
-            <button type="button" class="comm-type-btn"        data-type="Phone"    onclick="selectCommType(this)">📞 Phone</button>
+          <div class="form-group">
+            <label class="form-label">Participants</label>
+            <input type="text" class="form-input" id="commParticipants" placeholder="e.g. Alice, Bob">
           </div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">Participants</label>
-          <input type="text" class="form-input" id="commParticipants" placeholder="e.g. Alice, Bob, Carlos">
-        </div>
-
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
           <div class="form-group">
             <label class="form-label">Project</label>
             <select class="form-select" id="commProject">
               <option value="">— None —</option>
             </select>
           </div>
+
           <div class="form-group">
             <label class="form-label">Personal</label>
             <select class="form-select" id="commPersonal">
               <option value="">— None —</option>
             </select>
           </div>
-        </div>
 
-        <div class="form-group">
-          <label class="form-label">Notes</label>
-          <textarea class="form-textarea" id="commNotes" placeholder="Key points, decisions, action items…" rows="4"></textarea>
         </div>
-
       </div>
+
       <div class="modal-footer">
         <button class="btn btn-danger" id="commBtnDelete" style="display:none;margin-right:auto" onclick="deleteComm()">Delete</button>
         <button class="btn btn-secondary" onclick="closeCommModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveComm()">Save</button>
+        <button class="btn btn-primary" onclick="saveComm()">Save Comm</button>
       </div>
     </div>
   </div>
@@ -4002,24 +4119,32 @@ const renderers = {
     }
 
     function commCard(c) {
-      const icon = COMM_ICONS[c.type] || '💬';
-      const proj = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
-      const pers = c.personalId ? projects.find(p => p.id === c.personalId) : null;
-      const dur  = c.duration ? `⏱ ${c.duration} min` : '';
+      const icon  = COMM_ICONS[c.type] || '💬';
+      const proj  = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
+      const pers  = c.personalId ? projects.find(p => p.id === c.personalId) : null;
+      const dur   = c.duration ? `⏱ ${c.duration} min` : '';
       const parts = c.participants ? `👥 ${esc(c.participants)}` : '';
+      const isDone = c.status === 'Done';
+      const statusBadge = isDone
+        ? `<span style="font-size:11px;font-weight:600;color:#16a34a;background:#f0fdf4;border-radius:4px;padding:1px 7px">✅ Done</span>`
+        : `<span style="font-size:11px;font-weight:600;color:#2563eb;background:#eff6ff;border-radius:4px;padding:1px 7px">📅 Planned</span>`;
+      const recurBadge = c.recurrence ? `<span style="font-size:11px;color:var(--text-muted)">🔁 Recurring</span>` : '';
+      const notesText = stripHtml(c.notes || '');
       return `
-        <div class="comm-card" onclick="openCommModal('${c.id}')">
+        <div class="comm-card ${isDone ? 'done' : ''}" onclick="openCommModal('${c.id}')">
           <div class="comm-card-icon">${icon}</div>
           <div class="comm-card-body">
             <div class="comm-card-title">${esc(c.title)}</div>
             <div class="comm-card-meta">
+              ${statusBadge}
               <span class="comm-tag">${c.type || 'Meeting'}</span>
               ${dur   ? `<span>${dur}</span>`   : ''}
               ${parts ? `<span>${parts}</span>` : ''}
               ${proj  ? `<span>📁 ${esc(proj.name)}</span>` : ''}
               ${pers  ? `<span>👤 ${esc(pers.name)}</span>` : ''}
+              ${recurBadge}
             </div>
-            ${c.notes ? `<div class="comm-card-notes">${esc(c.notes)}</div>` : ''}
+            ${notesText ? `<div class="comm-card-notes">${esc(notesText)}</div>` : ''}
           </div>
         </div>`;
     }
@@ -4035,12 +4160,38 @@ const renderers = {
       document.getElementById('commDate').value         = c?.date         || todayStr();
       document.getElementById('commDuration').value     = c?.duration     || '30';
       document.getElementById('commParticipants').value = c?.participants || '';
-      document.getElementById('commNotes').value        = c?.notes        || '';
+
+      // Description RTE
+      document.getElementById('commDesc').innerHTML = c?.notes || '';
+
+      // Status
+      document.getElementById('commStatus').value = c?.status || 'Planned';
 
       // Type buttons
       document.querySelectorAll('.comm-type-btn').forEach(btn => {
         btn.classList.toggle('active', btn.dataset.type === (c?.type || 'Meeting'));
       });
+
+      // Recurring
+      const rec = c?.recurrence || null;
+      document.getElementById('commRecurring').checked = !!rec;
+      if (rec) {
+        document.getElementById('commRecurrenceInterval').value = rec.interval || 1;
+        document.getElementById('commRecurrenceFreq').value     = rec.freq     || 'weekly';
+        const days = rec.days || [];
+        document.querySelectorAll('.comm-recur-day').forEach(cb => {
+          cb.checked = days.includes(Number(cb.value));
+          cb.nextElementSibling.classList.toggle('active', cb.checked);
+        });
+      } else {
+        document.getElementById('commRecurrenceInterval').value = 1;
+        document.getElementById('commRecurrenceFreq').value     = 'weekly';
+        document.querySelectorAll('.comm-recur-day').forEach(cb => {
+          cb.checked = false;
+          cb.nextElementSibling.classList.remove('active');
+        });
+      }
+      toggleCommRecurrenceUI();
 
       // Project dropdown
       const projSel = document.getElementById('commProject');
@@ -4058,6 +4209,7 @@ const renderers = {
 
       document.getElementById('commBtnDelete').style.display = c ? 'inline-flex' : 'none';
       document.getElementById('commModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('commTitle').focus(), 50);
     }
 
     function closeCommModal() {
@@ -4070,21 +4222,40 @@ const renderers = {
       btn.classList.add('active');
     }
 
+    function toggleCommRecurrenceUI() {
+      const on   = document.getElementById('commRecurring').checked;
+      const freq = document.getElementById('commRecurrenceFreq').value;
+      document.getElementById('commRecurrenceBody').style.display     = on ? 'flex' : 'none';
+      document.getElementById('commRecurrenceDaysGroup').style.display = (on && freq === 'weekly') ? 'block' : 'none';
+    }
+
     function saveComm() {
       const title = document.getElementById('commTitle').value.trim();
       if (!title) { document.getElementById('commTitle').focus(); return; }
 
       const activeTypeBtn = document.querySelector('.comm-type-btn.active');
+      const isRecurring   = document.getElementById('commRecurring').checked;
+      let recurrence = null;
+      if (isRecurring) {
+        const freq = document.getElementById('commRecurrenceFreq').value;
+        const days = freq === 'weekly'
+          ? [...document.querySelectorAll('.comm-recur-day:checked')].map(cb => Number(cb.value))
+          : [];
+        recurrence = { freq, interval: Number(document.getElementById('commRecurrenceInterval').value) || 1, days };
+      }
+
       const entry = {
         id:           editingCommId || uid(),
         title,
+        status:       document.getElementById('commStatus').value       || 'Planned',
         date:         document.getElementById('commDate').value         || '',
         duration:     document.getElementById('commDuration').value     || '',
         participants: document.getElementById('commParticipants').value.trim() || '',
         type:         activeTypeBtn ? activeTypeBtn.dataset.type : 'Meeting',
         projectId:    document.getElementById('commProject').value      || '',
         personalId:   document.getElementById('commPersonal').value     || '',
-        notes:        document.getElementById('commNotes').value.trim() || '',
+        notes:        document.getElementById('commDesc').innerHTML.trim() || '',
+        recurrence,
         createdAt:    editingCommId ? (comms.find(c => c.id === editingCommId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt:    new Date().toISOString()
       };
@@ -4108,6 +4279,34 @@ const renderers = {
       persistComms();
       closeCommModal();
       if (currentView === 'comms') showView('comms');
+    }
+
+    /* ── Comm RTE helpers ── */
+    function commRteExec(cmd, val) { document.getElementById('commDesc').focus(); document.execCommand(cmd, false, val || null); }
+    function commRteUpdateToolbar() {
+      const bold = document.queryCommandState('bold');
+      document.getElementById('commRteBoldBtn')?.classList.toggle('active', bold);
+    }
+    function commRteToggleColorPicker() {
+      document.getElementById('commRteColorPicker').classList.toggle('hidden');
+    }
+    function commRteCloseColorPicker() {
+      document.getElementById('commRteColorPicker')?.classList.add('hidden');
+    }
+    function commRteSetColor(color) {
+      document.getElementById('commDesc').focus();
+      document.execCommand('foreColor', false, color);
+      document.getElementById('commRteColorBar').style.background = color;
+      commRteCloseColorPicker();
+    }
+    function commRteRemoveColor() {
+      document.getElementById('commDesc').focus();
+      document.execCommand('removeFormat', false, null);
+      commRteCloseColorPicker();
+    }
+    function commRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('commDesc').focus(); document.execCommand('createLink', false, url); }
     }
 
     /* ==============================
