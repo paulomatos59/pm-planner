@@ -1283,7 +1283,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.4</div>
+      <div class="sidebar-version">v1.1.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4032,7 +4032,7 @@ const renderers = {
       document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
-      document.getElementById('commDuration').value     = c?.duration     || '';
+      document.getElementById('commDuration').value     = c?.duration     || '30';
       document.getElementById('commParticipants').value = c?.participants || '';
       document.getElementById('commNotes').value        = c?.notes        || '';
 
