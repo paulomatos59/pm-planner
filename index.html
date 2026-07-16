@@ -1232,7 +1232,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.1.2</div>
+      <div class="sidebar-version">v1.1.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2707,7 +2707,7 @@ const renderers = {
 
           <div class="summary-card">
             <div class="summary-card-header">
-              <span class="summary-card-title" style="color:var(--danger)">⚠ Overdue</span>
+              <span class="summary-card-title" style="${overdueList.length > 0 ? 'color:var(--danger)' : ''}">⚠ Overdue</span>
               <button class="summary-card-link" onclick="showView('overdue')">View all →</button>
             </div>
             ${overdueList.length === 0
