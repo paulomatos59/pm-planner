@@ -396,6 +396,28 @@
     }
     #taskModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
     #taskModal .form-textarea { min-height: 180px; }
+    /* ── Full-screen follow-up modal ── */
+    #followupModal { padding: 0; align-items: stretch; justify-content: stretch; }
+    #followupModal .modal {
+      max-width: 100%; width: 100%; max-height: 100vh; height: 100vh;
+      border-radius: 0; margin: 0; overflow-y: unset;
+      display: flex; flex-direction: column;
+    }
+    #followupModal .modal-header { flex-shrink: 0; padding: 16px 24px 12px; }
+    #followupModal .modal-footer { flex-shrink: 0; }
+    #followupModal .modal-body-split {
+      flex: 1; overflow: hidden; padding: 0;
+      display: grid; grid-template-columns: 1fr 300px;
+    }
+    #followupModal .modal-main-col {
+      padding: 20px 28px 24px; overflow-y: auto;
+      border-right: 1px solid var(--border);
+    }
+    #followupModal .modal-sidebar-col {
+      padding: 20px 20px 24px; overflow-y: auto;
+      background: var(--bg);
+    }
+    #followupModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
     /* ── Full-screen comm modal ── */
     #commModal { padding: 0; align-items: stretch; justify-content: stretch; }
     #commModal .modal {
@@ -1092,6 +1114,10 @@
       #commModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
       #commModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
       #commModal .modal-sidebar-col { background: var(--bg); }
+      /* Follow-up modal on mobile */
+      #followupModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
+      #followupModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
+      #followupModal .modal-sidebar-col { background: var(--bg); }
 
       /* Kanban: let it scroll horizontally */
       .kb2-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1310,7 +1336,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.3</div>
+      <div class="sidebar-version">v1.2.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1788,42 +1814,93 @@
     </div>
   </div>
 
-  <!-- ── Follow-up Modal ── -->
+  <!-- ── Follow-up Modal (full-screen) ── -->
   <div class="modal-overlay hidden" id="followupModal">
     <div class="modal">
       <div class="modal-header">
         <h2 class="modal-title" id="followupModalTitle">New Follow-up</h2>
         <button class="btn-close" onclick="closeFollowupModal()">×</button>
       </div>
-      <div class="modal-body">
-        <input type="hidden" id="followupId">
-        <div class="form-group">
-          <label class="form-label">Assign to</label>
-          <select class="form-select" id="followupProjectId">
-            <option value="">— None —</option>
-          </select>
+
+      <div class="modal-body modal-body-split">
+        <!-- ── Left: main content ── -->
+        <div class="modal-main-col">
+          <input type="hidden" id="followupId">
+
+          <div class="form-group">
+            <label class="form-label">Topic <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-input" id="followupTopic" placeholder="What needs to be followed up?" autocomplete="off">
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <div class="rte-wrapper">
+              <div class="rte-toolbar">
+                <button type="button" class="rte-btn" id="fuRteBoldBtn" title="Bold" onmousedown="event.preventDefault();fuRteExec('bold');fuRteUpdateToolbar()"><b style="font-size:14px">B</b></button>
+                <div class="rte-divider"></div>
+                <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();fuRteExec('insertUnorderedList')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();fuRteExec('insertOrderedList')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <div class="rte-divider"></div>
+                <div class="rte-color-wrap">
+                  <button type="button" class="rte-btn" id="fuRteColorBtn" title="Text color" onmousedown="event.preventDefault();fuRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
+                    <span style="font-weight:700;font-size:13px;line-height:1">A</span>
+                    <span id="fuRteColorBar" style="display:block;height:3px;width:16px;border-radius:2px;background:#e53e3e"></span>
+                  </button>
+                  <div class="rte-color-popup hidden" id="fuRteColorPicker">
+                    <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();fuRteSetColor('#111827')"></div>
+                    <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();fuRteSetColor('#e53e3e')"></div>
+                    <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();fuRteSetColor('#dd6b20')"></div>
+                    <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();fuRteSetColor('#d69e2e')"></div>
+                    <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();fuRteSetColor('#38a169')"></div>
+                    <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();fuRteSetColor('#3182ce')"></div>
+                    <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();fuRteSetColor('#805ad5')"></div>
+                    <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();fuRteSetColor('#d53f8c')"></div>
+                    <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();fuRteSetColor('#718096')"></div>
+                    <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();fuRteSetColor('#a0aec0')"></div>
+                    <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();fuRteSetColor('#ffffff')"></div>
+                    <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();fuRteRemoveColor()">✕</div>
+                  </div>
+                </div>
+                <div class="rte-divider"></div>
+                <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();fuRteAddLink()">🔗</button>
+              </div>
+              <div class="rte-editor" id="followupNotes" contenteditable="true" data-placeholder="Context, owner, next steps…"
+                   onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
+                   onkeyup="fuRteUpdateToolbar()" onmouseup="fuRteUpdateToolbar()" onfocus="fuRteUpdateToolbar()" onclick="fuRteCloseColorPicker()"></div>
+            </div>
+          </div>
         </div>
-        <div class="form-group">
-          <label class="form-label">Topic *</label>
-          <input type="text" class="form-input" id="followupTopic" placeholder="What needs to be followed up?" autocomplete="off">
-        </div>
-        <div class="form-group">
-          <label class="form-label">Notes</label>
-          <textarea class="form-textarea" id="followupNotes" placeholder="Context, owner, next steps…"></textarea>
-        </div>
-        <div class="form-group">
-          <label class="form-label">Status</label>
-          <select class="form-select" id="followupStatus">
-            <option value="Open">Open</option>
-            <option value="Discussed">Discussed</option>
-            <option value="Resolved">Resolved</option>
-          </select>
+
+        <!-- ── Right: sidebar ── -->
+        <div class="modal-sidebar-col">
+
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="followupStatus">
+              <option value="Open">🟡 Open</option>
+              <option value="Discussed">💬 Discussed</option>
+              <option value="Resolved">✅ Resolved</option>
+            </select>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">Assign to</label>
+            <select class="form-select" id="followupProjectId">
+              <option value="">— None —</option>
+            </select>
+          </div>
+
         </div>
       </div>
+
       <div class="modal-footer">
         <button class="btn btn-danger" id="btnDeleteFollowup" style="display:none;margin-right:auto" onclick="deleteFollowup()">Delete</button>
         <button class="btn btn-secondary" onclick="closeFollowupModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveFollowup()">Save</button>
+        <button class="btn btn-primary" onclick="saveFollowup()">Save Follow-up</button>
       </div>
     </div>
   </div>
@@ -4548,7 +4625,7 @@ const renderers = {
           <div class="followup-dot ${dotClass}"></div>
           <div class="followup-content">
             <div class="followup-topic">${esc(f.topic)}</div>
-            ${f.notes ? `<div class="followup-notes-text">${esc(f.notes)}</div>` : ''}
+            ${f.notes ? `<div class="followup-notes-text">${esc(stripHtml(f.notes))}</div>` : ''}
           </div>
           <span class="fu-status-badge fu-${fuStatusClass(f.status)}">${f.status}</span>
         </div>`;
@@ -5054,10 +5131,10 @@ const renderers = {
       document.getElementById('followupModalTitle').textContent    = isNew ? 'New Follow-up' : 'Edit Follow-up';
       document.getElementById('btnDeleteFollowup').style.display   = isNew ? 'none' : 'block';
       document.getElementById('followupId').value    = f?.id    || '';
-      document.getElementById('followupTopic').value = f?.topic || '';
-      document.getElementById('followupNotes').value = f?.notes || '';
-      document.getElementById('followupStatus').value = f?.status || 'Open';
-      document.getElementById('followupTopic').style.borderColor = '';
+      document.getElementById('followupTopic').value               = f?.topic  || '';
+      document.getElementById('followupNotes').innerHTML             = f?.notes  || '';
+      document.getElementById('followupStatus').value               = f?.status || 'Open';
+      document.getElementById('followupTopic').style.borderColor    = '';
       buildAssignOptions(document.getElementById('followupProjectId'), preId);
 
       document.getElementById('followupModal').classList.remove('hidden');
@@ -5080,7 +5157,7 @@ const renderers = {
       const fu = {
         id, topic,
         projectId: document.getElementById('followupProjectId').value,
-        notes:     document.getElementById('followupNotes').value.trim(),
+        notes:     document.getElementById('followupNotes').innerHTML.trim(),
         status:    document.getElementById('followupStatus').value,
         createdAt: existing?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
@@ -5097,6 +5174,29 @@ const renderers = {
       persistFollowups();
       closeFollowupModal();
       showView(currentView);
+    }
+
+    /* ── Follow-up RTE helpers ── */
+    function fuRteExec(cmd, val) { document.getElementById('followupNotes').focus(); document.execCommand(cmd, false, val || null); }
+    function fuRteUpdateToolbar() {
+      document.getElementById('fuRteBoldBtn')?.classList.toggle('active', document.queryCommandState('bold'));
+    }
+    function fuRteToggleColorPicker() { document.getElementById('fuRteColorPicker').classList.toggle('hidden'); }
+    function fuRteCloseColorPicker()  { document.getElementById('fuRteColorPicker')?.classList.add('hidden'); }
+    function fuRteSetColor(color) {
+      document.getElementById('followupNotes').focus();
+      document.execCommand('foreColor', false, color);
+      document.getElementById('fuRteColorBar').style.background = color;
+      fuRteCloseColorPicker();
+    }
+    function fuRteRemoveColor() {
+      document.getElementById('followupNotes').focus();
+      document.execCommand('removeFormat', false, null);
+      fuRteCloseColorPicker();
+    }
+    function fuRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('followupNotes').focus(); document.execCommand('createLink', false, url); }
     }
 
     /* ==============================
