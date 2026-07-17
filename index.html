@@ -373,51 +373,56 @@
       display: flex; gap: 8px; justify-content: flex-end;
       position: sticky; bottom: 0; background: var(--surface);
     }
-    /* ── Full-screen task modal ── */
-    #taskModal { padding: 0; align-items: stretch; justify-content: stretch; }
+    /* ── Task modal ── */
+    #taskModal { padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
     #taskModal .modal {
-      max-width: 100%; width: 100%; max-height: 100vh; height: 100vh;
-      border-radius: 0; margin: 0; overflow-y: unset;
-      display: flex; flex-direction: column;
+      max-width: 100%; width: 100%; max-height: none; height: auto;
+      border-radius: 12px; margin: 0 auto; overflow-y: visible;
     }
-    #taskModal .modal-header { flex-shrink: 0; padding: 16px 24px 12px; }
-    #taskModal .modal-footer { flex-shrink: 0; }
+    #taskModal .modal-header { padding: 16px 24px 12px; }
     #taskModal .modal-body-split {
-      flex: 1; overflow: hidden; padding: 0;
+      padding: 0;
       display: grid; grid-template-columns: 1fr 300px;
     }
     #taskModal .modal-main-col {
-      padding: 20px 28px 24px; overflow-y: auto;
+      padding: 20px 28px 24px;
       border-right: 1px solid var(--border);
     }
     #taskModal .modal-sidebar-col {
-      padding: 20px 20px 24px; overflow-y: auto;
-      background: var(--bg);
+      padding: 20px 20px 24px;
+      background: var(--bg); border-radius: 0 0 12px 0;
     }
     #taskModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
-    #taskModal .form-textarea { min-height: 180px; }
-    /* ── Full-screen follow-up modal ── */
-    #followupModal { padding: 0; align-items: stretch; justify-content: stretch; }
+    #taskModal .rte-editor { min-height: 180px; max-height: none; overflow-y: visible; }
+    /* ── Follow-up modal ── */
+    #followupModal { padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
     #followupModal .modal {
-      max-width: 100%; width: 100%; max-height: 100vh; height: 100vh;
-      border-radius: 0; margin: 0; overflow-y: unset;
-      display: flex; flex-direction: column;
+      max-width: 100%; width: 100%; max-height: none; height: auto;
+      border-radius: 12px; margin: 0 auto; overflow-y: visible;
     }
-    #followupModal .modal-header { flex-shrink: 0; padding: 16px 24px 12px; }
-    #followupModal .modal-footer { flex-shrink: 0; }
+    #followupModal .modal-header { padding: 16px 24px 12px; }
     #followupModal .modal-body-split {
-      flex: 1; overflow: hidden; padding: 0;
+      padding: 0;
       display: grid; grid-template-columns: 1fr 300px;
     }
     #followupModal .modal-main-col {
-      padding: 20px 28px 24px; overflow-y: auto;
+      padding: 20px 28px 24px;
       border-right: 1px solid var(--border);
     }
     #followupModal .modal-sidebar-col {
-      padding: 20px 20px 24px; overflow-y: auto;
-      background: var(--bg);
+      padding: 20px 20px 24px;
+      background: var(--bg); border-radius: 0 0 12px 0;
     }
     #followupModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
+    #followupModal .rte-editor { min-height: 200px; max-height: none; overflow-y: visible; }
+    /* ── Note modal ── */
+    #noteModal { padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
+    #noteModal .modal {
+      max-width: 620px; width: 100%; max-height: none; height: auto;
+      border-radius: 12px; overflow-y: visible;
+    }
+    #noteModal .modal-header { padding: 16px 24px 12px; }
+    #noteModal .form-textarea-tall { min-height: 260px; max-height: none; resize: vertical; }
     /* ── Comm modal ── */
     #commModal { padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
     #commModal .modal {
@@ -1105,19 +1110,23 @@
         max-height: 92vh;
       }
       .modal-body { max-height: calc(92vh - 120px); overflow-y: auto; }
-      /* Task modal on mobile: stack columns vertically */
-      #taskModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
+      /* Task modal on mobile */
+      #taskModal { padding: 8px; }
+      #taskModal .modal-body-split { grid-template-columns: 1fr; }
       #taskModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
-      #taskModal .modal-sidebar-col { background: var(--bg); }
+      #taskModal .modal-sidebar-col { background: var(--bg); border-radius: 0; }
       /* Comm modal on mobile */
       #commModal { padding: 8px; }
       #commModal .modal-body-split { grid-template-columns: 1fr; }
       #commModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
       #commModal .modal-sidebar-col { background: var(--bg); border-radius: 0; }
       /* Follow-up modal on mobile */
-      #followupModal .modal-body-split { grid-template-columns: 1fr; overflow-y: auto; }
+      #followupModal { padding: 8px; }
+      #followupModal .modal-body-split { grid-template-columns: 1fr; }
       #followupModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
-      #followupModal .modal-sidebar-col { background: var(--bg); }
+      #followupModal .modal-sidebar-col { background: var(--bg); border-radius: 0; }
+      /* Note modal on mobile */
+      #noteModal { padding: 8px; }
 
       /* Kanban: let it scroll horizontally */
       .kb2-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; }
@@ -1336,7 +1345,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.5</div>
+      <div class="sidebar-version">v1.2.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1354,7 +1363,12 @@
             <button class="task-type-btn" id="typeBtnTimeoff" onclick="setTaskType('timeoff')">🌴 Time Off / Event</button>
           </div>
         </div>
-        <button class="btn-close" onclick="closeTaskModal()">×</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <button class="btn btn-danger btn-sm" id="btnDelete" style="display:none" onclick="deleteTask()">Delete</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeTaskModal()">Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="saveTask()">Save Task</button>
+        </div>
+        <button class="btn-close" style="margin-left:12px" onclick="closeTaskModal()">×</button>
       </div>
 
       <div class="modal-body modal-body-split">
@@ -1570,11 +1584,6 @@
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-danger" id="btnDelete" style="display:none;margin-right:auto" onclick="deleteTask()">Delete</button>
-        <button class="btn btn-secondary" onclick="closeTaskModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveTask()">Save Task</button>
-      </div>
     </div>
   </div>
 
@@ -1812,12 +1821,17 @@
     </div>
   </div>
 
-  <!-- ── Follow-up Modal (full-screen) ── -->
+  <!-- ── Follow-up Modal ── -->
   <div class="modal-overlay hidden" id="followupModal">
     <div class="modal">
       <div class="modal-header">
         <h2 class="modal-title" id="followupModalTitle">New Follow-up</h2>
-        <button class="btn-close" onclick="closeFollowupModal()">×</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <button class="btn btn-danger btn-sm" id="btnDeleteFollowup" style="display:none" onclick="deleteFollowup()">Delete</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeFollowupModal()">Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="saveFollowup()">Save Follow-up</button>
+        </div>
+        <button class="btn-close" style="margin-left:12px" onclick="closeFollowupModal()">×</button>
       </div>
 
       <div class="modal-body modal-body-split">
@@ -1895,11 +1909,6 @@
         </div>
       </div>
 
-      <div class="modal-footer">
-        <button class="btn btn-danger" id="btnDeleteFollowup" style="display:none;margin-right:auto" onclick="deleteFollowup()">Delete</button>
-        <button class="btn btn-secondary" onclick="closeFollowupModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveFollowup()">Save Follow-up</button>
-      </div>
     </div>
   </div>
 
@@ -1908,7 +1917,12 @@
     <div class="modal modal-wide">
       <div class="modal-header">
         <h2 class="modal-title" id="noteModalTitle">New Note</h2>
-        <button class="btn-close" onclick="closeNoteModal()">×</button>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <button class="btn btn-danger btn-sm" id="btnDeleteNote" style="display:none" onclick="deleteNote()">Delete</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeNoteModal()">Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="saveNote()">Save Note</button>
+        </div>
+        <button class="btn-close" style="margin-left:12px" onclick="closeNoteModal()">×</button>
       </div>
       <div class="modal-body">
         <input type="hidden" id="noteId">
@@ -1926,11 +1940,6 @@
           <label class="form-label">Content</label>
           <textarea class="form-textarea form-textarea-tall" id="noteContent" placeholder="Write your note here…"></textarea>
         </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-danger" id="btnDeleteNote" style="display:none;margin-right:auto" onclick="deleteNote()">Delete</button>
-        <button class="btn btn-secondary" onclick="closeNoteModal()">Cancel</button>
-        <button class="btn btn-primary" onclick="saveNote()">Save Note</button>
       </div>
     </div>
   </div>
