@@ -1310,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.1</div>
+      <div class="sidebar-version">v1.2.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2688,7 +2688,7 @@
     function updateHeader() {
       document.getElementById('headerDate').textContent =
         new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-      const overdue   = tasks.filter(isOverdue).length;
+      const overdue   = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).length;
       const todayOpen = tasks.filter(t => (t.dueDate||'').slice(0,10) === todayStr() && t.status !== 'Done').length;
       const doneTdy   = tasks.filter(t => t.status === 'Done' && (t.dueDate||'').slice(0,10) === todayStr()).length;
       document.getElementById('headerStats').innerHTML =
