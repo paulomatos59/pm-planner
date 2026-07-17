@@ -1310,7 +1310,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.2</div>
+      <div class="sidebar-version">v1.2.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2807,7 +2807,7 @@ const renderers = {
       const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
 
       const open          = tasks.filter(t => t.status !== 'Done');
-      const overdueList   = open.filter(isOverdue);
+      const overdueList   = open.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId);
       const todayList     = open.filter(t => (t.dueDate||'').slice(0,10) === today);
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
