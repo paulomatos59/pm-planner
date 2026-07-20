@@ -1350,7 +1350,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.7</div>
+      <div class="sidebar-version">v1.2.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2097,7 +2097,8 @@
     let activePersonalId = null;
     let activeProjectTab = 'tasks';
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
-    let ganttOffset      = 0;  // weeks offset from current week
+    let ganttOffset      = 0;
+    let ganttScale       = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let editingTaskId    = null;
     let editingProjId    = null;
     let editingFuId      = null;
@@ -3176,102 +3177,214 @@ const renderers = {
        GANTT VIEW
     ============================== */
     function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
+    function setGanttScale(s) { ganttScale = s; ganttOffset = 0; showView('gantt'); }
+    function getWeekNumber(d) {
+      const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+      const dayNum = tmp.getUTCDay() || 7;
+      tmp.setUTCDate(tmp.getUTCDate() + 4 - dayNum);
+      const yearStart = new Date(Date.UTC(tmp.getUTCFullYear(), 0, 1));
+      return Math.ceil((((tmp - yearStart) / 86400000) + 1) / 7);
+    }
 
     function renderGantt() {
-      const DAYS    = 35; // 5 weeks
-      const DAY_W   = 30; // px per day column
-      const MONTHS  = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
-
-      // Window start = Monday of (current week + ganttOffset weeks)
+      const MS = 86400000;
+      const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const todStr = todayStr();
       const now = new Date(); now.setHours(0,0,0,0);
-      const dow = now.getDay();
-      const winStart = new Date(now);
-      winStart.setDate(now.getDate() - (dow === 0 ? 6 : dow - 1) + ganttOffset * 7);
 
-      // Build dates array
-      const dates = [];
-      for (let i = 0; i < DAYS; i++) {
-        const d = new Date(winStart); d.setDate(winStart.getDate() + i);
-        dates.push(d);
+      // ── Scale config ──
+      const scaleDef = {
+        hours:     { colPx:44,  nCols:24 },
+        days:      { colPx:30,  nCols:42 },
+        weeks:     { colPx:65,  nCols:26 },
+        months:    { colPx:90,  nCols:18 },
+        quarters:  { colPx:110, nCols:12 },
+        halfyears: { colPx:130, nCols:8  },
+        years:     { colPx:160, nCols:6  },
+      }[ganttScale] || { colPx:30, nCols:42 };
+      const { colPx, nCols } = scaleDef;
+
+      // ── Window start / end ──
+      let winStart, winEnd;
+      const off = ganttOffset;
+      const dow = now.getDay();
+
+      if (ganttScale === 'hours') {
+        winStart = new Date(now); winStart.setDate(now.getDate() + off);
+        winEnd   = new Date(winStart); winEnd.setDate(winStart.getDate() + 1);
+
+      } else if (ganttScale === 'days') {
+        winStart = new Date(now);
+        winStart.setDate(now.getDate() - (dow===0?6:dow-1) + off * 7);
+        winEnd = new Date(winStart); winEnd.setDate(winStart.getDate() + nCols);
+
+      } else if (ganttScale === 'weeks') {
+        winStart = new Date(now);
+        winStart.setDate(now.getDate() - (dow===0?6:dow-1) + off * 13 * 7);
+        winEnd = new Date(winStart); winEnd.setDate(winStart.getDate() + nCols * 7);
+
+      } else if (ganttScale === 'months') {
+        winStart = new Date(now.getFullYear(), now.getMonth() + off * 6, 1);
+        winEnd   = new Date(winStart.getFullYear(), winStart.getMonth() + nCols, 1);
+
+      } else if (ganttScale === 'quarters') {
+        const qm = Math.floor(now.getMonth()/3)*3;
+        winStart = new Date(now.getFullYear(), qm + off * 8 * 3, 1);
+        winEnd   = new Date(winStart.getFullYear(), winStart.getMonth() + nCols * 3, 1);
+
+      } else if (ganttScale === 'halfyears') {
+        const hm = now.getMonth() < 6 ? 0 : 6;
+        winStart = new Date(now.getFullYear(), hm + off * 12, 1);
+        winEnd   = new Date(winStart.getFullYear(), winStart.getMonth() + nCols * 6, 1);
+
+      } else { // years
+        winStart = new Date(now.getFullYear() + off * 3, 0, 1);
+        winEnd   = new Date(winStart.getFullYear() + nCols, 0, 1);
       }
 
-      const ds0    = dates[0];
-      const dsN    = dates[DAYS - 1];
-      const winS   = `${ds0.getFullYear()}-${pad(ds0.getMonth()+1)}-${pad(ds0.getDate())}`;
-      const winE   = `${dsN.getFullYear()}-${pad(dsN.getMonth()+1)}-${pad(dsN.getDate())}`;
-      const todStr = todayStr();
+      const totalDays = (winEnd - winStart) / MS;
+      const totalW    = nCols * colPx;
+      const pxPerDay  = totalW / totalDays;
 
-      // Convert date string to pixel offset
+      const winS = `${winStart.getFullYear()}-${pad(winStart.getMonth()+1)}-${pad(winStart.getDate())}`;
+      const winE = `${winEnd.getFullYear()}-${pad(winEnd.getMonth()+1)}-${pad(winEnd.getDate())}`;
+
       function xOf(ds) {
-        const d = parseLocal(ds);
-        return Math.round((d - ds0) / 86400000) * DAY_W;
+        return Math.round((parseLocal(ds) - winStart) / MS * pxPerDay);
       }
       function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
-      // Work tasks overlapping the window
+      // ── Column headers ──
+      let colHeaders = '';
+
+      if (ganttScale === 'hours') {
+        const isToday = todStr === winS;
+        const hNow = new Date().getHours();
+        for (let i = 0; i < 24; i++) {
+          const isNow = isToday && i === hNow;
+          const showLabel = i === 0;
+          colHeaders += `<div class="gantt-day-hdr${isNow?' is-today':''}" style="width:${colPx}px;min-width:${colPx}px">
+            <div class="gd-mon" style="font-size:7px">${showLabel?winStart.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'}):''}</div>
+            <div class="gd-num" style="font-size:9px">${i}:00</div>
+          </div>`;
+        }
+
+      } else if (ganttScale === 'days') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart); d.setDate(winStart.getDate()+i);
+          const ds = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+          const isWknd = d.getDay()===0||d.getDay()===6;
+          const showMo = d.getDate()===1||i===0;
+          colHeaders += `<div class="gantt-day-hdr ${ds===todStr?'is-today':''} ${isWknd?'is-weekend':''}" style="width:${colPx}px;min-width:${colPx}px">
+            <div class="gd-mon">${showMo?MO[d.getMonth()]:''}</div>
+            <div class="gd-num">${d.getDate()}</div>
+          </div>`;
+        }
+
+      } else if (ganttScale === 'weeks') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart); d.setDate(winStart.getDate()+i*7);
+          const showMo = d.getDate()<=7||i===0;
+          const wn = getWeekNumber(d);
+          colHeaders += `<div class="gantt-day-hdr" style="width:${colPx}px;min-width:${colPx}px">
+            <div class="gd-mon">${showMo?MO[d.getMonth()]+' \''+String(d.getFullYear()).slice(2):''}</div>
+            <div class="gd-num" style="font-size:9px">W${wn}</div>
+          </div>`;
+        }
+
+      } else if (ganttScale === 'months') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart.getFullYear(), winStart.getMonth()+i, 1);
+          const nd = new Date(d.getFullYear(), d.getMonth()+1, 1);
+          const w = Math.round((nd-d)/MS*pxPerDay);
+          const showYr = d.getMonth()===0||i===0;
+          colHeaders += `<div class="gantt-day-hdr" style="width:${w}px;min-width:${w}px">
+            <div class="gd-mon">${showYr?d.getFullYear():''}</div>
+            <div class="gd-num" style="font-size:9px">${MO[d.getMonth()]}</div>
+          </div>`;
+        }
+
+      } else if (ganttScale === 'quarters') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart.getFullYear(), winStart.getMonth()+i*3, 1);
+          const nd = new Date(d.getFullYear(), d.getMonth()+3, 1);
+          const w = Math.round((nd-d)/MS*pxPerDay);
+          const q = Math.floor(d.getMonth()/3)+1;
+          colHeaders += `<div class="gantt-day-hdr" style="width:${w}px;min-width:${w}px">
+            <div class="gd-mon">${d.getFullYear()}</div>
+            <div class="gd-num" style="font-size:9px">Q${q}</div>
+          </div>`;
+        }
+
+      } else if (ganttScale === 'halfyears') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart.getFullYear(), winStart.getMonth()+i*6, 1);
+          const nd = new Date(d.getFullYear(), d.getMonth()+6, 1);
+          const w = Math.round((nd-d)/MS*pxPerDay);
+          const h = d.getMonth()<6?'H1':'H2';
+          colHeaders += `<div class="gantt-day-hdr" style="width:${w}px;min-width:${w}px">
+            <div class="gd-mon">${d.getFullYear()}</div>
+            <div class="gd-num" style="font-size:9px">${h}</div>
+          </div>`;
+        }
+
+      } else { // years
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart.getFullYear()+i, 0, 1);
+          const nd = new Date(d.getFullYear()+1, 0, 1);
+          const w = Math.round((nd-d)/MS*pxPerDay);
+          colHeaders += `<div class="gantt-day-hdr" style="width:${w}px;min-width:${w}px">
+            <div class="gd-mon"></div>
+            <div class="gd-num">${d.getFullYear()}</div>
+          </div>`;
+        }
+      }
+
+      // ── Task/timeoff filtering ──
       const workTasks = tasks.filter(t => {
-        if (t.taskType === 'timeoff' || t.status === 'Done' && !t.dueDate) return false;
+        if (t.taskType === 'timeoff' || (t.status === 'Done' && !t.dueDate)) return false;
         const from = t.startDate || t.dueDate;
         return from && t.dueDate && t.dueDate >= winS && from <= winE;
       });
-
-      // Time-off events overlapping the window
       const timeoffs = tasks.filter(t => {
         if (t.taskType !== 'timeoff') return false;
         const from = t.startDate || t.dueDate;
         return from && t.dueDate && t.dueDate >= winS && from <= winE;
       });
 
-      // Group tasks by project
-      const allProjects = projects.filter(p => ['Active','On Hold'].includes(p.status));
-      const groups = [];
-      allProjects.forEach(p => {
-        const ptasks = workTasks.filter(t => t.projectId === p.id);
-        if (ptasks.length) groups.push({ name: p.name, color: p.color || '#2563eb', tasks: ptasks });
-      });
-      const unassigned = workTasks.filter(t => !t.projectId);
-      if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
-
-      const totalW = DAYS * DAY_W;
-
-      // ── Day header row ──
-      const dayHdrs = dates.map((d, i) => {
-        const isToday   = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}` === todStr;
-        const isWeekend = d.getDay() === 0 || d.getDay() === 6;
-        const showMon   = d.getDate() === 1 || i === 0;
-        return `<div class="gantt-day-hdr ${isToday ? 'is-today' : ''} ${isWeekend ? 'is-weekend' : ''}" style="width:${DAY_W}px;min-width:${DAY_W}px">
-          <div class="gd-mon">${showMon ? MONTHS[d.getMonth()] : ''}</div>
-          <div class="gd-num">${d.getDate()}</div>
-        </div>`;
-      }).join('');
-
-      // ── Backdrop: weekend shading + time-off bands + today line ──
+      // ── Backdrop (weekend bands + today line + timeoff overlays) ──
       function backdrop() {
-        const wknd = dates.map((d, i) => {
-          if (d.getDay() !== 0 && d.getDay() !== 6) return '';
-          return `<div class="gantt-wknd-band" style="left:${i * DAY_W}px;width:${DAY_W}px"></div>`;
-        }).join('');
-
-        const toff = timeoffs.map(t => {
+        let html = '';
+        if (ganttScale === 'days') {
+          for (let i = 0; i < nCols; i++) {
+            const d = new Date(winStart); d.setDate(winStart.getDate()+i);
+            if (d.getDay()===0||d.getDay()===6)
+              html += `<div class="gantt-wknd-band" style="left:${i*colPx}px;width:${colPx}px"></div>`;
+          }
+        }
+        if (todStr >= winS && todStr < winE) {
+          const tx = xOf(todStr) + (ganttScale==='days'||ganttScale==='hours' ? Math.round(colPx/2) : 0);
+          html += `<div class="gantt-tod-line" style="left:${tx}px"></div>`;
+        }
+        timeoffs.forEach(t => {
           const from = t.startDate || t.dueDate;
           const x1 = clamp(xOf(from), 0, totalW);
-          const x2 = clamp(xOf(t.dueDate) + DAY_W, 0, totalW);
-          return `<div class="gantt-timeoff-overlay" style="left:${x1}px;width:${x2 - x1}px" title="🌴 ${esc(t.title)}"></div>`;
-        }).join('');
-
-        const todLine = todStr >= winS && todStr <= winE
-          ? `<div class="gantt-tod-line" style="left:${xOf(todStr) + DAY_W / 2}px"></div>` : '';
-
-        return wknd + toff + todLine;
+          const x2 = clamp(xOf(t.dueDate) + (ganttScale==='days'?colPx:0), 0, totalW);
+          html += `<div class="gantt-timeoff-overlay" style="left:${x1}px;width:${Math.max(2,x2-x1)}px" title="🌴 ${esc(t.title)}"></div>`;
+        });
+        return html;
       }
 
-      // ── Task bar rows ──
+      // ── Task bars ──
+      const TOFF_COLOR = '#0891b2';
+      const minBarW = Math.max(colPx - 2, 10);
+
       function taskBar(t, projColor) {
         const from = t.startDate || t.dueDate;
-        const isMilestone = !t.startDate || t.startDate === t.dueDate;
-        const x1 = clamp(xOf(from), 0, totalW - 2);
-        const rawW = isMilestone ? DAY_W - 2 : clamp(xOf(t.dueDate) + DAY_W - xOf(from) - 2, DAY_W - 2, totalW);
-        const od = isOverdue(t);
+        const x1   = clamp(xOf(from), 0, totalW - 2);
+        const xEnd = xOf(t.dueDate) + (ganttScale==='days'||ganttScale==='hours'?colPx:0);
+        const rawW = clamp(xEnd - x1 - 2, minBarW, totalW - x1);
+        const od   = isOverdue(t);
         const color = t.status === 'Done' ? '#94a3b8' : projColor;
         const label = rawW > 44 ? esc(t.title) : '';
         return `
@@ -3279,83 +3392,88 @@ const renderers = {
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
               ${backdrop()}
-              <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''} ${isMilestone?'':''}}"
+              <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
                    style="left:${x1}px;width:${rawW}px;background:${color}"
                    onclick="openTaskModal('${t.id}')"
-                   title="${esc(t.title)}  (${from} → ${t.dueDate})">${label}</div>
+                   title="${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
             </div>
           </div>`;
       }
 
-      // ── Time-off rows ──
-      const TOFF_COLOR = '#0891b2';
       function timeoffBar(t) {
         const from = t.startDate || t.dueDate;
         const x1   = clamp(xOf(from), 0, totalW - 2);
-        const x2   = clamp(xOf(t.dueDate) + DAY_W - 2, x1 + DAY_W - 2, totalW);
-        const rawW = x2 - x1;
+        const xEnd = xOf(t.dueDate) + (ganttScale==='days'?colPx:0);
+        const rawW = clamp(xEnd - x1 - 2, minBarW, totalW - x1);
         const label = rawW > 44 ? esc(t.title) : '';
         return `
           <div class="gantt-row">
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="🌴 ${esc(t.title)}">🌴 ${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
-              ${dates.map((d,i) => d.getDay()===0||d.getDay()===6 ? `<div class="gantt-wknd-band" style="left:${i*DAY_W}px;width:${DAY_W}px"></div>` : '').join('')}
-              ${todStr >= winS && todStr <= winE ? `<div class="gantt-tod-line" style="left:${xOf(todStr)+DAY_W/2}px"></div>` : ''}
+              ${backdrop()}
               <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${TOFF_COLOR};opacity:0.85"
                    onclick="openTaskModal('${t.id}')"
-                   title="🌴 ${esc(t.title)}  (${from} → ${t.dueDate})">${label}</div>
+                   title="🌴 ${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
             </div>
           </div>`;
       }
 
+      // ── Groups ──
+      const allProjects = projects.filter(p => ['Active','On Hold'].includes(p.status));
+      const groups = [];
+      allProjects.forEach(p => {
+        const pt = workTasks.filter(t => t.projectId === p.id);
+        if (pt.length) groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt });
+      });
+      const unassigned = workTasks.filter(t => !t.projectId);
+      if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
+
       const timeoffSection = timeoffs.length === 0 ? '' : `
         <div class="gantt-group-hdr">
-          <div class="gantt-group-name">
-            <div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>
-            🌴 Time Off / Events
-          </div>
+          <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>🌴 Time Off / Events</div>
           <div class="gantt-group-band" style="background:linear-gradient(90deg,${TOFF_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
         ${timeoffs.map(t => timeoffBar(t)).join('')}`;
 
-      // ── Group rows ──
       const groupRows = (groups.length === 0 && timeoffs.length === 0)
-        ? `<div class="gantt-empty-row">No tasks with due dates found in this period.<br>
-             <small>Assign start &amp; due dates to tasks to see them on the Gantt.</small></div>`
+        ? `<div class="gantt-empty-row">No tasks with due dates in this period.<br>
+             <small>Assign start &amp; due dates to tasks to see them on the timeline.</small></div>`
         : timeoffSection + groups.map(g => `
             <div class="gantt-group-hdr">
-              <div class="gantt-group-name">
-                <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
-                ${esc(g.name)}
-              </div>
+              <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>${esc(g.name)}</div>
               <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
             </div>
             ${g.tasks.map(t => taskBar(t, g.color)).join('')}
           `).join('');
 
-      const rangeLabel = `${ds0.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${dsN.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+      // ── Toolbar ──
+      const rangeLabel = `${winStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(winEnd-MS).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+      const SCALE_LABELS = [['hours','Hours'],['days','Days'],['weeks','Weeks'],['months','Months'],['quarters','Quarters'],['halfyears','Half Years'],['years','Years']];
+      const scaleBar = SCALE_LABELS.map(([k,l]) =>
+        `<button class="btn btn-sm ${ganttScale===k?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttScale('${k}')">${l}</button>`
+      ).join('');
 
       return `
         <div class="view-header">
           <div>
-            <div class="view-title">Gantt</div>
+            <div class="view-title">📊 Gantt</div>
             <div class="view-subtitle">${rangeLabel}</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <div style="display:flex;gap:3px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">${scaleBar}</div>
             <div class="month-nav">
-              <button class="month-nav-btn" onclick="navGantt(-1)" title="Previous 5 weeks">‹</button>
-              <span class="month-nav-label" style="font-size:14px;min-width:200px;text-align:center">${rangeLabel}</span>
-              <button class="month-nav-btn" onclick="navGantt(1)" title="Next 5 weeks">›</button>
+              <button class="month-nav-btn" onclick="navGantt(-1)" title="Previous">‹</button>
+              <button class="month-nav-btn" onclick="ganttOffset=0;showView('gantt')" style="font-size:11px;padding:0 10px;font-weight:600">Today</button>
+              <button class="month-nav-btn" onclick="navGantt(1)" title="Next">›</button>
             </div>
-            ${ganttOffset !== 0 ? `<button class="btn btn-secondary btn-sm" onclick="ganttOffset=0;showView('gantt')">Today</button>` : ''}
-            <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+            <button class="btn btn-primary btn-sm" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
         <div class="gantt-wrap">
           <div class="gantt-table">
             <div class="gantt-header">
               <div class="gantt-label-col">Task</div>
-              <div class="gantt-days-header">${dayHdrs}</div>
+              <div class="gantt-days-header">${colHeaders}</div>
             </div>
             <div class="gantt-body">${groupRows}</div>
           </div>
