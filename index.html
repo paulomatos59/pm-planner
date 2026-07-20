@@ -334,6 +334,11 @@
       padding: 10px 14px; gap: 8px; align-items: center;
     }
     .table-header { background: var(--bg); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
+    .table-header .th-sort { cursor: pointer; user-select: none; display: flex; align-items: center; gap: 4px; white-space: nowrap; }
+    .table-header .th-sort:hover { color: var(--text); }
+    .table-header .th-sort.active { color: var(--primary); }
+    .th-arrow { font-size: 10px; opacity: 0.5; }
+    .th-sort.active .th-arrow { opacity: 1; }
     .table-row { border-bottom: 1px solid var(--border); font-size: 14px; cursor: pointer; transition: background 0.1s; }
     .table-row:last-child { border-bottom: none; }
     .table-row:hover { background: var(--bg); }
@@ -1345,7 +1350,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.6</div>
+      <div class="sidebar-version">v1.2.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2098,6 +2103,7 @@
     let editingFuId      = null;
     let editingNoteId    = null;
     let filterState        = { search: '', category: '', priority: '', status: '', taskType: 'task' };
+    let sortState          = { col: 'due', dir: 'asc' };
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
     let capacitySettings   = JSON.parse(localStorage.getItem('dp_capacity') || '{"workingDays":[1,2,3,4,5],"hoursPerDay":8,"bufferPct":20}');
 
@@ -3827,12 +3833,53 @@ const renderers = {
         </div>
         <div class="tasks-table">
           <div class="table-header">
-            <div></div><div>Task</div><div>Category</div><div>Priority</div><div>Due</div><div>Status</div><div>Hrs</div>
+            <div></div>
+            ${thSort('title',    'Task')}
+            ${thSort('category', 'Category')}
+            ${thSort('priority', 'Priority')}
+            ${thSort('due',      'Due')}
+            ${thSort('status',   'Status')}
+            ${thSort('hours',    'Hrs')}
           </div>
           ${filtered.length === 0
             ? '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px">No tasks match your filters.</div>'
-            : filtered.map(tableRow).join('')}
+            : sortTasks(filtered).map(tableRow).join('')}
         </div>`;
+    }
+
+    /* ── Table sort helpers ── */
+    function thSort(col, label) {
+      const active = sortState.col === col;
+      const arrow  = active ? (sortState.dir === 'asc' ? '▲' : '▼') : '↕';
+      return `<div class="th-sort ${active ? 'active' : ''}" onclick="toggleSort('${col}')">${label} <span class="th-arrow">${arrow}</span></div>`;
+    }
+
+    function toggleSort(col) {
+      if (sortState.col === col) {
+        sortState.dir = sortState.dir === 'asc' ? 'desc' : 'asc';
+      } else {
+        sortState.col = col;
+        sortState.dir = 'asc';
+      }
+      document.getElementById('mainContent').innerHTML = renderAll();
+    }
+
+    const PRIORITY_RANK = { Critical: 0, High: 1, Medium: 2, Low: 3 };
+
+    function sortTasks(arr) {
+      const { col, dir } = sortState;
+      const m = dir === 'asc' ? 1 : -1;
+      return [...arr].sort((a, b) => {
+        switch (col) {
+          case 'title':    return m * esc(a.title).localeCompare(esc(b.title));
+          case 'category': return m * (a.category || '').localeCompare(b.category || '');
+          case 'priority': return m * ((PRIORITY_RANK[a.priority] ?? 9) - (PRIORITY_RANK[b.priority] ?? 9));
+          case 'due':      return m * ((a.dueDate || '9999') < (b.dueDate || '9999') ? -1 : (a.dueDate || '9999') > (b.dueDate || '9999') ? 1 : 0);
+          case 'status':   return m * (a.status || '').localeCompare(b.status || '');
+          case 'hours':    return m * ((parseFloat(a.estimatedHours) || 0) - (parseFloat(b.estimatedHours) || 0));
+          default:         return 0;
+        }
+      });
     }
 
     function applyFilters() {
