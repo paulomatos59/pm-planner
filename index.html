@@ -309,6 +309,9 @@
     .proj-ov-body { padding:8px; }
     .proj-ov-empty { padding:14px 12px; text-align:center; color:var(--text-muted); font-size:13px; }
     .proj-ov-more { text-align:center; padding:6px 8px 10px; }
+    .ov-add-wrap { margin-left:auto; align-self:center; position:relative; padding-right:2px; flex-shrink:0; }
+    .ov-add-dropdown { position:absolute; top:calc(100% + 4px); right:0; min-width:150px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.14); z-index:300; overflow:hidden; }
+    .ov-add-dropdown.hidden { display:none; }
     /* ── Popup (pop-out) mode ── */
     body.popup-mode .sidebar { display: none !important; }
     body.popup-mode .main { display: none !important; }
@@ -1380,7 +1383,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.1</div>
+      <div class="sidebar-version">v1.3.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4176,6 +4179,16 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='comms'?'active':''}" onclick="switchTab('comms')">
             💬 Comms <span class="tab-count">${pcomms.length}</span>
           </button>
+          ${activeProjectTab==='overview' ? `
+          <div class="ov-add-wrap" id="ovAddWrap_${pid}">
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
+            <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openNoteModal(null,'${pid}')">📝 Note</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
+            </div>
+          </div>` : ''}
         </div>`;
 
       if (activeProjectTab === 'overview') {
@@ -4344,6 +4357,16 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='comms'?'active':''}" onclick="switchTab('comms')">
             💬 Comms <span class="tab-count">${pcomms.length}</span>
           </button>
+          ${activeProjectTab==='overview' ? `
+          <div class="ov-add-wrap" id="ovAddWrap_${pid}">
+            <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
+            <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openNoteModal(null,'${pid}')">📝 Note</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
+            </div>
+          </div>` : ''}
         </div>`;
 
       if (activeProjectTab === 'overview') {
@@ -4449,12 +4472,21 @@ const renderers = {
       document.getElementById('projSummaryEditor')?.focus();
       document.execCommand(cmd, false, null);
     }
+    function toggleOvAdd(pid) {
+      const el = document.getElementById('ovAddDrop_' + pid);
+      if (el) el.classList.toggle('hidden');
+    }
+    function closeOvAdd(pid) {
+      const el = document.getElementById('ovAddDrop_' + pid);
+      if (el) el.classList.add('hidden');
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('.ov-add-wrap')) {
+        document.querySelectorAll('.ov-add-dropdown').forEach(d => d.classList.add('hidden'));
+      }
+    });
 
     function renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms) {
-      const linkField   = p.type === 'personal' ? 'personal' : 'project';
-      const commOpenFn  = linkField === 'project'
-        ? `openCommModalForProject('${pid}')` : `openCommModalForPersonal('${pid}')`;
-
       const openTasks    = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a)-priorityOrder(b));
       const openFu       = pfu.filter(f => f.status !== 'Resolved').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
       const plannedComms = pcomms.filter(c => c.status !== 'Done').sort((a,b) => (b.date||'').localeCompare(a.date||''));
@@ -4481,53 +4513,52 @@ const renderers = {
                onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}">${p.summary||''}</div>
         </div>`;
 
-      // ── Open Tasks ──
+      // ── Row 1: Tasks + Follow-ups side by side ──
+      html += `<div class="proj-ov-grid">`;
+
       html += `
-        <div class="proj-ov-section">
+        <div class="proj-ov-section grid-item">
           <div class="proj-ov-hdr">
             <span>📋</span>
             <span class="proj-ov-hdr-title">Open Tasks</span>
             <span class="tab-count">${openTasks.length}</span>
-            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
           </div>
           <div class="proj-ov-body">
             ${openTasks.length === 0
-              ? `<div class="proj-ov-empty">No open tasks — <button class="btn btn-secondary btn-sm" onclick="openTaskModal(null,'${pid}')">Add one</button></div>`
-              : `<div class="task-list">${openTasks.slice(0,8).map(taskCardWithSubs).join('')}</div>
-                 ${openTasks.length > 8 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('tasks')">View all ${openTasks.length} open tasks →</button></div>` : ''}`
+              ? `<div class="proj-ov-empty">No open tasks</div>`
+              : `<div class="task-list">${openTasks.slice(0,6).map(taskCardWithSubs).join('')}</div>
+                 ${openTasks.length > 6 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('tasks')">View all ${openTasks.length} →</button></div>` : ''}`
             }
           </div>
         </div>`;
 
-      // ── Open Follow-ups ──
       html += `
-        <div class="proj-ov-section">
+        <div class="proj-ov-section grid-item">
           <div class="proj-ov-hdr">
             <span>📌</span>
             <span class="proj-ov-hdr-title">Open Follow-ups</span>
             <span class="tab-count">${openFu.length}</span>
-            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openFollowupModal(null,'${pid}')">＋ Add Follow-up</button>
           </div>
           <div class="proj-ov-body">
             ${openFu.length === 0
               ? `<div class="proj-ov-empty">No open follow-ups</div>`
               : `<div class="followup-list">${openFu.slice(0,5).map(followupCard).join('')}</div>
-                 ${openFu.length > 5 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('followups')">View all ${openFu.length} follow-ups →</button></div>` : ''}`
+                 ${openFu.length > 5 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('followups')">View all ${openFu.length} →</button></div>` : ''}`
             }
           </div>
         </div>`;
 
-      // ── Notes + Planned Comms 2-col grid ──
+      html += `</div>`; // end row 1 grid
+
+      // ── Row 2: Notes + Planned Comms side by side ──
       html += `<div class="proj-ov-grid">`;
 
-      // Notes
       html += `
         <div class="proj-ov-section grid-item">
           <div class="proj-ov-hdr">
             <span>📝</span>
             <span class="proj-ov-hdr-title">Notes</span>
             <span class="tab-count">${sortedNotes.length}</span>
-            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openNoteModal(null,'${pid}')">＋ Add</button>
           </div>
           <div class="proj-ov-body">
             ${sortedNotes.length === 0
@@ -4538,14 +4569,12 @@ const renderers = {
           </div>
         </div>`;
 
-      // Planned Comms
       html += `
         <div class="proj-ov-section grid-item">
           <div class="proj-ov-hdr">
             <span>💬</span>
             <span class="proj-ov-hdr-title">Planned Comms</span>
             <span class="tab-count">${plannedComms.length}</span>
-            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="${commOpenFn}">＋ Add</button>
           </div>
           <div class="proj-ov-body">
             ${plannedComms.length === 0
@@ -4556,7 +4585,7 @@ const renderers = {
           </div>
         </div>`;
 
-      html += `</div>`; // end grid
+      html += `</div>`; // end row 2 grid
       return html;
     }
 
