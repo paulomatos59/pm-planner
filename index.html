@@ -294,6 +294,13 @@
     .cap-day-chip { padding:5px 10px; border-radius:6px; font-size:12px; font-weight:700; border:2px solid var(--border); background:var(--bg); color:var(--text-muted); cursor:pointer; user-select:none; transition:all .15s; }
     .cap-day-chip.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
     .gantt-legend-item { display: flex; align-items: center; gap: 5px; }
+    /* ── Popup (pop-out) mode ── */
+    body.popup-mode .sidebar { display: none !important; }
+    body.popup-mode .main { display: none !important; }
+    body.popup-mode .modal-overlay { background: var(--bg) !important; }
+    body.popup-mode .modal-overlay .modal { box-shadow: none !important; }
+    .popout-btn { background:none; border:1px solid var(--border); border-radius:6px; cursor:pointer; font-size:13px; padding:3px 7px; color:var(--text-muted); transition:all .15s; line-height:1.4; }
+    .popout-btn:hover { background:var(--bg); color:var(--text); border-color:var(--primary); }
     /* ── Auto-save draft badge ── */
     .draft-badge {
       font-size: 10px; font-weight: 600; color: #16a34a;
@@ -1358,7 +1365,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.9</div>
+      <div class="sidebar-version">v1.3.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1378,6 +1385,7 @@
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <span class="draft-badge" id="taskDraftBadge"></span>
+          <button class="popout-btn" id="taskPopoutBtn" title="Open in new window" onclick="popOutModal('task',document.getElementById('taskId').value||null)">⧉</button>
           <button class="btn btn-danger btn-sm" id="btnDelete" style="display:none" onclick="deleteTask()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeTaskModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveTask()">Save Task</button>
@@ -1608,6 +1616,7 @@
         <h2 class="modal-title" id="commModalTitle">New Communication</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <span class="draft-badge" id="commDraftBadge"></span>
+          <button class="popout-btn" id="commPopoutBtn" title="Open in new window" onclick="popOutModal('comm',document.getElementById('commId').value||null)">⧉</button>
           <button class="btn btn-danger btn-sm" id="commBtnDelete" style="display:none" onclick="deleteComm()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeCommModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveComm()">Save Comm</button>
@@ -1843,6 +1852,7 @@
         <h2 class="modal-title" id="followupModalTitle">New Follow-up</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <span class="draft-badge" id="followupDraftBadge"></span>
+          <button class="popout-btn" id="followupPopoutBtn" title="Open in new window" onclick="popOutModal('followup',document.getElementById('followupId').value||null)">⧉</button>
           <button class="btn btn-danger btn-sm" id="btnDeleteFollowup" style="display:none" onclick="deleteFollowup()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeFollowupModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveFollowup()">Save Follow-up</button>
@@ -1935,6 +1945,7 @@
         <h2 class="modal-title" id="noteModalTitle">New Note</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <span class="draft-badge" id="noteDraftBadge"></span>
+          <button class="popout-btn" id="notePopoutBtn" title="Open in new window" onclick="popOutModal('note',document.getElementById('noteId').value||null)">⧉</button>
           <button class="btn btn-danger btn-sm" id="btnDeleteNote" style="display:none" onclick="deleteNote()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeNoteModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveNote()">Save Note</button>
@@ -4588,6 +4599,7 @@ const renderers = {
     }
 
     function closeCommModal() {
+      if (isPopupMode()) { window.close(); return; }
       document.getElementById('commModal').classList.add('hidden');
       _clearDraft('comm');
       editingCommId = null;
@@ -4645,8 +4657,9 @@ const renderers = {
       }
 
       persistComms();
+      _notifyMainWindow();
       closeCommModal();
-      if (currentView === 'comms') showView('comms');
+      if (!isPopupMode() && currentView === 'comms') showView('comms');
     }
 
     function deleteComm() {
@@ -4959,6 +4972,56 @@ const renderers = {
     }
 
     /* ==============================
+       POP-OUT WINDOW SYSTEM
+    ============================== */
+    function isPopupMode() { return document.body.classList.contains('popup-mode'); }
+
+    function popOutModal(type, id) {
+      // Save current draft so the popup picks it up
+      _saveDraft(type);
+      const idParam = id ? `&id=${encodeURIComponent(id)}` : '';
+      const url = location.pathname + location.search.replace(/[?&]popup=[^&]*/,'').replace(/[?&]id=[^&]*/,'') +
+                  (location.search ? '&' : '?') + `popup=${type}${idParam}`;
+      // Use clean base URL
+      const base = location.href.split('?')[0];
+      window.open(`${base}?popup=${type}${idParam}`,
+        `dp_popup_${type}_${id || 'new'}`,
+        'width=980,height=760,resizable=yes,scrollbars=yes');
+    }
+
+    function _notifyMainWindow() {
+      // Touch a key to trigger storage event in other tabs/windows
+      localStorage.setItem('dp_popup_saved', Date.now().toString());
+    }
+
+    // In popup mode: reload data from localStorage (main window may have updated it)
+    // In main window: reload when popup saves
+    window.addEventListener('storage', e => {
+      if (e.key === 'dp_popup_saved') {
+        tasks        = JSON.parse(localStorage.getItem('dp_tasks_v1')    || '[]');
+        comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
+        followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
+        projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
+        projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
+        if (!isPopupMode()) showView(currentView);
+      }
+    });
+
+    function checkPopupMode() {
+      const p = new URLSearchParams(location.search);
+      const type = p.get('popup');
+      if (!type) return;
+      document.body.classList.add('popup-mode');
+      // Hide the pop-out button inside the popup (no nesting)
+      document.querySelectorAll('.popout-btn').forEach(b => b.style.display = 'none');
+      setTimeout(() => {
+        const id = p.get('id') || null;
+        const opener = { task: openTaskModal, comm: openCommModal, followup: openFollowupModal, note: openNoteModal }[type];
+        if (opener) opener(id || null);
+      }, 120);
+    }
+
+    /* ==============================
        AUTO-SAVE DRAFT SYSTEM
     ============================== */
     let _draftTimer = null;
@@ -5133,6 +5196,7 @@ const renderers = {
     function openModal(id) { openTaskModal(id); }
 
     function closeTaskModal() {
+      if (isPopupMode()) { window.close(); return; }
       document.getElementById('taskModal').classList.add('hidden');
       _clearDraft('task');
       editingTaskId = null;
@@ -5203,8 +5267,9 @@ const renderers = {
       }
       if (existing) { Object.assign(existing, task); } else { tasks.push(task); }
       persistTasks();
+      _notifyMainWindow();
       closeTaskModal();
-      showView(currentView);
+      if (!isPopupMode()) showView(currentView);
     }
 
     function deleteTask() {
@@ -5443,6 +5508,7 @@ const renderers = {
     }
 
     function closeFollowupModal() {
+      if (isPopupMode()) { window.close(); return; }
       document.getElementById('followupModal').classList.add('hidden');
       _clearDraft('followup');
       editingFuId = null;
@@ -5466,8 +5532,9 @@ const renderers = {
       };
       if (existing) { Object.assign(existing, fu); } else { followups.push(fu); }
       persistFollowups();
+      _notifyMainWindow();
       closeFollowupModal();
-      showView(currentView);
+      if (!isPopupMode()) showView(currentView);
     }
 
     function deleteFollowup() {
@@ -5526,6 +5593,7 @@ const renderers = {
     }
 
     function closeNoteModal() {
+      if (isPopupMode()) { window.close(); return; }
       document.getElementById('noteModal').classList.add('hidden');
       _clearDraft('note');
       editingNoteId = null;
@@ -5548,8 +5616,9 @@ const renderers = {
       };
       if (existing) { Object.assign(existing, note); } else { projectNotes.push(note); }
       persistNotes();
+      _notifyMainWindow();
       closeNoteModal();
-      showView(currentView);
+      if (!isPopupMode()) showView(currentView);
     }
 
     function deleteNote() {
@@ -6066,14 +6135,17 @@ const renderers = {
     /* ==============================
        BOOT
     ============================== */
+    checkPopupMode();
     applySectionStates();
-    if (syncToken && syncGistId) {
-      setSyncChip('syncing', 'Loading…');
-      loadFromGist().then(ok => { if (ok) showView('summary'); else showView('summary'); });
-    } else {
-      if (syncToken) setSyncChip('idle', 'Not synced');
-      else setSyncChip('off', 'Sync');
-      showView('summary');
+    if (!isPopupMode()) {
+      if (syncToken && syncGistId) {
+        setSyncChip('syncing', 'Loading…');
+        loadFromGist().then(ok => { if (ok) showView('summary'); else showView('summary'); });
+      } else {
+        if (syncToken) setSyncChip('idle', 'Not synced');
+        else setSyncChip('off', 'Sync');
+        showView('summary');
+      }
     }
 
     // Auto-sync: pull latest from Gist every 30 seconds (only when sync is configured)
