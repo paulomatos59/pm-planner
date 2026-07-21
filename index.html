@@ -294,6 +294,21 @@
     .cap-day-chip { padding:5px 10px; border-radius:6px; font-size:12px; font-weight:700; border:2px solid var(--border); background:var(--bg); color:var(--text-muted); cursor:pointer; user-select:none; transition:all .15s; }
     .cap-day-chip.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
     .gantt-legend-item { display: flex; align-items: center; gap: 5px; }
+    /* ── Project Overview tab ── */
+    .proj-summary-wrap { background:var(--surface); border:1px solid var(--border); border-radius:10px; margin-bottom:18px; overflow:hidden; }
+    .proj-summary-toolbar { display:flex; align-items:center; gap:4px; padding:7px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+    .proj-summary-label { font-size:11px; font-weight:700; color:var(--text-muted); text-transform:uppercase; letter-spacing:.5px; margin-right:6px; }
+    .proj-summary-editor { min-height:110px; padding:14px 16px; font-size:14px; line-height:1.6; outline:none; color:var(--text); }
+    .proj-summary-editor:empty::before { content:attr(data-placeholder); color:var(--text-muted); pointer-events:none; }
+    .proj-ov-grid { display:grid; grid-template-columns:1fr 1fr; gap:16px; margin-top:4px; }
+    @media(max-width:700px){ .proj-ov-grid { grid-template-columns:1fr; } }
+    .proj-ov-section { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; margin-bottom:16px; }
+    .proj-ov-section.grid-item { margin-bottom:0; }
+    .proj-ov-hdr { display:flex; align-items:center; gap:8px; padding:10px 14px; border-bottom:1px solid var(--border); background:var(--bg); }
+    .proj-ov-hdr-title { font-size:12px; font-weight:700; flex:1; }
+    .proj-ov-body { padding:8px; }
+    .proj-ov-empty { padding:14px 12px; text-align:center; color:var(--text-muted); font-size:13px; }
+    .proj-ov-more { text-align:center; padding:6px 8px 10px; }
     /* ── Popup (pop-out) mode ── */
     body.popup-mode .sidebar { display: none !important; }
     body.popup-mode .main { display: none !important; }
@@ -1365,7 +1380,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.0</div>
+      <div class="sidebar-version">v1.3.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2118,7 +2133,7 @@
     let currentView      = 'today';
     let activeProjectId  = null;
     let activePersonalId = null;
-    let activeProjectTab = 'tasks';
+    let activeProjectTab = 'overview';
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
     let ganttOffset      = 0;
     let ganttScale       = 'days'; // hours|days|weeks|months|quarters|halfyears|years
@@ -2877,13 +2892,13 @@ const renderers = {
       const p = projects.find(x => x.id === projectId);
       if (p?.type === 'personal') { openPersonalItem(projectId); return; }
       activeProjectId  = projectId;
-      activeProjectTab = 'tasks';
+      activeProjectTab = 'overview';
       showView('project-detail');
     }
 
     function openPersonalItem(id) {
       activePersonalId = id;
-      activeProjectTab = 'tasks';
+      activeProjectTab = 'overview';
       showView('personal-detail');
     }
 
@@ -4146,6 +4161,9 @@ const renderers = {
         </div>
 
         <div class="tabs">
+          <button class="tab-btn ${activeProjectTab==='overview'?'active':''}" onclick="switchTab('overview')">
+            📊 Overview
+          </button>
           <button class="tab-btn ${activeProjectTab==='tasks'?'active':''}" onclick="switchTab('tasks')">
             📋 Tasks <span class="tab-count">${ptasks.length}</span>
           </button>
@@ -4160,7 +4178,9 @@ const renderers = {
           </button>
         </div>`;
 
-      if (activeProjectTab === 'tasks') {
+      if (activeProjectTab === 'overview') {
+        html += renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms);
+      } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
         const done = ptasks.filter(t => t.status === 'Done');
         html += `
@@ -4309,6 +4329,9 @@ const renderers = {
         </div>
 
         <div class="tabs">
+          <button class="tab-btn ${activeProjectTab==='overview'?'active':''}" onclick="switchTab('overview')">
+            📊 Overview
+          </button>
           <button class="tab-btn ${activeProjectTab==='tasks'?'active':''}" onclick="switchTab('tasks')">
             📋 Tasks <span class="tab-count">${ptasks.length}</span>
           </button>
@@ -4323,7 +4346,9 @@ const renderers = {
           </button>
         </div>`;
 
-      if (activeProjectTab === 'tasks') {
+      if (activeProjectTab === 'overview') {
+        html += renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms);
+      } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
         const done = ptasks.filter(t => t.status === 'Done');
         html += `
@@ -4399,6 +4424,142 @@ const renderers = {
     const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
 
     // Shared helper: renders comms tab content inside project/personal detail
+    /* ── Project / Personal overview tab shared renderer ── */
+    let _projSummTimer = null;
+    function scheduleProjectSummarySave(pid) {
+      clearTimeout(_projSummTimer);
+      _projSummTimer = setTimeout(() => {
+        const el = document.getElementById('projSummaryEditor');
+        if (!el) return;
+        const p = projects.find(x => x.id === pid);
+        if (!p) return;
+        p.summary   = el.innerHTML;
+        p.updatedAt = new Date().toISOString();
+        persistProjects();
+        const badge = document.getElementById('projSummaryBadge');
+        if (badge) {
+          badge.textContent = '✓ Saved';
+          badge.style.opacity = '1';
+          clearTimeout(badge._t);
+          badge._t = setTimeout(() => badge.style.opacity = '0', 2200);
+        }
+      }, 1200);
+    }
+    function projRteExec(cmd) {
+      document.getElementById('projSummaryEditor')?.focus();
+      document.execCommand(cmd, false, null);
+    }
+
+    function renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms) {
+      const linkField   = p.type === 'personal' ? 'personal' : 'project';
+      const commOpenFn  = linkField === 'project'
+        ? `openCommModalForProject('${pid}')` : `openCommModalForPersonal('${pid}')`;
+
+      const openTasks    = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a)-priorityOrder(b));
+      const openFu       = pfu.filter(f => f.status !== 'Resolved').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+      const plannedComms = pcomms.filter(c => c.status !== 'Done').sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      const sortedNotes  = [...pnotes].sort((a,b) => new Date(b.updatedAt)-new Date(a.updatedAt));
+
+      // ── Summary RTE ──
+      let html = `
+        <div class="proj-summary-wrap">
+          <div class="proj-summary-toolbar">
+            <span class="proj-summary-label">Summary</span>
+            <button type="button" class="rte-btn" title="Bold" onmousedown="event.preventDefault();projRteExec('bold')" style="height:24px"><b style="font-size:13px">B</b></button>
+            <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();projRteExec('insertUnorderedList')" style="height:24px">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+            </button>
+            <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projRteExec('insertOrderedList')" style="height:24px">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+            </button>
+            <div style="flex:1"></div>
+            <span class="draft-badge" id="projSummaryBadge" style="transition:opacity .4s;opacity:0"></span>
+          </div>
+          <div class="proj-summary-editor rte-editor" id="projSummaryEditor" contenteditable="true"
+               data-placeholder="Describe the initiative, goals, scope, and context…"
+               oninput="scheduleProjectSummarySave('${pid}')"
+               onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}">${p.summary||''}</div>
+        </div>`;
+
+      // ── Open Tasks ──
+      html += `
+        <div class="proj-ov-section">
+          <div class="proj-ov-hdr">
+            <span>📋</span>
+            <span class="proj-ov-hdr-title">Open Tasks</span>
+            <span class="tab-count">${openTasks.length}</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
+          </div>
+          <div class="proj-ov-body">
+            ${openTasks.length === 0
+              ? `<div class="proj-ov-empty">No open tasks — <button class="btn btn-secondary btn-sm" onclick="openTaskModal(null,'${pid}')">Add one</button></div>`
+              : `<div class="task-list">${openTasks.slice(0,8).map(taskCardWithSubs).join('')}</div>
+                 ${openTasks.length > 8 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('tasks')">View all ${openTasks.length} open tasks →</button></div>` : ''}`
+            }
+          </div>
+        </div>`;
+
+      // ── Open Follow-ups ──
+      html += `
+        <div class="proj-ov-section">
+          <div class="proj-ov-hdr">
+            <span>📌</span>
+            <span class="proj-ov-hdr-title">Open Follow-ups</span>
+            <span class="tab-count">${openFu.length}</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openFollowupModal(null,'${pid}')">＋ Add Follow-up</button>
+          </div>
+          <div class="proj-ov-body">
+            ${openFu.length === 0
+              ? `<div class="proj-ov-empty">No open follow-ups</div>`
+              : `<div class="followup-list">${openFu.slice(0,5).map(followupCard).join('')}</div>
+                 ${openFu.length > 5 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('followups')">View all ${openFu.length} follow-ups →</button></div>` : ''}`
+            }
+          </div>
+        </div>`;
+
+      // ── Notes + Planned Comms 2-col grid ──
+      html += `<div class="proj-ov-grid">`;
+
+      // Notes
+      html += `
+        <div class="proj-ov-section grid-item">
+          <div class="proj-ov-hdr">
+            <span>📝</span>
+            <span class="proj-ov-hdr-title">Notes</span>
+            <span class="tab-count">${sortedNotes.length}</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openNoteModal(null,'${pid}')">＋ Add</button>
+          </div>
+          <div class="proj-ov-body">
+            ${sortedNotes.length === 0
+              ? `<div class="proj-ov-empty">No notes yet</div>`
+              : `<div class="task-list">${sortedNotes.slice(0,4).map(noteCard).join('')}</div>
+                 ${sortedNotes.length > 4 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('notes')">View all →</button></div>` : ''}`
+            }
+          </div>
+        </div>`;
+
+      // Planned Comms
+      html += `
+        <div class="proj-ov-section grid-item">
+          <div class="proj-ov-hdr">
+            <span>💬</span>
+            <span class="proj-ov-hdr-title">Planned Comms</span>
+            <span class="tab-count">${plannedComms.length}</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="${commOpenFn}">＋ Add</button>
+          </div>
+          <div class="proj-ov-body">
+            ${plannedComms.length === 0
+              ? `<div class="proj-ov-empty">No planned comms</div>`
+              : `<div class="comm-list">${plannedComms.slice(0,4).map(commCard).join('')}</div>
+                 ${plannedComms.length > 4 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('comms')">View all →</button></div>` : ''}`
+            }
+          </div>
+        </div>`;
+
+      html += `</div>`; // end grid
+      return html;
+    }
+
     function renderCommsTab(pcomms, pid, linkField) {
       const sorted = [...pcomms].sort((a,b) => (b.date||'').localeCompare(a.date||''));
       // Pre-fill the correct project/personal field when opening the modal
@@ -5443,7 +5604,8 @@ const renderers = {
         priority:    document.getElementById('projectPriority').value,
         color:       document.getElementById('projectColor').value,
         createdAt:   existing?.createdAt || new Date().toISOString(),
-        updatedAt:   new Date().toISOString()
+        updatedAt:   new Date().toISOString(),
+        summary:     existing?.summary || ''
       };
       if (existing) { Object.assign(existing, proj); } else { projects.push(proj); }
       persistProjects();
