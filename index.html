@@ -294,6 +294,14 @@
     .cap-day-chip { padding:5px 10px; border-radius:6px; font-size:12px; font-weight:700; border:2px solid var(--border); background:var(--bg); color:var(--text-muted); cursor:pointer; user-select:none; transition:all .15s; }
     .cap-day-chip.active { border-color:var(--primary); background:var(--primary-light); color:var(--primary); }
     .gantt-legend-item { display: flex; align-items: center; gap: 5px; }
+    /* ── Auto-save draft badge ── */
+    .draft-badge {
+      font-size: 10px; font-weight: 600; color: #16a34a;
+      background: #f0fdf4; border: 1px solid #86efac; border-radius: 4px;
+      padding: 2px 7px; flex-shrink: 0; opacity: 0;
+      transition: opacity 0.4s; pointer-events: none;
+    }
+    .draft-badge.visible { opacity: 1; }
 
     /* ── Month grid ── */
     .month-nav { display: flex; align-items: center; gap: 10px; }
@@ -1350,7 +1358,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.2.8</div>
+      <div class="sidebar-version">v1.2.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1369,6 +1377,7 @@
           </div>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <span class="draft-badge" id="taskDraftBadge"></span>
           <button class="btn btn-danger btn-sm" id="btnDelete" style="display:none" onclick="deleteTask()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeTaskModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveTask()">Save Task</button>
@@ -1385,7 +1394,7 @@
           <!-- Title -->
           <div class="form-group">
             <label class="form-label" id="titleLabel">Task Title *</label>
-            <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off">
+            <input type="text" class="form-input" id="taskTitle" placeholder="What needs to be done?" autocomplete="off" oninput="scheduleDraftSave('task')">
           </div>
 
           <!-- Recurring -->
@@ -1463,7 +1472,7 @@
                 </label>
               </div>
               <div class="rte-editor" id="taskDesc" contenteditable="true" data-placeholder="Details, links, context…"
-                   onkeydown="rteKeyDown(event)" onkeyup="rteUpdateToolbar()" onmouseup="rteUpdateToolbar()" onfocus="rteUpdateToolbar()" onclick="rteCloseColorPicker()"></div>
+                   onkeydown="rteKeyDown(event)" onkeyup="rteUpdateToolbar()" onmouseup="rteUpdateToolbar()" onfocus="rteUpdateToolbar()" onclick="rteCloseColorPicker()" oninput="scheduleDraftSave('task')"></div>
               <div class="rte-attachments" id="rteAttachments"></div>
             </div>
           </div>
@@ -1598,6 +1607,7 @@
       <div class="modal-header">
         <h2 class="modal-title" id="commModalTitle">New Communication</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <span class="draft-badge" id="commDraftBadge"></span>
           <button class="btn btn-danger btn-sm" id="commBtnDelete" style="display:none" onclick="deleteComm()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeCommModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveComm()">Save Comm</button>
@@ -1613,7 +1623,7 @@
           <!-- Title -->
           <div class="form-group">
             <label class="form-label">Title <span style="color:var(--danger)">*</span></label>
-            <input type="text" class="form-input" id="commTitle" placeholder="e.g. Sprint planning sync" autocomplete="off">
+            <input type="text" class="form-input" id="commTitle" placeholder="e.g. Sprint planning sync" autocomplete="off" oninput="scheduleDraftSave('comm')">
           </div>
 
           <!-- Recurring -->
@@ -1689,7 +1699,7 @@
               </div>
               <div class="rte-editor" id="commDesc" contenteditable="true" data-placeholder="Key points, decisions, action items…"
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
-                   onkeyup="commRteUpdateToolbar()" onmouseup="commRteUpdateToolbar()" onfocus="commRteUpdateToolbar()" onclick="commRteCloseColorPicker()"></div>
+                   onkeyup="commRteUpdateToolbar()" onmouseup="commRteUpdateToolbar()" onfocus="commRteUpdateToolbar()" onclick="commRteCloseColorPicker()" oninput="scheduleDraftSave('comm')"></div>
             </div>
           </div>
 
@@ -1832,6 +1842,7 @@
       <div class="modal-header">
         <h2 class="modal-title" id="followupModalTitle">New Follow-up</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <span class="draft-badge" id="followupDraftBadge"></span>
           <button class="btn btn-danger btn-sm" id="btnDeleteFollowup" style="display:none" onclick="deleteFollowup()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeFollowupModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveFollowup()">Save Follow-up</button>
@@ -1846,7 +1857,7 @@
 
           <div class="form-group">
             <label class="form-label">Topic <span style="color:var(--danger)">*</span></label>
-            <input type="text" class="form-input" id="followupTopic" placeholder="What needs to be followed up?" autocomplete="off">
+            <input type="text" class="form-input" id="followupTopic" placeholder="What needs to be followed up?" autocomplete="off" oninput="scheduleDraftSave('followup')">
           </div>
 
           <div class="form-group">
@@ -1887,7 +1898,7 @@
               </div>
               <div class="rte-editor" id="followupNotes" contenteditable="true" data-placeholder="Context, owner, next steps…"
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
-                   onkeyup="fuRteUpdateToolbar()" onmouseup="fuRteUpdateToolbar()" onfocus="fuRteUpdateToolbar()" onclick="fuRteCloseColorPicker()"></div>
+                   onkeyup="fuRteUpdateToolbar()" onmouseup="fuRteUpdateToolbar()" onfocus="fuRteUpdateToolbar()" onclick="fuRteCloseColorPicker()" oninput="scheduleDraftSave('followup')"></div>
             </div>
           </div>
         </div>
@@ -1923,6 +1934,7 @@
       <div class="modal-header">
         <h2 class="modal-title" id="noteModalTitle">New Note</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <span class="draft-badge" id="noteDraftBadge"></span>
           <button class="btn btn-danger btn-sm" id="btnDeleteNote" style="display:none" onclick="deleteNote()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeNoteModal()">Cancel</button>
           <button class="btn btn-primary btn-sm" onclick="saveNote()">Save Note</button>
@@ -1939,11 +1951,11 @@
         </div>
         <div class="form-group">
           <label class="form-label">Title *</label>
-          <input type="text" class="form-input" id="noteTitle" placeholder="Note title…" autocomplete="off">
+          <input type="text" class="form-input" id="noteTitle" placeholder="Note title…" autocomplete="off" oninput="scheduleDraftSave('note')">
         </div>
         <div class="form-group">
           <label class="form-label">Content</label>
-          <textarea class="form-textarea form-textarea-tall" id="noteContent" placeholder="Write your note here…"></textarea>
+          <textarea class="form-textarea form-textarea-tall" id="noteContent" placeholder="Write your note here…" oninput="scheduleDraftSave('note')"></textarea>
         </div>
       </div>
     </div>
@@ -4569,11 +4581,15 @@ const renderers = {
       if (c) setTimeout(commTasksRender, 0);
 
       document.getElementById('commModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('commTitle').focus(), 50);
+      setTimeout(() => {
+        _checkAndRestoreDraft('comm', id);
+        document.getElementById('commTitle').focus();
+      }, 50);
     }
 
     function closeCommModal() {
       document.getElementById('commModal').classList.add('hidden');
+      _clearDraft('comm');
       editingCommId = null;
     }
 
@@ -4943,6 +4959,112 @@ const renderers = {
     }
 
     /* ==============================
+       AUTO-SAVE DRAFT SYSTEM
+    ============================== */
+    let _draftTimer = null;
+
+    function scheduleDraftSave(type) {
+      clearTimeout(_draftTimer);
+      _draftTimer = setTimeout(() => _saveDraft(type), 1500);
+    }
+
+    function _saveDraft(type) {
+      let data = null;
+      if (type === 'task') {
+        data = {
+          _id:  document.getElementById('taskId').value || null,
+          title:          document.getElementById('taskTitle').value,
+          description:    document.getElementById('taskDesc').innerHTML,
+          category:       document.getElementById('taskCategory').value,
+          priority:       document.getElementById('taskPriority').value,
+          startDate:      document.getElementById('taskStartDate').value,
+          dueDate:        document.getElementById('taskDueDate').value,
+          status:         document.getElementById('taskStatus').value,
+          estimatedHours: document.getElementById('taskHours').value,
+          projectId:      document.getElementById('taskProjectLink').value,
+        };
+      } else if (type === 'comm') {
+        data = {
+          _id:          document.getElementById('commId').value || null,
+          title:        document.getElementById('commTitle').value,
+          notes:        document.getElementById('commDesc').innerHTML,
+          date:         document.getElementById('commDate').value,
+          duration:     document.getElementById('commDuration').value,
+          organizer:    document.getElementById('commOrganizer').value,
+          participants: document.getElementById('commParticipants').value,
+        };
+      } else if (type === 'followup') {
+        data = {
+          _id:   document.getElementById('followupId').value || null,
+          topic: document.getElementById('followupTopic').value,
+          notes: document.getElementById('followupNotes').innerHTML,
+          status: document.getElementById('followupStatus').value,
+        };
+      } else if (type === 'note') {
+        data = {
+          _id:     document.getElementById('noteId').value || null,
+          title:   document.getElementById('noteTitle').value,
+          content: document.getElementById('noteContent').value,
+        };
+      }
+      if (!data) return;
+      data._ts = Date.now();
+      localStorage.setItem('dp_draft_' + type, JSON.stringify(data));
+      _showDraftBadge(type, '✓ Draft saved');
+    }
+
+    function _clearDraft(type) {
+      clearTimeout(_draftTimer);
+      localStorage.removeItem('dp_draft_' + type);
+    }
+
+    function _showDraftBadge(type, msg) {
+      const el = document.getElementById(type + 'DraftBadge');
+      if (!el) return;
+      el.textContent = msg;
+      el.classList.add('visible');
+      clearTimeout(el._hideTimer);
+      el._hideTimer = setTimeout(() => el.classList.remove('visible'), 2500);
+    }
+
+    function _checkAndRestoreDraft(type, currentId) {
+      // Only restore for new records (avoid overwriting saved data)
+      if (currentId) return;
+      try {
+        const raw = localStorage.getItem('dp_draft_' + type);
+        if (!raw) return;
+        const d = JSON.parse(raw);
+        // Must be a draft for a new record and < 24h old
+        if (d._id !== null || !d._ts || Date.now() - d._ts > 86400000) return;
+
+        if (type === 'task') {
+          if (d.title) document.getElementById('taskTitle').value = d.title;
+          if (d.description) document.getElementById('taskDesc').innerHTML = d.description;
+          if (d.category)  document.getElementById('taskCategory').value = d.category;
+          if (d.priority)  document.getElementById('taskPriority').value = d.priority;
+          if (d.startDate) document.getElementById('taskStartDate').value = d.startDate;
+          if (d.dueDate)   document.getElementById('taskDueDate').value   = d.dueDate;
+          if (d.status)    document.getElementById('taskStatus').value    = d.status;
+          if (d.estimatedHours) document.getElementById('taskHours').value = d.estimatedHours;
+        } else if (type === 'comm') {
+          if (d.title)    document.getElementById('commTitle').value = d.title;
+          if (d.notes)    document.getElementById('commDesc').innerHTML = d.notes;
+          if (d.duration) document.getElementById('commDuration').value = d.duration;
+          if (d.organizer)    document.getElementById('commOrganizer').value    = d.organizer;
+          if (d.participants) document.getElementById('commParticipants').value = d.participants;
+        } else if (type === 'followup') {
+          if (d.topic) document.getElementById('followupTopic').value = d.topic;
+          if (d.notes) document.getElementById('followupNotes').innerHTML = d.notes;
+          if (d.status) document.getElementById('followupStatus').value = d.status;
+        } else if (type === 'note') {
+          if (d.title)   document.getElementById('noteTitle').value   = d.title;
+          if (d.content) document.getElementById('noteContent').value = d.content;
+        }
+        _showDraftBadge(type, '♻ Draft restored');
+      } catch(e) {}
+    }
+
+    /* ==============================
        TASK MODAL
     ============================== */
     function openTaskModal(id = null, preProjectId = null) {
@@ -4996,7 +5118,10 @@ const renderers = {
       }
 
       document.getElementById('taskModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('taskTitle').focus(), 80);
+      setTimeout(() => {
+        _checkAndRestoreDraft('task', id);
+        document.getElementById('taskTitle').focus();
+      }, 80);
     }
 
     function openTaskModalWithDate(date) {
@@ -5009,6 +5134,7 @@ const renderers = {
 
     function closeTaskModal() {
       document.getElementById('taskModal').classList.add('hidden');
+      _clearDraft('task');
       editingTaskId = null;
     }
 
@@ -5310,11 +5436,15 @@ const renderers = {
       buildAssignOptions(document.getElementById('followupProjectId'), preId);
 
       document.getElementById('followupModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('followupTopic').focus(), 80);
+      setTimeout(() => {
+        _checkAndRestoreDraft('followup', id);
+        document.getElementById('followupTopic').focus();
+      }, 80);
     }
 
     function closeFollowupModal() {
       document.getElementById('followupModal').classList.add('hidden');
+      _clearDraft('followup');
       editingFuId = null;
     }
 
@@ -5389,11 +5519,15 @@ const renderers = {
       buildAssignOptions(document.getElementById('noteProjectId'), preId);
 
       document.getElementById('noteModal').classList.remove('hidden');
-      setTimeout(() => document.getElementById('noteTitle').focus(), 80);
+      setTimeout(() => {
+        _checkAndRestoreDraft('note', id);
+        document.getElementById('noteTitle').focus();
+      }, 80);
     }
 
     function closeNoteModal() {
       document.getElementById('noteModal').classList.add('hidden');
+      _clearDraft('note');
       editingNoteId = null;
     }
 
