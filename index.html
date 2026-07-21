@@ -269,6 +269,8 @@
     .gantt-tod-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); z-index: 6; pointer-events: none; }
     .gantt-tod-line::before { content: '▼'; position: absolute; top: -9px; left: -4px; font-size: 9px; color: var(--danger); }
     .gantt-timeoff-overlay { position: absolute; top: 0; bottom: 0; background: rgba(8,145,178,0.1); border-left: 2px solid rgba(8,145,178,0.35); pointer-events: none; z-index: 1; }
+    .gantt-milestone { position:absolute; width:12px; height:12px; background:#7c3aed; transform:rotate(45deg); top:50%; margin-top:-6px; cursor:pointer; z-index:5; border-radius:2px; box-shadow:0 1px 4px rgba(0,0,0,.25); transition:opacity .12s,transform .12s; }
+    .gantt-milestone:hover { opacity:.8; transform:rotate(45deg) scale(1.2); }
     .gantt-bar { position: absolute; height: 22px; top: 6px; border-radius: 4px; cursor: pointer; display: flex; align-items: center; padding: 0 7px; font-size: 10px; font-weight: 600; color: #fff; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; box-shadow: 0 1px 3px rgba(0,0,0,0.18); transition: filter 0.12s; z-index: 4; }
     .gantt-bar:hover { filter: brightness(1.1); }
     .gantt-bar.g-done { opacity: 0.4; }
@@ -1383,7 +1385,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.2</div>
+      <div class="sidebar-version">v1.3.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2138,8 +2140,10 @@
     let activePersonalId = null;
     let activeProjectTab = 'overview';
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
-    let ganttOffset      = 0;
-    let ganttScale       = 'days'; // hours|days|weeks|months|quarters|halfyears|years
+    let ganttOffset          = 0;
+    let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
+    let projTimelineOffset   = 0;
+    let projTimelineScale    = 'weeks';
     let editingTaskId    = null;
     let editingProjId    = null;
     let editingFuId      = null;
@@ -3219,6 +3223,7 @@ const renderers = {
     ============================== */
     function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
     function setGanttScale(s) { ganttScale = s; ganttOffset = 0; showView('gantt'); }
+    function setProjTimelineScale(s) { projTimelineScale = s; projTimelineOffset = 0; switchTab('timeline'); }
     function getWeekNumber(d) {
       const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
       const dayNum = tmp.getUTCDay() || 7;
@@ -4179,6 +4184,9 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='comms'?'active':''}" onclick="switchTab('comms')">
             💬 Comms <span class="tab-count">${pcomms.length}</span>
           </button>
+          <button class="tab-btn ${activeProjectTab==='timeline'?'active':''}" onclick="switchTab('timeline')">
+            📅 Timeline
+          </button>
           ${activeProjectTab==='overview' ? `
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
@@ -4256,6 +4264,10 @@ const renderers = {
 
       if (activeProjectTab === 'comms') {
         html += renderCommsTab(pcomms, pid, 'project');
+      }
+
+      if (activeProjectTab === 'timeline') {
+        html += renderProjectTimeline(pid, p, ptasks, pcomms);
       }
 
       return html;
@@ -4357,6 +4369,9 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='comms'?'active':''}" onclick="switchTab('comms')">
             💬 Comms <span class="tab-count">${pcomms.length}</span>
           </button>
+          <button class="tab-btn ${activeProjectTab==='timeline'?'active':''}" onclick="switchTab('timeline')">
+            📅 Timeline
+          </button>
           ${activeProjectTab==='overview' ? `
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
@@ -4434,6 +4449,10 @@ const renderers = {
 
       if (activeProjectTab === 'comms') {
         html += renderCommsTab(pcomms, pid, 'personal');
+      }
+
+      if (activeProjectTab === 'timeline') {
+        html += renderProjectTimeline(pid, p, ptasks, pcomms);
       }
 
       return html;
@@ -4587,6 +4606,205 @@ const renderers = {
 
       html += `</div>`; // end row 2 grid
       return html;
+    }
+
+    /* ── Project Timeline tab ── */
+    function renderProjectTimeline(pid, p, ptasks, pcomms) {
+      const MS = 86400000;
+      const MO = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+      const todStr = todayStr();
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dow = now.getDay();
+
+      const scaleDef = {
+        days:     { colPx:30, nCols:42 },
+        weeks:    { colPx:65, nCols:26 },
+        months:   { colPx:90, nCols:18 },
+        quarters: { colPx:110, nCols:12 },
+      }[projTimelineScale] || { colPx:65, nCols:26 };
+      const { colPx, nCols } = scaleDef;
+      const off = projTimelineOffset;
+
+      let winStart, winEnd;
+      if (projTimelineScale === 'days') {
+        winStart = new Date(now); winStart.setDate(now.getDate() - (dow===0?6:dow-1) + off*7);
+        winEnd   = new Date(winStart); winEnd.setDate(winStart.getDate() + nCols);
+      } else if (projTimelineScale === 'weeks') {
+        winStart = new Date(now); winStart.setDate(now.getDate() - (dow===0?6:dow-1) + off*13*7);
+        winEnd   = new Date(winStart); winEnd.setDate(winStart.getDate() + nCols*7);
+      } else if (projTimelineScale === 'months') {
+        winStart = new Date(now.getFullYear(), now.getMonth() + off*6, 1);
+        winEnd   = new Date(winStart.getFullYear(), winStart.getMonth() + nCols, 1);
+      } else { // quarters
+        const qm = Math.floor(now.getMonth()/3)*3;
+        winStart = new Date(now.getFullYear(), qm + off*8*3, 1);
+        winEnd   = new Date(winStart.getFullYear(), winStart.getMonth() + nCols*3, 1);
+      }
+
+      const totalDays = (winEnd - winStart) / MS;
+      const totalW    = nCols * colPx;
+      const pxPerDay  = totalW / totalDays;
+      const winS = `${winStart.getFullYear()}-${pad(winStart.getMonth()+1)}-${pad(winStart.getDate())}`;
+      const winE = `${winEnd.getFullYear()}-${pad(winEnd.getMonth()+1)}-${pad(winEnd.getDate())}`;
+
+      function xOf(ds) { return Math.round((parseLocal(ds) - winStart) / MS * pxPerDay); }
+      function clamp(v,lo,hi) { return Math.max(lo,Math.min(hi,v)); }
+
+      // ── Column headers ──
+      let colHeaders = '';
+      if (projTimelineScale === 'days') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart); d.setDate(winStart.getDate()+i);
+          const ds = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+          const isWknd = d.getDay()===0||d.getDay()===6;
+          const showMo = d.getDate()===1||i===0;
+          colHeaders += `<div class="gantt-day-hdr ${ds===todStr?'is-today':''} ${isWknd?'is-weekend':''}" style="width:${colPx}px;min-width:${colPx}px">
+            <div class="gd-mon">${showMo?MO[d.getMonth()]:''}</div><div class="gd-num">${d.getDate()}</div></div>`;
+        }
+      } else if (projTimelineScale === 'weeks') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart); d.setDate(winStart.getDate()+i*7);
+          const showMo = d.getDate()<=7||i===0;
+          const wn = getWeekNumber(d);
+          colHeaders += `<div class="gantt-day-hdr" style="width:${colPx}px;min-width:${colPx}px">
+            <div class="gd-mon">${showMo?MO[d.getMonth()]+'\''+String(d.getFullYear()).slice(2):''}</div>
+            <div class="gd-num" style="font-size:9px">W${wn}</div></div>`;
+        }
+      } else if (projTimelineScale === 'months') {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart.getFullYear(), winStart.getMonth()+i, 1);
+          const nd = new Date(d.getFullYear(), d.getMonth()+1, 1);
+          const w = Math.round((nd-d)/MS*pxPerDay);
+          const showYr = d.getMonth()===0||i===0;
+          colHeaders += `<div class="gantt-day-hdr" style="width:${w}px;min-width:${w}px">
+            <div class="gd-mon">${showYr?d.getFullYear():''}</div>
+            <div class="gd-num" style="font-size:9px">${MO[d.getMonth()]}</div></div>`;
+        }
+      } else {
+        for (let i = 0; i < nCols; i++) {
+          const d = new Date(winStart.getFullYear(), winStart.getMonth()+i*3, 1);
+          const nd = new Date(d.getFullYear(), d.getMonth()+3, 1);
+          const w = Math.round((nd-d)/MS*pxPerDay);
+          const q = Math.floor(d.getMonth()/3)+1;
+          colHeaders += `<div class="gantt-day-hdr" style="width:${w}px;min-width:${w}px">
+            <div class="gd-mon">${d.getFullYear()}</div>
+            <div class="gd-num" style="font-size:9px">Q${q}</div></div>`;
+        }
+      }
+
+      // ── Backdrop ──
+      function backdrop() {
+        let bd = '';
+        if (projTimelineScale === 'days') {
+          for (let i = 0; i < nCols; i++) {
+            const d = new Date(winStart); d.setDate(winStart.getDate()+i);
+            if (d.getDay()===0||d.getDay()===6)
+              bd += `<div class="gantt-wknd-band" style="left:${i*colPx}px;width:${colPx}px"></div>`;
+          }
+        }
+        if (todStr >= winS && todStr < winE) {
+          const tx = xOf(todStr) + (projTimelineScale==='days'?Math.round(colPx/2):0);
+          bd += `<div class="gantt-tod-line" style="left:${tx}px"></div>`;
+        }
+        return bd;
+      }
+
+      const projColor = p.color || '#2563eb';
+      const minBarW   = Math.max(colPx - 2, 10);
+
+      // ── Task rows ──
+      const visTasks = ptasks.filter(t => {
+        if (t.taskType === 'timeoff') return false;
+        const from = t.startDate || t.dueDate;
+        return from && t.dueDate && t.dueDate >= winS && from <= winE;
+      }).sort((a,b) => (a.startDate||a.dueDate||'').localeCompare(b.startDate||b.dueDate||''));
+
+      const taskRows = visTasks.map(t => {
+        const from  = t.startDate || t.dueDate;
+        const x1    = clamp(xOf(from), 0, totalW-2);
+        const xEnd  = xOf(t.dueDate) + (projTimelineScale==='days'?colPx:0);
+        const rawW  = clamp(xEnd-x1-2, minBarW, totalW-x1);
+        const od    = isOverdue(t);
+        const bc    = t.status==='Done' ? '#94a3b8' : projColor;
+        const label = rawW > 44 ? esc(t.title) : '';
+        return `<div class="gantt-row">
+          <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>
+          <div class="gantt-bars-cell" style="width:${totalW}px">
+            ${backdrop()}
+            <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
+                 style="left:${x1}px;width:${rawW}px;background:${bc}"
+                 onclick="openTaskModal('${t.id}')"
+                 title="${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
+          </div></div>`;
+      }).join('');
+
+      // ── Comm milestone rows ──
+      const visComms = pcomms.filter(c => c.date && c.date >= winS && c.date <= winE)
+        .sort((a,b) => (a.date||'').localeCompare(b.date||''));
+      const CI = { Meeting:'📅', Email:'📧', Call:'📞', Presentation:'📊', Workshop:'🔧', 'Status Update':'📢', Other:'💬' };
+      const commRows = visComms.map(c => {
+        const x = clamp(xOf(c.date) + (projTimelineScale==='days'?Math.round(colPx/2):0), 4, totalW-14);
+        const icon = CI[c.type] || '💬';
+        return `<div class="gantt-row">
+          <div class="gantt-task-lbl" onclick="openCommModal('${c.id}')" title="${esc(c.title)}">${icon} ${esc(c.title)}</div>
+          <div class="gantt-bars-cell" style="width:${totalW}px">
+            ${backdrop()}
+            <div class="gantt-milestone" style="left:${x}px" onclick="openCommModal('${c.id}')" title="${esc(c.title)} — ${c.date}"></div>
+          </div></div>`;
+      }).join('');
+
+      // ── Assemble body ──
+      const hasItems = visTasks.length > 0 || visComms.length > 0;
+      let bodyRows = '';
+      if (!hasItems) {
+        bodyRows = `<div class="gantt-empty-row">No items with dates in this period.<br><small>Add start &amp; due dates to tasks and dates to comms to see them here.</small></div>`;
+      } else {
+        if (visTasks.length > 0) bodyRows += `
+          <div class="gantt-group-hdr">
+            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${projColor};flex-shrink:0"></div>Tasks</div>
+            <div class="gantt-group-band" style="background:linear-gradient(90deg,${projColor}18 0%,transparent 40%);width:${totalW}px"></div>
+          </div>${taskRows}`;
+        if (visComms.length > 0) bodyRows += `
+          <div class="gantt-group-hdr">
+            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:#7c3aed;flex-shrink:0"></div>Comms</div>
+            <div class="gantt-group-band" style="background:linear-gradient(90deg,#7c3aed18 0%,transparent 40%);width:${totalW}px"></div>
+          </div>${commRows}`;
+      }
+
+      const rangeLabel = `${winStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(winEnd-MS).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
+      const PT_SCALES = [['days','Days'],['weeks','Weeks'],['months','Months'],['quarters','Quarters']];
+      const scaleBar = PT_SCALES.map(([k,l]) =>
+        `<button class="btn btn-sm ${projTimelineScale===k?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setProjTimelineScale('${k}')">${l}</button>`
+      ).join('');
+
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px">
+          <div style="font-size:12px;color:var(--text-muted)">${rangeLabel}</div>
+          <div style="display:flex;gap:6px;align-items:center">
+            <div style="display:flex;gap:3px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">${scaleBar}</div>
+            <div class="month-nav">
+              <button class="month-nav-btn" onclick="projTimelineOffset--;switchTab('timeline')" title="Previous">‹</button>
+              <button class="month-nav-btn" onclick="projTimelineOffset=0;switchTab('timeline')" style="font-size:11px;padding:0 10px;font-weight:600">Today</button>
+              <button class="month-nav-btn" onclick="projTimelineOffset++;switchTab('timeline')" title="Next">›</button>
+            </div>
+          </div>
+        </div>
+        <div class="gantt-wrap">
+          <div class="gantt-table">
+            <div class="gantt-header">
+              <div class="gantt-label-col">Item</div>
+              <div class="gantt-days-header">${colHeaders}</div>
+            </div>
+            <div class="gantt-body">${bodyRows}</div>
+          </div>
+        </div>
+        <div class="gantt-legend" style="margin-top:10px">
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:${projColor}"></div>Task</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#94a3b8"></div>Done</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--danger);opacity:.5"></div>Overdue</div>
+          <div class="gantt-legend-item"><div style="width:12px;height:12px;background:#7c3aed;transform:rotate(45deg);border-radius:2px"></div>Comm</div>
+          <div class="gantt-legend-item"><div style="width:2px;height:14px;background:var(--danger)"></div>Today</div>
+        </div>`;
     }
 
     function renderCommsTab(pcomms, pid, linkField) {
