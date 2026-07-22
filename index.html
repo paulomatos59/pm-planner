@@ -1385,7 +1385,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.4</div>
+      <div class="sidebar-version">v1.3.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1773,15 +1773,21 @@
             </div>
           </div>
 
-          <div class="form-group">
-            <label class="form-label">Date</label>
-            <input type="date" class="form-input" id="commDate">
+          <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+            <div class="form-group">
+              <label class="form-label">Date</label>
+              <input type="date" class="form-input" id="commDate">
+            </div>
+            <div class="form-group">
+              <label class="form-label">Start time</label>
+              <select class="form-select" id="commStartTime"></select>
+            </div>
+            <div class="form-group">
+              <label class="form-label">End time</label>
+              <select class="form-select" id="commEndTime"></select>
+            </div>
           </div>
-
-          <div class="form-group">
-            <label class="form-label">Duration (min)</label>
-            <input type="number" class="form-input" id="commDuration" placeholder="e.g. 30" min="1" step="5">
-          </div>
+          <input type="hidden" id="commDuration">
 
           <div class="form-group">
             <label class="form-label">Organizer / Sent by</label>
@@ -4886,6 +4892,30 @@ const renderers = {
       showView('comms');
     }
 
+    function fmt12(t) {
+      if (!t) return '';
+      const [h, m] = t.split(':').map(Number);
+      const ampm = h < 12 ? 'AM' : 'PM';
+      const hd = h === 0 ? 12 : h > 12 ? h - 12 : h;
+      return `${hd}:${pad(m)} ${ampm}`;
+    }
+    function buildTimeOptions(sel) {
+      let o = '<option value="">— none —</option>';
+      for (let h = 0; h < 24; h++) {
+        for (const m of [0, 15, 30, 45]) {
+          const val = `${pad(h)}:${pad(m)}`;
+          o += `<option value="${val}"${val===sel?' selected':''}>${fmt12(val)}</option>`;
+        }
+      }
+      return o;
+    }
+    function commTimeDuration(start, end) {
+      if (!start || !end) return '';
+      const [sh,sm] = start.split(':').map(Number);
+      const [eh,em] = end.split(':').map(Number);
+      const diff = (eh*60+em)-(sh*60+sm);
+      return diff > 0 ? String(diff) : '';
+    }
     function formatCommDate(d) {
       if (!d) return '';
       const dt = parseLocal(d);
@@ -4900,7 +4930,9 @@ const renderers = {
       const icon  = COMM_ICONS[c.type] || '💬';
       const proj  = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
       const pers  = c.personalId ? projects.find(p => p.id === c.personalId) : null;
-      const dur   = c.duration     ? `⏱ ${c.duration} min`      : '';
+      const dur   = c.startTime
+        ? `⏱ ${fmt12(c.startTime)}${c.endTime ? ' – '+fmt12(c.endTime) : ''}`
+        : (c.duration ? `⏱ ${c.duration} min` : '');
       const org   = c.organizer    ? `📌 ${esc(c.organizer)}`   : '';
       const parts = c.participants ? `👥 ${esc(c.participants)}` : '';
       const isDone = c.status === 'Done';
@@ -4943,7 +4975,9 @@ const renderers = {
       document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
-      document.getElementById('commDuration').value     = c?.duration     || '30';
+      document.getElementById('commStartTime').innerHTML = buildTimeOptions(c?.startTime || '');
+      document.getElementById('commEndTime').innerHTML   = buildTimeOptions(c?.endTime   || '');
+      document.getElementById('commDuration').value      = c?.duration     || '';
       document.getElementById('commOrganizer').value    = c?.organizer    || '';
       document.getElementById('commParticipants').value = c?.participants || '';
 
@@ -5046,7 +5080,9 @@ const renderers = {
         title,
         status:       document.getElementById('commStatus').value       || 'Planned',
         date:         document.getElementById('commDate').value         || '',
-        duration:     document.getElementById('commDuration').value     || '',
+        startTime:    document.getElementById('commStartTime').value    || '',
+        endTime:      document.getElementById('commEndTime').value      || '',
+        duration:     commTimeDuration(document.getElementById('commStartTime').value, document.getElementById('commEndTime').value) || document.getElementById('commDuration').value || '',
         organizer:    document.getElementById('commOrganizer').value.trim()    || '',
         participants: document.getElementById('commParticipants').value.trim() || '',
         type:         activeTypeBtn ? activeTypeBtn.dataset.type : 'Meeting',
@@ -5461,7 +5497,8 @@ const renderers = {
           title:        document.getElementById('commTitle').value,
           notes:        document.getElementById('commDesc').innerHTML,
           date:         document.getElementById('commDate').value,
-          duration:     document.getElementById('commDuration').value,
+          startTime:    document.getElementById('commStartTime').value,
+          endTime:      document.getElementById('commEndTime').value,
           organizer:    document.getElementById('commOrganizer').value,
           participants: document.getElementById('commParticipants').value,
         };
@@ -5521,7 +5558,8 @@ const renderers = {
         } else if (type === 'comm') {
           if (d.title)    document.getElementById('commTitle').value = d.title;
           if (d.notes)    document.getElementById('commDesc').innerHTML = d.notes;
-          if (d.duration) document.getElementById('commDuration').value = d.duration;
+          if (d.startTime) { document.getElementById('commStartTime').innerHTML = buildTimeOptions(d.startTime); }
+          if (d.endTime)   { document.getElementById('commEndTime').innerHTML   = buildTimeOptions(d.endTime);   }
           if (d.organizer)    document.getElementById('commOrganizer').value    = d.organizer;
           if (d.participants) document.getElementById('commParticipants').value = d.participants;
         } else if (type === 'followup') {
