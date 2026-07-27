@@ -1385,7 +1385,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.5</div>
+      <div class="sidebar-version">v1.3.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2987,6 +2987,14 @@ const renderers = {
         .sort((a,b) => a.dueDate.localeCompare(b.dueDate) || priorityOrder(a) - priorityOrder(b))
         .slice(0, 5);
 
+      // Today's comms
+      const todayComms = comms.filter(c => (c.date || '') === today)
+        .sort((a, b) => {
+          const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
+          if (da !== db) return da - db;
+          return (a.startTime || '').localeCompare(b.startTime || '');
+        });
+
       // Upcoming Events card: work tasks + time-off in next 30 days
       const in30 = new Date(); in30.setDate(in30.getDate() + 30);
       const in30Str = `${in30.getFullYear()}-${pad(in30.getMonth()+1)}-${pad(in30.getDate())}`;
@@ -3109,6 +3117,33 @@ const renderers = {
                       </div>
                     </div>`;
                 }).join('')
+            }
+          </div>
+
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <span class="summary-card-title">💬 Today's Comms</span>
+              <button class="summary-card-link" onclick="showView('comms')">View all →</button>
+            </div>
+            ${todayComms.length === 0
+              ? `<div class="summary-empty">No comms scheduled for today</div>`
+              : `<div class="summary-task-list">${todayComms.map(c => {
+                  const icon    = COMM_ICONS[c.type] || '💬';
+                  const isDone  = c.status === 'Done';
+                  const timeStr = c.startTime
+                    ? fmt12(c.startTime) + (c.endTime ? ' – ' + fmt12(c.endTime) : '')
+                    : (c.duration ? c.duration + ' min' : '');
+                  const linked  = (c.projectId  ? projects.find(p => p.id === c.projectId)  : null)
+                                || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
+                  return `<div class="summary-task-item" onclick="openCommModal('${c.id}')">
+                    <span style="font-size:15px;line-height:1;flex-shrink:0">${isDone ? '✅' : icon}</span>
+                    <div style="flex:1;min-width:0">
+                      <div class="summary-task-title ${isDone?'done-title':''}">${esc(c.title)}</div>
+                      ${timeStr || linked ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${timeStr ? '⏱ '+timeStr : ''}${timeStr && linked ? ' · ' : ''}${linked ? esc(linked.name) : ''}</div>` : ''}
+                    </div>
+                    <span style="font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;${isDone?'color:#16a34a;background:#f0fdf4':'color:#2563eb;background:#eff6ff'}">${isDone?'Done':'Planned'}</span>
+                  </div>`;
+                }).join('')}</div>`
             }
           </div>
 
