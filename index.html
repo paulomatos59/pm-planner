@@ -1050,6 +1050,7 @@
     .subtask-item-modal { display:flex; align-items:center; gap:8px; padding:7px 10px; background:var(--bg); border:1px solid var(--border); border-radius:8px; margin-bottom:5px; }
     .subtask-modal-title { flex:1; font-size:13px; font-weight:500; }
     .done-sub { text-decoration:line-through; color:var(--text-muted); }
+    .comm-task-expand { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px; }
     .subtask-parent-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; background:var(--purple-light); color:var(--purple); cursor:pointer; }
     .subtask-parent-badge:hover { text-decoration:underline; }
   </style>
@@ -1385,7 +1386,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.1</div>
+      <div class="sidebar-version">v1.4.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5215,11 +5216,11 @@ const renderers = {
       const done = linked.filter(t => t.status === 'Done').length;
       label.textContent = linked.length ? `${done}/${linked.length}` : '';
       list.innerHTML = linked.map(t => `
-        <div class="subtask-item-modal">
+        <div class="subtask-item-modal" id="cte-row-${t.id}">
           <div class="task-checkbox ${t.status==='Done'?'checked':''}" style="width:18px;height:18px;flex-shrink:0"
                onclick="commTaskToggle('${t.id}')"></div>
           <span class="subtask-modal-title ${t.status==='Done'?'done-title':''}"
-                onclick="openTaskModal('${t.id}')" style="cursor:pointer">${esc(t.title)}</span>
+                onclick="toggleCommTaskExpand('${t.id}')" style="cursor:pointer">${esc(t.title)}</span>
           <span style="font-size:11px;color:var(--text-muted);flex-shrink:0">${t.dueDate ? formatDue(t.dueDate) : ''}</span>
           <button class="btn-icon" style="color:var(--danger);opacity:0.6" onclick="commTaskDelete('${t.id}')" title="Remove">✕</button>
         </div>`).join('');
@@ -5237,6 +5238,72 @@ const renderers = {
     function commTaskDelete(taskId) {
       tasks = tasks.filter(t => t.id !== taskId);
       persistTasks();
+      commTasksRender();
+    }
+
+    function toggleCommTaskExpand(taskId) {
+      // Toggle: close if already open
+      const existing = document.getElementById('cte-panel-' + taskId);
+      if (existing) { existing.remove(); return; }
+      // Close any other open panels
+      document.querySelectorAll('.comm-task-expand').forEach(el => el.remove());
+      const t = tasks.find(x => x.id === taskId);
+      if (!t) return;
+      const row = document.getElementById('cte-row-' + taskId);
+      if (!row) return;
+      const pri = ['Critical','High','Medium','Low'];
+      const sts = ['Todo','In Progress','Blocked','Delayed','Done'];
+      const panel = document.createElement('div');
+      panel.className = 'comm-task-expand';
+      panel.id = 'cte-panel-' + taskId;
+      panel.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:10px;margin-bottom:3px">Title</label>
+            <input type="text" class="form-input" id="cte-title-${taskId}" value="${esc(t.title)}" style="font-size:13px">
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:10px;margin-bottom:3px">Due date</label>
+            <input type="date" class="form-input" id="cte-due-${taskId}" value="${t.dueDate||''}" style="font-size:13px">
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:10px;margin-bottom:3px">Priority</label>
+            <select class="form-select" id="cte-priority-${taskId}" style="font-size:13px">
+              ${pri.map(p => `<option${t.priority===p?' selected':''}>${p}</option>`).join('')}
+            </select>
+          </div>
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:10px;margin-bottom:3px">Status</label>
+            <select class="form-select" id="cte-status-${taskId}" style="font-size:13px">
+              ${sts.map(s => `<option${t.status===s?' selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:flex;gap:6px;justify-content:flex-end">
+          <button class="btn btn-secondary btn-sm" onclick="popOutModal('task','${taskId}')">⧉ Open full</button>
+          <button class="btn btn-secondary btn-sm" onclick="document.getElementById('cte-panel-${taskId}')?.remove()">✕</button>
+          <button class="btn btn-primary btn-sm" onclick="saveCommTaskExpand('${taskId}')">Save</button>
+        </div>`;
+      row.insertAdjacentElement('afterend', panel);
+    }
+
+    function saveCommTaskExpand(taskId) {
+      const t = tasks.find(x => x.id === taskId);
+      if (!t) return;
+      const title = document.getElementById('cte-title-' + taskId)?.value.trim();
+      if (title) t.title = title;
+      t.dueDate  = document.getElementById('cte-due-' + taskId)?.value || '';
+      t.priority = document.getElementById('cte-priority-' + taskId)?.value || t.priority;
+      const newStatus = document.getElementById('cte-status-' + taskId)?.value;
+      if (newStatus) {
+        if (newStatus === 'Done' && t.status !== 'Done') t.completedAt = new Date().toISOString();
+        t.status = newStatus;
+      }
+      t.updatedAt = new Date().toISOString();
+      persistTasks();
+      document.getElementById('cte-panel-' + taskId)?.remove();
       commTasksRender();
     }
 
