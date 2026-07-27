@@ -1385,7 +1385,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.0</div>
+      <div class="sidebar-version">v1.4.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1455,6 +1455,10 @@
                   <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
                   <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
                 </div>
+              </div>
+              <div class="form-group" style="margin:0;min-width:140px">
+                <label class="form-label" style="margin-bottom:4px">End date <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                <input type="date" class="form-input" id="recurrenceEndDate" style="font-size:13px">
               </div>
             </div>
           </div>
@@ -1685,6 +1689,10 @@
                   <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
                   <label style="cursor:pointer"><input type="checkbox" class="comm-recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
                 </div>
+              </div>
+              <div class="form-group" style="margin:0;min-width:140px">
+                <label class="form-label" style="margin-bottom:4px">End date <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
+                <input type="date" class="form-input" id="commRecurrenceEndDate" style="font-size:13px">
               </div>
             </div>
           </div>
@@ -5045,9 +5053,11 @@ const renderers = {
           cb.checked = days.includes(Number(cb.value));
           cb.nextElementSibling.classList.toggle('selected', cb.checked);
         });
+        document.getElementById('commRecurrenceEndDate').value = rec.endDate || '';
       } else {
         document.getElementById('commRecurrenceInterval').value = 1;
         document.getElementById('commRecurrenceFreq').value     = 'weekly';
+        document.getElementById('commRecurrenceEndDate').value  = '';
         document.querySelectorAll('.comm-recur-day').forEach(cb => {
           cb.checked = false;
           cb.nextElementSibling.classList.remove('selected');
@@ -5118,11 +5128,12 @@ const renderers = {
       const isRecurring   = document.getElementById('commRecurring').checked;
       let recurrence = null;
       if (isRecurring) {
-        const freq = document.getElementById('commRecurrenceFreq').value;
-        const days = freq === 'weekly'
+        const freq    = document.getElementById('commRecurrenceFreq').value;
+        const days    = freq === 'weekly'
           ? [...document.querySelectorAll('.comm-recur-day:checked')].map(cb => Number(cb.value))
           : [];
-        recurrence = { freq, interval: Number(document.getElementById('commRecurrenceInterval').value) || 1, days };
+        const endDate = document.getElementById('commRecurrenceEndDate').value || null;
+        recurrence = { freq, interval: Number(document.getElementById('commRecurrenceInterval').value) || 1, days, endDate };
       }
 
       const entry = {
@@ -5377,7 +5388,8 @@ const renderers = {
       const days     = freq === 'weekly'
         ? [...document.querySelectorAll('.recur-day:checked')].map(cb => parseInt(cb.value))
         : [];
-      return { freq, interval, days };
+      const endDate  = document.getElementById('recurrenceEndDate').value || null;
+      return { freq, interval, days, endDate };
     }
 
     function setRecurrenceToForm(rec) {
@@ -5386,10 +5398,13 @@ const renderers = {
       if (rec) {
         document.getElementById('recurrenceFreq').value     = rec.freq || 'weekly';
         document.getElementById('recurrenceInterval').value = rec.interval || 1;
+        document.getElementById('recurrenceEndDate').value  = rec.endDate || '';
         document.querySelectorAll('.recur-day').forEach(cb => {
           cb.checked = (rec.days || []).includes(parseInt(cb.value));
           cb.nextElementSibling.classList.toggle('selected', cb.checked);
         });
+      } else {
+        document.getElementById('recurrenceEndDate').value = '';
       }
       toggleRecurrenceUI();
     }
@@ -5422,6 +5437,7 @@ const renderers = {
       if (!t.recurrence) return;
       const nextDue = nextRecurDate(t.dueDate, t.recurrence);
       if (!nextDue) return;
+      if (t.recurrence.endDate && nextDue > t.recurrence.endDate) return;
       // Shift startDate by same delta
       let nextStart = null;
       if (t.startDate && t.dueDate) {
