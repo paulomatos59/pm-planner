@@ -1385,7 +1385,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.9</div>
+      <div class="sidebar-version">v1.4.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5043,14 +5043,14 @@ const renderers = {
         const days = rec.days || [];
         document.querySelectorAll('.comm-recur-day').forEach(cb => {
           cb.checked = days.includes(Number(cb.value));
-          cb.nextElementSibling.classList.toggle('active', cb.checked);
+          cb.nextElementSibling.classList.toggle('selected', cb.checked);
         });
       } else {
         document.getElementById('commRecurrenceInterval').value = 1;
         document.getElementById('commRecurrenceFreq').value     = 'weekly';
         document.querySelectorAll('.comm-recur-day').forEach(cb => {
           cb.checked = false;
-          cb.nextElementSibling.classList.remove('active');
+          cb.nextElementSibling.classList.remove('selected');
         });
       }
       toggleCommRecurrenceUI();
@@ -5098,8 +5098,16 @@ const renderers = {
     function toggleCommRecurrenceUI() {
       const on   = document.getElementById('commRecurring').checked;
       const freq = document.getElementById('commRecurrenceFreq').value;
-      document.getElementById('commRecurrenceBody').style.display     = on ? 'flex' : 'none';
-      document.getElementById('commRecurrenceDaysGroup').style.display = (on && freq === 'weekly') ? 'block' : 'none';
+      document.getElementById('commRecurrenceBody').style.display      = on ? 'flex' : 'none';
+      document.getElementById('commRecurrenceDaysGroup').style.display  = (on && freq === 'weekly') ? 'block' : 'none';
+      // Wire day-picker clicks (idempotent)
+      document.querySelectorAll('#commRecurrenceDayPicker .recur-day-btn').forEach(btn => {
+        btn.onclick = () => {
+          const cb = btn.previousElementSibling;
+          cb.checked = !cb.checked;
+          btn.classList.toggle('selected', cb.checked);
+        };
+      });
     }
 
     function saveComm() {
