@@ -1385,7 +1385,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.3.8</div>
+      <div class="sidebar-version">v1.3.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2975,11 +2975,13 @@ const renderers = {
         return { date: d, str: ds, count: cnt, overdue: ds < today && cnt > 0, isToday: ds === today };
       });
 
-      // Top tasks for today: overdue first, then today's, sorted by priority
+      // Top tasks for today: overdue first, then open today's, then done today's
+      const todayDoneList = tasks.filter(t => t.status === 'Done' && t.taskType !== 'timeoff' && (t.dueDate||'').slice(0,10) === today && !t.parentId);
       const topTasks = [
         ...overdueList.sort((a,b) => priorityOrder(a) - priorityOrder(b)),
-        ...todayList.filter(t => !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b))
-      ].slice(0, 6);
+        ...todayList.filter(t => !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b)),
+        ...todayDoneList.sort((a,b) => priorityOrder(a) - priorityOrder(b))
+      ];
 
       // Upcoming (next 7 days, not today, not overdue) — legacy used in bottom strip
       const upcoming = open
@@ -3074,13 +3076,18 @@ const renderers = {
               <button class="summary-card-link" onclick="showView('today')">View all →</button>
             </div>
             ${topTasks.length === 0
-              ? `<div class="summary-empty">🎉 No open tasks for today</div>`
+              ? `<div class="summary-empty">🎉 No tasks for today</div>`
               : `<div class="summary-task-list">${topTasks.map(t => {
-                  const od = isOverdue(t);
+                  const od   = isOverdue(t);
+                  const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
+                  const pers = t.personalId ? projects.find(p => p.id === t.personalId) : null;
+                  const linked = proj || pers;
                   return `<div class="summary-task-item" onclick="openTaskModal('${t.id}')">
-                    <div class="s-task-dot s-dot-${t.priority.toLowerCase()}"></div>
-                    <div class="summary-task-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
-                    <span class="summary-task-due ${od?'od':''}">${od ? formatDue(t.dueDate) : t.dueTime || ''}</span>
+                    <div class="s-task-dot s-dot-${t.priority.toLowerCase()}" style="${t.status==='Done'?'opacity:.4':''}"></div>
+                    <div style="flex:1;min-width:0">
+                      <div class="summary-task-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
+                      ${linked ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(linked.name)}</div>` : ''}
+                    </div>
                     <span class="status-badge status-${statusClass(t.status)}">${t.status}</span>
                   </div>`;
                 }).join('')}</div>`
