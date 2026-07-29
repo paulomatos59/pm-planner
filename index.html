@@ -1386,7 +1386,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.2</div>
+      <div class="sidebar-version">v1.4.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4930,7 +4930,11 @@ const renderers = {
         });
         Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(d => {
           const label = d === 'No date' ? 'No Date' : formatCommDate(d);
-          const sorted = groups[d].sort((a, b) => (a.status === 'Done' ? 1 : 0) - (b.status === 'Done' ? 1 : 0));
+          const sorted = groups[d].sort((a, b) => {
+            const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
+            if (da !== db) return da - db;
+            return (a.startTime || '').localeCompare(b.startTime || '');
+          });
           html += `<div class="section-header"><span class="section-title">${label}</span><span class="section-count">${groups[d].length}</span></div>
                    <div class="comm-list">${sorted.map(commCard).join('')}</div>`;
         });
