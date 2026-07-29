@@ -704,6 +704,8 @@
     .comm-card-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
     .comm-card-body { flex: 1; min-width: 0; }
     .comm-card-title { font-size: 14px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .comm-card.done { opacity: 0.72; }
+    .comm-card.done .comm-card-title { text-decoration: line-through; color: var(--text-muted); font-weight: 500; }
     .comm-card-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 5px; }
     .comm-card-meta span { font-size: 12px; color: var(--text-muted); }
     .comm-card-meta .comm-tag {
@@ -1386,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.3</div>
+      <div class="sidebar-version">v1.4.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4991,17 +4993,31 @@ const renderers = {
       const org   = c.organizer    ? `📌 ${esc(c.organizer)}`   : '';
       const parts = c.participants ? `👥 ${esc(c.participants)}` : '';
       const isDone = c.status === 'Done';
-      const statusBadge = isDone
-        ? `<span style="font-size:11px;font-weight:600;color:#16a34a;background:#f0fdf4;border-radius:4px;padding:1px 7px">✅ Done</span>`
-        : `<span style="font-size:11px;font-weight:600;color:#2563eb;background:#eff6ff;border-radius:4px;padding:1px 7px">📅 Planned</span>`;
       const recurBadge  = c.recurrence ? `<span style="font-size:11px;color:var(--text-muted)">🔁 Recurring</span>` : '';
       const linkedTasks = tasks.filter(t => t.commId === c.id);
       const tasksDone   = linkedTasks.filter(t => t.status === 'Done').length;
       const tasksBadge  = linkedTasks.length > 0
         ? `<span style="font-size:11px;color:var(--text-muted)">📋 ${tasksDone}/${linkedTasks.length}</span>` : '';
       const notesText = stripHtml(c.notes || '');
+      if (isDone) {
+        // Done: ✅ icon, strikethrough title, minimal meta (time + project only)
+        return `
+          <div class="comm-card done" onclick="openCommModal('${c.id}')">
+            <div class="comm-card-icon">✅</div>
+            <div class="comm-card-body">
+              <div class="comm-card-title">${esc(c.title)}</div>
+              <div class="comm-card-meta">
+                ${dur   ? `<span>${dur}</span>`   : ''}
+                ${proj  ? `<span>📁 ${esc(proj.name)}</span>` : ''}
+                ${pers  ? `<span>👤 ${esc(pers.name)}</span>` : ''}
+                ${tasksBadge}
+              </div>
+            </div>
+          </div>`;
+      }
+      const statusBadge = `<span style="font-size:11px;font-weight:600;color:#2563eb;background:#eff6ff;border-radius:4px;padding:1px 7px">📅 Planned</span>`;
       return `
-        <div class="comm-card ${isDone ? 'done' : ''}" onclick="openCommModal('${c.id}')">
+        <div class="comm-card" onclick="openCommModal('${c.id}')">
           <div class="comm-card-icon">${icon}</div>
           <div class="comm-card-body">
             <div class="comm-card-title">${esc(c.title)}</div>
