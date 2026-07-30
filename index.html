@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.6</div>
+      <div class="sidebar-version">v1.4.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2156,6 +2156,65 @@
     let activeProjectId  = null;
     let activePersonalId = null;
     let activeProjectTab = 'overview';
+
+    /* ── Sprint calendar (2026) ── */
+    const SPRINTS = [
+      { name:'2026.01', pi:'25.4',      start:'2025-12-18', end:'2025-12-31' },
+      { name:'2026.02', pi:'PI-Q12026', start:'2026-01-01', end:'2026-01-14' },
+      { name:'2026.03', pi:'PI-Q12026', start:'2026-01-15', end:'2026-01-28' },
+      { name:'2026.04', pi:'PI-Q12026', start:'2026-01-29', end:'2026-02-11' },
+      { name:'2026.05', pi:'PI-Q12026', start:'2026-02-12', end:'2026-02-25' },
+      { name:'2026.06', pi:'PI-Q12026', start:'2026-02-26', end:'2026-03-11' },
+      { name:'2026.07', pi:'PI-Q12026', start:'2026-03-12', end:'2026-03-25' },
+      { name:'2026.08', pi:'PI-Q12026', start:'2026-03-26', end:'2026-04-08' },
+      { name:'2026.09', pi:'PI-Q22026', start:'2026-04-09', end:'2026-04-22' },
+      { name:'2026.10', pi:'PI-Q22026', start:'2026-04-23', end:'2026-05-06' },
+      { name:'2026.11', pi:'PI-Q22026', start:'2026-05-07', end:'2026-05-20' },
+      { name:'2026.12', pi:'PI-Q22026', start:'2026-05-21', end:'2026-06-03' },
+      { name:'2026.13', pi:'PI-Q22026', start:'2026-06-04', end:'2026-06-17' },
+      { name:'2026.14', pi:'PI-Q22026', start:'2026-06-18', end:'2026-07-01' },
+      { name:'2026.15', pi:'PI-Q32026', start:'2026-07-02', end:'2026-07-15' },
+      { name:'2026.16', pi:'PI-Q32026', start:'2026-07-16', end:'2026-07-29' },
+      { name:'2026.17', pi:'PI-Q32026', start:'2026-07-30', end:'2026-08-12' },
+      { name:'2026.18', pi:'PI-Q32026', start:'2026-08-13', end:'2026-08-26' },
+      { name:'2026.19', pi:'PI-Q32026', start:'2026-08-27', end:'2026-09-09' },
+      { name:'2026.20', pi:'PI-Q32026', start:'2026-09-10', end:'2026-09-23' },
+      { name:'2026.21', pi:'PI-Q32026', start:'2026-09-24', end:'2026-10-07' },
+      { name:'2026.22', pi:'PI-Q42026', start:'2026-10-08', end:'2026-10-21' },
+      { name:'2026.23', pi:'PI-Q42026', start:'2026-10-22', end:'2026-11-04' },
+      { name:'2026.24', pi:'PI-Q42026', start:'2026-11-05', end:'2026-11-18' },
+      { name:'2026.25', pi:'PI-Q42026', start:'2026-11-19', end:'2026-12-02' },
+      { name:'2026.26', pi:'PI-Q42026', start:'2026-12-03', end:'2026-12-16' },
+    ];
+    function getCurrentSprint() {
+      const today = todayStr();
+      return SPRINTS.find(s => today >= s.start && today <= s.end) || null;
+    }
+    function sprintBarHtml() {
+      const s = getCurrentSprint();
+      if (!s) return '';
+      const fmtSD = d => parseLocal(d).toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+      const today = parseLocal(todayStr());
+      const start = parseLocal(s.start);
+      const end   = parseLocal(s.end);
+      const totalDays  = Math.round((end - start) / 86400000) + 1;
+      const dayIn      = Math.round((today - start) / 86400000) + 1;
+      const daysLeft   = Math.round((end - today) / 86400000);
+      const pct        = Math.min(100, Math.round((dayIn / totalDays) * 100));
+      const daysLeftTxt = daysLeft === 0 ? 'Last day' : daysLeft === 1 ? '1 day left' : `${daysLeft} days left`;
+      return `
+        <div style="width:100%;margin-top:12px;padding-top:10px;border-top:1px solid rgba(255,255,255,0.15);display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <span style="font-size:10px;font-weight:700;letter-spacing:.6px;opacity:.55;text-transform:uppercase;flex-shrink:0">Current Sprint</span>
+          <span style="background:rgba(255,255,255,0.18);border-radius:20px;padding:2px 11px;font-size:12px;font-weight:700;flex-shrink:0">🏃 ${s.name}</span>
+          <span style="font-size:11px;opacity:.65;flex-shrink:0">${s.pi}</span>
+          <span style="font-size:12px;opacity:.8;flex-shrink:0">📅 ${fmtSD(s.start)} – ${fmtSD(s.end)}</span>
+          <span style="font-size:11px;opacity:.65;flex-shrink:0">Day ${dayIn} / ${totalDays}</span>
+          <div style="flex:1;min-width:60px;height:3px;background:rgba(255,255,255,0.18);border-radius:2px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:rgba(255,255,255,0.75);border-radius:2px;transition:width .4s"></div>
+          </div>
+          <span style="font-size:11px;font-weight:600;opacity:.9;flex-shrink:0">${daysLeftTxt}</span>
+        </div>`;
+    }
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
     let ganttOffset          = 0;
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
@@ -3036,6 +3095,7 @@ const renderers = {
               : `<div class="summary-focus-empty" onclick="showView('today')">＋ Set your daily focus →</div>`}
           </div>
           <div class="tz-row" id="tzRow" style="margin-top:0;flex-shrink:0;justify-content:flex-end"></div>
+          ${sprintBarHtml()}
         </div>
 
         <div class="summary-stats">
