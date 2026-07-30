@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.5</div>
+      <div class="sidebar-version">v1.4.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4964,6 +4964,13 @@ const renderers = {
       if (h >= 24) h = 23;
       return `${pad(h)}:${pad(m)}`;
     }
+    function addMinutesToTime(t, mins) {
+      if (!t) return '';
+      const [h, m] = t.split(':').map(Number);
+      let total = h * 60 + m + mins;
+      if (total >= 24 * 60) total = 23 * 60 + 45;
+      return `${pad(Math.floor(total / 60))}:${pad(total % 60)}`;
+    }
     function buildTimeOptions(sel) {
       let o = '<option value="">— none —</option>';
       for (let h = 0; h < 24; h++) {
@@ -5054,8 +5061,10 @@ const renderers = {
       document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
-      document.getElementById('commStartTime').innerHTML = buildTimeOptions(c?.startTime || (!c ? nearestUpcoming15() : ''));
-      document.getElementById('commEndTime').innerHTML   = buildTimeOptions(c?.endTime   || '');
+      const defaultStart = c?.startTime || (!c ? nearestUpcoming15() : '');
+      const defaultEnd   = c?.endTime   || (!c && defaultStart ? addMinutesToTime(defaultStart, 30) : '');
+      document.getElementById('commStartTime').innerHTML = buildTimeOptions(defaultStart);
+      document.getElementById('commEndTime').innerHTML   = buildTimeOptions(defaultEnd);
       document.getElementById('commDuration').value      = c?.duration     || '';
       document.getElementById('commOrganizer').value    = c?.organizer    || '';
       document.getElementById('commParticipants').value = c?.participants || '';
