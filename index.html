@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.4</div>
+      <div class="sidebar-version">v1.4.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4956,6 +4956,14 @@ const renderers = {
       const hd = h === 0 ? 12 : h > 12 ? h - 12 : h;
       return `${hd}:${pad(m)} ${ampm}`;
     }
+    function nearestUpcoming15() {
+      const now = new Date();
+      let h = now.getHours(), m = now.getMinutes();
+      const rem = m % 15;
+      if (rem > 0) { m += (15 - rem); if (m >= 60) { m -= 60; h += 1; } }
+      if (h >= 24) h = 23;
+      return `${pad(h)}:${pad(m)}`;
+    }
     function buildTimeOptions(sel) {
       let o = '<option value="">— none —</option>';
       for (let h = 0; h < 24; h++) {
@@ -5046,7 +5054,7 @@ const renderers = {
       document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
-      document.getElementById('commStartTime').innerHTML = buildTimeOptions(c?.startTime || '');
+      document.getElementById('commStartTime').innerHTML = buildTimeOptions(c?.startTime || (!c ? nearestUpcoming15() : ''));
       document.getElementById('commEndTime').innerHTML   = buildTimeOptions(c?.endTime   || '');
       document.getElementById('commDuration').value      = c?.duration     || '';
       document.getElementById('commOrganizer').value    = c?.organizer    || '';
