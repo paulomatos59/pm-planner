@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.1</div>
+      <div class="sidebar-version">v1.5.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2218,6 +2218,7 @@
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
     let ganttOffset          = 0;
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
+    let ganttFilter          = 'both'; // tasks|meetings|both
     let projTimelineOffset   = 0;
     let projTimelineScale    = 'weeks';
     let editingTaskId    = null;
@@ -3342,6 +3343,7 @@ const renderers = {
     ============================== */
     function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
     function setGanttScale(s) { ganttScale = s; ganttOffset = 0; showView('gantt'); }
+    function setGanttFilter(f) { ganttFilter = f; showView('gantt'); }
     function setProjTimelineScale(s) { projTimelineScale = s; projTimelineOffset = 0; switchTab('timeline'); }
     function getWeekNumber(d) {
       const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -3610,33 +3612,81 @@ const renderers = {
           </div>`;
       }
 
+      // ── Comm bars ──
+      const COMM_BAR_COLOR = '#7c3aed';
+      const winComms = comms.filter(c => c.date && c.date >= winS && c.date <= winE);
+
+      function commBar(c) {
+        const x1    = clamp(xOf(c.date), 0, totalW - 2);
+        const barW  = Math.max(colPx - 2, 10);
+        const icon  = COMM_ICONS[c.type] || '💬';
+        const timeStr = c.startTime ? ` · ${fmt12(c.startTime)}` : '';
+        const isDone  = c.status === 'Done';
+        const color   = isDone ? '#94a3b8' : COMM_BAR_COLOR;
+        const label   = barW > 50 ? (c.startTime ? fmt12(c.startTime) : '') : '';
+        return `
+          <div class="gantt-row">
+            <div class="gantt-task-lbl" onclick="openCommModal('${c.id}')" title="${icon} ${esc(c.title)}">${icon} ${esc(c.title)}</div>
+            <div class="gantt-bars-cell" style="width:${totalW}px">
+              ${backdrop()}
+              <div class="gantt-bar ${isDone ? 'g-done' : ''}"
+                   style="left:${x1}px;width:${barW}px;background:${color}"
+                   onclick="openCommModal('${c.id}')"
+                   title="${icon} ${esc(c.title)}${timeStr}">${label}</div>
+            </div>
+          </div>`;
+      }
+
       // ── Groups ──
       const allProjects = projects.filter(p => ['Active','On Hold'].includes(p.status));
       const groups = [];
-      allProjects.forEach(p => {
-        const pt = workTasks.filter(t => t.projectId === p.id);
-        if (pt.length) groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt });
-      });
-      const unassigned = workTasks.filter(t => !t.projectId);
-      if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
+      if (ganttFilter !== 'meetings') {
+        allProjects.forEach(p => {
+          const pt = workTasks.filter(t => t.projectId === p.id);
+          if (pt.length) groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt });
+        });
+        const unassigned = workTasks.filter(t => !t.projectId);
+        if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
+      }
 
-      const timeoffSection = timeoffs.length === 0 ? '' : `
+      // Meetings groups (by project)
+      const commGroups = [];
+      if (ganttFilter !== 'tasks' && winComms.length > 0) {
+        allProjects.forEach(p => {
+          const pc = winComms.filter(c => c.projectId === p.id);
+          if (pc.length) commGroups.push({ name: p.name, comms: pc });
+        });
+        const unassignedC = winComms.filter(c => !c.projectId);
+        if (unassignedC.length) commGroups.push({ name: 'Unassigned', comms: unassignedC });
+      }
+
+      const timeoffSection = (ganttFilter === 'meetings' || timeoffs.length === 0) ? '' : `
         <div class="gantt-group-hdr">
           <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>🌴 Time Off / Events</div>
           <div class="gantt-group-band" style="background:linear-gradient(90deg,${TOFF_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
         ${timeoffs.map(t => timeoffBar(t)).join('')}`;
 
-      const groupRows = (groups.length === 0 && timeoffs.length === 0)
-        ? `<div class="gantt-empty-row">No tasks with due dates in this period.<br>
-             <small>Assign start &amp; due dates to tasks to see them on the timeline.</small></div>`
-        : timeoffSection + groups.map(g => `
-            <div class="gantt-group-hdr">
-              <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>${esc(g.name)}</div>
-              <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
-            </div>
-            ${g.tasks.map(t => taskBar(t, g.color)).join('')}
-          `).join('');
+      const meetingsSection = commGroups.length === 0 ? '' : commGroups.map(g => `
+          <div class="gantt-group-hdr">
+            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${COMM_BAR_COLOR};flex-shrink:0"></div>💬 ${esc(g.name)}</div>
+            <div class="gantt-group-band" style="background:linear-gradient(90deg,${COMM_BAR_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
+          </div>
+          ${g.comms.map(c => commBar(c)).join('')}
+        `).join('');
+
+      const hasContent = groups.length > 0 || timeoffs.length > 0 || commGroups.length > 0;
+      const groupRows = !hasContent
+        ? `<div class="gantt-empty-row">No items in this period.</div>`
+        : timeoffSection
+          + groups.map(g => `
+              <div class="gantt-group-hdr">
+                <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>${esc(g.name)}</div>
+                <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
+              </div>
+              ${g.tasks.map(t => taskBar(t, g.color)).join('')}
+            `).join('')
+          + meetingsSection;
 
       // ── Toolbar ──
       const rangeLabel = `${winStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(winEnd-MS).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
@@ -3658,6 +3708,11 @@ const renderers = {
               <button class="month-nav-btn" onclick="ganttOffset=0;showView('gantt')" style="font-size:11px;padding:0 10px;font-weight:600">Today</button>
               <button class="month-nav-btn" onclick="navGantt(1)" title="Next">›</button>
             </div>
+            <div style="display:flex;gap:3px;background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:3px">
+              <button class="btn btn-sm ${ganttFilter==='tasks'?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttFilter('tasks')">📋 Tasks</button>
+              <button class="btn btn-sm ${ganttFilter==='meetings'?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttFilter('meetings')">💬 Meetings</button>
+              <button class="btn btn-sm ${ganttFilter==='both'?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttFilter('both')">All</button>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
@@ -3672,6 +3727,7 @@ const renderers = {
         </div>
         <div class="gantt-legend">
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--primary)"></div> Task</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#7c3aed"></div> Meeting</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#94a3b8"></div> Done</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--danger);opacity:0.5"></div> Overdue</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;background:rgba(8,145,178,0.18);border-left:2px solid rgba(8,145,178,0.4)"></div> Time Off</div>
