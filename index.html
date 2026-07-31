@@ -1269,9 +1269,9 @@
         <button class="btn-add-task" id="sidebarAddBtn" onclick="toggleAddMenu(event)">＋ Add ▾</button>
         <div class="add-dropdown hidden" id="addDropdown">
           <button class="add-dropdown-item" onclick="closeAddMenu();openTaskModal()">📋 Task</button>
+          <button class="add-dropdown-item" onclick="closeAddMenu();openCommModal()">💬 Comm</button>
           <button class="add-dropdown-item" onclick="closeAddMenu();openFollowupModal()">📌 Follow-up</button>
           <button class="add-dropdown-item" onclick="closeAddMenu();openNoteModal()">📝 Note</button>
-          <button class="add-dropdown-item" onclick="closeAddMenu();openCommModal()">💬 Comm</button>
         </div>
       </div>
 
@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.7</div>
+      <div class="sidebar-version">v1.4.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4311,9 +4311,9 @@ const renderers = {
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openNoteModal(null,'${pid}')">📝 Note</button>
-              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
             </div>
           </div>` : ''}
         </div>`;
@@ -4496,9 +4496,9 @@ const renderers = {
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openNoteModal(null,'${pid}')">📝 Note</button>
-              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
             </div>
           </div>` : ''}
         </div>`;
