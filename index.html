@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.0</div>
+      <div class="sidebar-version">v1.5.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5256,7 +5256,7 @@ const renderers = {
       if (isRecurring) {
         const freq    = document.getElementById('commRecurrenceFreq').value;
         const days    = freq === 'weekly'
-          ? [...document.querySelectorAll('.comm-recur-day:checked')].map(cb => Number(cb.value))
+          ? [...document.querySelectorAll('#commRecurrenceDayPicker .recur-day-btn.selected')].map(btn => Number(btn.dataset.day))
           : [];
         const endDate = document.getElementById('commRecurrenceEndDate').value || null;
         recurrence = { freq, interval: Number(document.getElementById('commRecurrenceInterval').value) || 1, days, endDate };
@@ -5580,7 +5580,7 @@ const renderers = {
       const freq     = document.getElementById('recurrenceFreq').value;
       const interval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
       const days     = freq === 'weekly'
-        ? [...document.querySelectorAll('.recur-day:checked')].map(cb => parseInt(cb.value))
+        ? [...document.querySelectorAll('#recurrenceDayPicker .recur-day-btn.selected')].map(btn => parseInt(btn.dataset.day))
         : [];
       const endDate  = document.getElementById('recurrenceEndDate').value || null;
       return { freq, interval, days, endDate };
