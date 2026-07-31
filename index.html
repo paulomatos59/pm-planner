@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.2</div>
+      <div class="sidebar-version">v1.5.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3579,10 +3579,10 @@ const renderers = {
         const od   = isOverdue(t);
         const color = t.status === 'Done' ? '#94a3b8' : projColor;
         const label = rawW > 44 ? esc(t.title) : '';
-        const recurPrefix = t.recurrence ? '🔁 ' : '';
+        const recurPrefix = t.recurrence ? '🔁 ' : '📋 ';
         return `
           <div class="gantt-row">
-            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${recurPrefix}${esc(t.title)}">${recurPrefix}${esc(t.title)}</div>
+            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${recurPrefix}${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
               ${backdrop()}
               <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
@@ -3602,7 +3602,7 @@ const renderers = {
         const label = rawW > 44 ? esc(t.title) : '';
         return `
           <div class="gantt-row">
-            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="🌴 ${esc(t.title)}">🌴 ${esc(t.title)}</div>
+            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">🌴 ${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
               ${backdrop()}
               <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${TOFF_COLOR};opacity:0.85"
@@ -3619,7 +3619,8 @@ const renderers = {
       function commBar(c) {
         const x1    = clamp(xOf(c.date), 0, totalW - 2);
         const barW  = Math.max(colPx - 2, 10);
-        const icon  = COMM_ICONS[c.type] || '💬';
+        const _CI   = { Meeting:'🤝', Slack:'💬', Email:'📧', Phone:'📞' };
+        const icon  = _CI[c.type] || '💬';
         const timeStr = c.startTime ? ` · ${fmt12(c.startTime)}` : '';
         const isDone  = c.status === 'Done';
         const color   = isDone ? '#94a3b8' : COMM_BAR_COLOR;
@@ -3649,17 +3650,6 @@ const renderers = {
         if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
       }
 
-      // Meetings groups (by project)
-      const commGroups = [];
-      if (ganttFilter !== 'tasks' && winComms.length > 0) {
-        allProjects.forEach(p => {
-          const pc = winComms.filter(c => c.projectId === p.id);
-          if (pc.length) commGroups.push({ name: p.name, comms: pc });
-        });
-        const unassignedC = winComms.filter(c => !c.projectId);
-        if (unassignedC.length) commGroups.push({ name: 'Unassigned', comms: unassignedC });
-      }
-
       const timeoffSection = (ganttFilter === 'meetings' || timeoffs.length === 0) ? '' : `
         <div class="gantt-group-hdr">
           <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>🌴 Time Off / Events</div>
@@ -3667,15 +3657,22 @@ const renderers = {
         </div>
         ${timeoffs.map(t => timeoffBar(t)).join('')}`;
 
-      const meetingsSection = commGroups.length === 0 ? '' : commGroups.map(g => `
-          <div class="gantt-group-hdr">
-            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${COMM_BAR_COLOR};flex-shrink:0"></div>💬 ${esc(g.name)}</div>
-            <div class="gantt-group-band" style="background:linear-gradient(90deg,${COMM_BAR_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
-          </div>
-          ${g.comms.map(c => commBar(c)).join('')}
-        `).join('');
+      // ── Meetings section (flat, sorted by date+time) ──
+      const showMeetings = ganttFilter !== 'tasks' && winComms.length > 0;
+      const sortedComms  = showMeetings
+        ? [...winComms].sort((a, b) => {
+            const dc = a.date.localeCompare(b.date);
+            return dc !== 0 ? dc : (a.startTime || '').localeCompare(b.startTime || '');
+          })
+        : [];
+      const meetingsSection = !showMeetings ? '' : `
+        <div class="gantt-group-hdr">
+          <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${COMM_BAR_COLOR};flex-shrink:0"></div>💬 Meetings</div>
+          <div class="gantt-group-band" style="background:linear-gradient(90deg,${COMM_BAR_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
+        </div>
+        ${sortedComms.map(c => commBar(c)).join('')}`;
 
-      const hasContent = groups.length > 0 || timeoffs.length > 0 || commGroups.length > 0;
+      const hasContent = groups.length > 0 || timeoffs.length > 0 || showMeetings;
       const groupRows = !hasContent
         ? `<div class="gantt-empty-row">No items in this period.</div>`
         : timeoffSection
