@@ -1388,7 +1388,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.4.8</div>
+      <div class="sidebar-version">v1.4.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5210,7 +5210,8 @@ const renderers = {
       document.getElementById('commRecurrenceDaysGroup').style.display  = (on && freq === 'weekly') ? 'block' : 'none';
       // Wire day-picker clicks (idempotent)
       document.querySelectorAll('#commRecurrenceDayPicker .recur-day-btn').forEach(btn => {
-        btn.onclick = () => {
+        btn.onclick = e => {
+          e.stopPropagation();
           const cb = btn.previousElementSibling;
           cb.checked = !cb.checked;
           btn.classList.toggle('selected', cb.checked);
@@ -5535,9 +5536,11 @@ const renderers = {
       body.style.display = on ? 'flex' : 'none';
       lbl.classList.toggle('active', on);
       if (dg) dg.style.display = (on && freq === 'weekly') ? 'block' : 'none';
-      // Wire day-picker clicks (idempotent)
-      document.querySelectorAll('.recur-day-btn').forEach(btn => {
-        btn.onclick = () => {
+      // Wire day-picker clicks — stopPropagation prevents the parent <label>
+      // from double-toggling the checkbox after our manual toggle
+      document.querySelectorAll('#recurrenceDayPicker .recur-day-btn').forEach(btn => {
+        btn.onclick = e => {
+          e.stopPropagation();
           const cb = btn.previousElementSibling;
           cb.checked = !cb.checked;
           btn.classList.toggle('selected', cb.checked);
