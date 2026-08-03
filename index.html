@@ -75,6 +75,18 @@
     .recurrence-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:700; padding:2px 7px; border-radius:10px; background:var(--primary-light); color:var(--primary); }
     .recur-day-btn { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:50%; border:1px solid var(--border); font-size:11px; font-weight:700; cursor:pointer; background:var(--surface); color:var(--text-muted); transition:all 0.1s; }
     .recur-day-btn.selected { background:var(--primary); color:#fff; border-color:var(--primary); }
+    /* Occurrence section */
+    .occ-row { display:flex; align-items:center; gap:9px; padding:6px 6px; border-radius:6px; cursor:pointer; transition:background .1s; }
+    .occ-row:hover { background:var(--bg); }
+    .occ-check { width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; transition:all .15s; color:#fff; }
+    .occ-check.checked { background:var(--success); border-color:var(--success); }
+    .occ-date-txt { font-size:13px; font-weight:500; flex:1; }
+    .occ-date-txt.crossed { text-decoration:line-through; color:var(--text-muted); }
+    .occ-pip { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; flex-shrink:0; }
+    .occ-pip-today    { background:var(--primary-light); color:var(--primary); }
+    .occ-pip-done     { background:var(--success-light); color:var(--success); }
+    .occ-pip-missed   { background:var(--danger-light); color:var(--danger); }
+    .occ-pip-upcoming { background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
 
     /* Settings dropdown menu */
     .settings-menu { position:absolute; right:0; top:calc(100% + 6px); background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:180px; z-index:400; padding:6px; }
@@ -1388,7 +1400,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.4</div>
+      <div class="sidebar-version">v1.5.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1531,6 +1543,16 @@
                 <button class="btn btn-secondary btn-sm" onclick="hideSubtaskInput()">✕</button>
               </div>
             </div>
+          </div>
+
+          <!-- Occurrences (recurring tasks only) -->
+          <div id="taskOccurrencesSection" style="display:none">
+            <div class="subtask-section-divider"></div>
+            <div class="subtask-section-label">
+              <span>🔁 Occurrences &nbsp;<span id="taskOccCount" style="font-weight:500;color:var(--text-muted)"></span></span>
+              <button class="btn btn-secondary btn-sm" id="taskOccHideBtn" onclick="toggleOccHideDone('task')">Hide Done</button>
+            </div>
+            <div id="taskOccList" style="max-height:230px;overflow-y:auto;margin-top:2px"></div>
           </div>
         </div>
 
@@ -1759,6 +1781,16 @@
                 <button class="btn btn-secondary btn-sm" onclick="hideCommTaskInput()">✕</button>
               </div>
             </div>
+          </div>
+
+          <!-- Occurrences (recurring comms only) -->
+          <div id="commOccurrencesSection" style="display:none">
+            <div class="subtask-section-divider"></div>
+            <div class="subtask-section-label">
+              <span>🔁 Occurrences &nbsp;<span id="commOccCount" style="font-weight:500;color:var(--text-muted)"></span></span>
+              <button class="btn btn-secondary btn-sm" id="commOccHideBtn" onclick="toggleOccHideDone('comm')">Hide Done</button>
+            </div>
+            <div id="commOccList" style="max-height:230px;overflow-y:auto;margin-top:2px"></div>
           </div>
 
         </div>
@@ -2443,6 +2475,8 @@
     function isRecurDueToday(t) {
       if (!t.recurrence || !t.recurrence.freq || t.status === 'Done') return false;
       const today = todayStr();
+      // If today's occurrence is already marked done, remove from today list
+      if (t.completedOccurrences && t.completedOccurrences[today]) return false;
       if ((t.dueDate||'') >= today) return false; // already current/future
       let cur = t.dueDate;
       for (let i = 0; i < 730; i++) {
@@ -3946,8 +3980,11 @@ const renderers = {
       const today        = todayStr();
       const overdueTasks  = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const allTodayTasks = tasks.filter(t => ((t.dueDate||'').slice(0,10) === today || isRecurDueToday(t)) && !isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId);
-      const todayOpen     = allTodayTasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const todayDone     = allTodayTasks.filter(t => t.status === 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      // Recurring-done-today: occurrence marked done, so also include them in "today done"
+      const recurDoneToday = tasks.filter(t => t.recurrence && t.recurrence.freq && !!(t.completedOccurrences?.[today]) && t.taskType !== 'timeoff' && !t.parentId && !allTodayTasks.includes(t));
+      const isEffectiveDone = t => t.recurrence ? !!(t.completedOccurrences?.[today]) : t.status === 'Done';
+      const todayOpen = allTodayTasks.filter(t => !isEffectiveDone(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+      const todayDone = [...allTodayTasks.filter(isEffectiveDone), ...recurDoneToday].sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayTasks    = [...todayOpen, ...todayDone];
       const todayComms    = comms.filter(c => c.date === today).sort((a,b) => (a.title||'').localeCompare(b.title||''));
       const focusNote     = localStorage.getItem('dp_focus') || '';
@@ -5283,6 +5320,16 @@ const renderers = {
       tasksSection.style.display = c ? 'block' : 'none';
       if (c) setTimeout(commTasksRender, 0);
 
+      // ── Occurrences section ──
+      const commOccSec = document.getElementById('commOccurrencesSection');
+      if (c && c.recurrence && c.recurrence.freq) {
+        commOccSec.style.display = '';
+        _occHideDone.comm = false;
+        setTimeout(() => renderCommOccurrences(c.id), 0);
+      } else {
+        commOccSec.style.display = 'none';
+      }
+
       document.getElementById('commModal').classList.remove('hidden');
       setTimeout(() => {
         _checkAndRestoreDraft('comm', id);
@@ -5545,9 +5592,13 @@ const renderers = {
       const parentBadge = t.parentId
         ? `<span class="subtask-parent-badge" onclick="event.stopPropagation();openTaskModal('${t.parentId}')">↳ subtask</span>`
         : '';
+      // For recurring tasks, reflect today's occurrence done state on the card
+      const today = todayStr();
+      const recurOccDone = t.recurrence && t.recurrence.freq && !!(t.completedOccurrences?.[today]);
+      const isDone = recurOccDone || t.status === 'Done';
       return `
-        <div class="task-card ${od?'overdue':''} ${t.status==='Done'?'done':''}" onclick="openTaskModal('${t.id}')">
-          <div class="task-checkbox ${t.status==='Done'?'checked':''}" onclick="event.stopPropagation();toggleDone('${t.id}')"></div>
+        <div class="task-card ${od?'overdue':''} ${isDone?'done':''}" onclick="openTaskModal('${t.id}')">
+          <div class="task-checkbox ${isDone?'checked':''}" onclick="event.stopPropagation();toggleDone('${t.id}')"></div>
           <div class="task-content">
             <div class="task-title">${esc(t.title)}</div>
             <div class="task-meta">
@@ -5723,14 +5774,139 @@ const renderers = {
       });
     }
 
+    /* ==============================
+       OCCURRENCES (recurring tasks & comms)
+    ============================== */
+    let _occHideDone = { task: false, comm: false };
+
+    // Returns sorted list of occurrence dates (YYYY-MM-DD) for a recurring obj.
+    // firstDateKey: 'dueDate' for tasks, 'date' for comms.
+    function getAllOccurrences(obj, firstDateKey, maxDate) {
+      if (!obj || !obj.recurrence || !obj.recurrence.freq) return [];
+      const first = obj[firstDateKey];
+      if (!first) return [];
+      const cap = obj.recurrence.endDate
+        ? (obj.recurrence.endDate < maxDate ? obj.recurrence.endDate : maxDate)
+        : maxDate;
+      const result = [];
+      let cur = first;
+      if (cur <= cap) result.push(cur);
+      for (let i = 0; i < 500; i++) {
+        const next = nextRecurDate(cur, obj.recurrence);
+        if (!next || next <= cur) break;
+        if (next > cap) break;
+        result.push(next);
+        cur = next;
+      }
+      return result;
+    }
+
+    function buildOccurrencesHtml(obj, type) {
+      const today = todayStr();
+      const d8w = new Date(); d8w.setDate(d8w.getDate() - 56);
+      const from = `${d8w.getFullYear()}-${pad(d8w.getMonth()+1)}-${pad(d8w.getDate())}`;
+      const d6m = new Date(); d6m.setMonth(d6m.getMonth() + 6);
+      const to   = `${d6m.getFullYear()}-${pad(d6m.getMonth()+1)}-${pad(d6m.getDate())}`;
+      const key  = type === 'task' ? 'dueDate' : 'date';
+      const allOccs = getAllOccurrences(obj, key, to).filter(d => d >= from);
+      const comp    = obj.completedOccurrences || {};
+      const hide    = _occHideDone[type];
+      const toggleFn = type === 'task' ? 'toggleOccurrence' : 'toggleCommOccurrence';
+      const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+      let html = '';
+      for (const date of allOccs) {
+        const done    = !!comp[date];
+        const isToday = date === today;
+        const past    = date < today;
+        if (hide && done) continue;
+        const d  = parseLocal(date);
+        const fmtD = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
+        const dow  = DOW[d.getDay()];
+        let pip = '';
+        if (isToday)      pip = `<span class="occ-pip occ-pip-today">Today</span>`;
+        else if (done)    pip = `<span class="occ-pip occ-pip-done">Done</span>`;
+        else if (past)    pip = `<span class="occ-pip occ-pip-missed">Missed</span>`;
+        else              pip = `<span class="occ-pip occ-pip-upcoming">Upcoming</span>`;
+        html += `
+          <div class="occ-row" onclick="${toggleFn}('${obj.id}','${date}')">
+            <div class="occ-check ${done?'checked':''}">${done?'✓':''}</div>
+            <span class="occ-date-txt ${done?'crossed':''}">${dow} · ${fmtD}</span>
+            ${pip}
+          </div>`;
+      }
+      if (!html) html = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No occurrences to show.</div>`;
+      return { html, total: allOccs.length };
+    }
+
+    function renderTaskOccurrences(taskId) {
+      const t = tasks.find(x => x.id === taskId);
+      if (!t || !t.recurrence) return;
+      const { html, total } = buildOccurrencesHtml(t, 'task');
+      document.getElementById('taskOccList').innerHTML  = html;
+      document.getElementById('taskOccCount').textContent = total;
+      document.getElementById('taskOccHideBtn').textContent = _occHideDone.task ? 'Show Done' : 'Hide Done';
+    }
+
+    function renderCommOccurrences(commId) {
+      const c = comms.find(x => x.id === commId);
+      if (!c || !c.recurrence) return;
+      const { html, total } = buildOccurrencesHtml(c, 'comm');
+      document.getElementById('commOccList').innerHTML  = html;
+      document.getElementById('commOccCount').textContent = total;
+      document.getElementById('commOccHideBtn').textContent = _occHideDone.comm ? 'Show Done' : 'Hide Done';
+    }
+
+    function toggleOccurrence(taskId, dateStr) {
+      const t = tasks.find(x => x.id === taskId);
+      if (!t) return;
+      if (!t.completedOccurrences) t.completedOccurrences = {};
+      if (t.completedOccurrences[dateStr]) delete t.completedOccurrences[dateStr];
+      else t.completedOccurrences[dateStr] = new Date().toISOString();
+      t.updatedAt = new Date().toISOString();
+      persistTasks();
+      renderTaskOccurrences(taskId);
+      showView(currentView);
+    }
+
+    function toggleCommOccurrence(commId, dateStr) {
+      const c = comms.find(x => x.id === commId);
+      if (!c) return;
+      if (!c.completedOccurrences) c.completedOccurrences = {};
+      if (c.completedOccurrences[dateStr]) delete c.completedOccurrences[dateStr];
+      else c.completedOccurrences[dateStr] = new Date().toISOString();
+      c.updatedAt = new Date().toISOString();
+      persistComms();
+      renderCommOccurrences(commId);
+    }
+
+    function toggleOccHideDone(type) {
+      _occHideDone[type] = !_occHideDone[type];
+      const id = document.getElementById(type === 'task' ? 'taskId' : 'commId').value;
+      if (type === 'task') renderTaskOccurrences(id);
+      else renderCommOccurrences(id);
+    }
+
     function toggleDone(id) {
       const t = tasks.find(x => x.id === id);
       if (!t) return;
+      // Recurring task: toggle today's occurrence instead of the whole task status
+      if (t.recurrence && t.recurrence.freq) {
+        const today = todayStr();
+        if (!t.completedOccurrences) t.completedOccurrences = {};
+        if (t.completedOccurrences[today]) {
+          delete t.completedOccurrences[today];
+        } else {
+          t.completedOccurrences[today] = new Date().toISOString();
+        }
+        t.updatedAt = new Date().toISOString();
+        persistTasks();
+        showView(currentView);
+        return;
+      }
       const wasDone = t.status === 'Done';
       t.status      = wasDone ? 'Todo' : 'Done';
       t.completedAt = t.status === 'Done' ? new Date().toISOString() : null;
       t.updatedAt   = new Date().toISOString();
-      if (t.status === 'Done' && t.recurrence) spawnNextRecurrence(t);
       persistTasks();
       showView(currentView);
     }
@@ -5957,6 +6133,16 @@ const renderers = {
       } else {
         subsSection.style.display = 'none';
         parentRow.style.display = 'none';
+      }
+
+      // ── Occurrences section ──
+      const occSec = document.getElementById('taskOccurrencesSection');
+      if (!isNew && t && t.recurrence && t.recurrence.freq && t.taskType !== 'timeoff') {
+        occSec.style.display = '';
+        _occHideDone.task = false;
+        renderTaskOccurrences(t.id);
+      } else {
+        occSec.style.display = 'none';
       }
 
       document.getElementById('taskModal').classList.remove('hidden');
