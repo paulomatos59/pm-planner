@@ -1402,7 +1402,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.8</div>
+      <div class="sidebar-version">v1.5.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5145,17 +5145,38 @@ const renderers = {
       if (filtered.length === 0) {
         html += `<div class="empty-state"><div class="icon">💬</div><h3>${comms.length === 0 ? 'No communications yet' : 'No results for this filter'}</h3><p>${comms.length === 0 ? 'Log meetings, calls, emails and Slack threads to keep a full comms history.' : 'Try a different filter.'}</p></div>`;
       } else {
-        // Group by date
+        // Expand recurring comms into individual occurrence entries
+        const d8w = new Date(); d8w.setDate(d8w.getDate() - 56);
+        const fromDate = `${d8w.getFullYear()}-${pad(d8w.getMonth()+1)}-${pad(d8w.getDate())}`;
+        const d6m = new Date(); d6m.setMonth(d6m.getMonth() + 6);
+        const toDate = `${d6m.getFullYear()}-${pad(d6m.getMonth()+1)}-${pad(d6m.getDate())}`;
+
         const groups = {};
         filtered.forEach(c => {
-          const d = c.date || 'No date';
-          if (!groups[d]) groups[d] = [];
-          groups[d].push(c);
+          if (c.recurrence && c.recurrence.freq) {
+            // Expand into occurrences
+            const allOccs = getAllOccurrences(c, 'date', toDate).filter(d => d >= fromDate);
+            const overrides = c.dateOverrides || {};
+            const comp = c.completedOccurrences || {};
+            allOccs.forEach(origDate => {
+              const actualDate = overrides[origDate] || origDate;
+              const occDone = !!comp[actualDate];
+              // Build a virtual comm entry for this occurrence
+              const occEntry = { ...c, _occDate: actualDate, _occDone: occDone };
+              if (!groups[actualDate]) groups[actualDate] = [];
+              groups[actualDate].push(occEntry);
+            });
+          } else {
+            const d = c.date || 'No date';
+            if (!groups[d]) groups[d] = [];
+            groups[d].push(c);
+          }
         });
         Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(d => {
           const label = d === 'No date' ? 'No Date' : formatCommDate(d);
           const sorted = groups[d].sort((a, b) => {
-            const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
+            const da = (a._occDone !== undefined ? a._occDone : a.status === 'Done') ? 1 : 0;
+            const db = (b._occDone !== undefined ? b._occDone : b.status === 'Done') ? 1 : 0;
             if (da !== db) return da - db;
             return (a.startTime || '').localeCompare(b.startTime || '');
           });
@@ -5229,7 +5250,8 @@ const renderers = {
         : (c.duration ? `⏱ ${c.duration} min` : '');
       const org   = c.organizer    ? `📌 ${esc(c.organizer)}`   : '';
       const parts = c.participants ? `👥 ${esc(c.participants)}` : '';
-      const isDone = c.status === 'Done';
+      // For expanded occurrence entries, use occurrence-level done state
+      const isDone = c._occDone !== undefined ? c._occDone : c.status === 'Done';
       const recurBadge  = c.recurrence ? `<span style="font-size:11px;color:var(--text-muted)">🔁 Recurring</span>` : '';
       const linkedTasks = tasks.filter(t => t.commId === c.id);
       const tasksDone   = linkedTasks.filter(t => t.status === 'Done').length;
