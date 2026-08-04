@@ -1400,7 +1400,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.5</div>
+      <div class="sidebar-version">v1.5.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2492,7 +2492,9 @@
 
     function isOverdue(t) {
       if (!t.dueDate || t.status === 'Done') return false;
-      if (isRecurDueToday(t)) return false; // recurring task whose next occurrence is today
+      if (isRecurDueToday(t)) return false;
+      // Recurring series tasks are never "overdue" — they surface in Today only when it's their recurrence day
+      if (t.recurrence && t.recurrence.freq) return false;
       const due = parseLocal(t.dueDate);
       const today = new Date(); today.setHours(0,0,0,0);
       return due < today;
