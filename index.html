@@ -1410,7 +1410,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.13</div>
+      <div class="sidebar-version">v1.5.14</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3142,11 +3142,35 @@ const renderers = {
         ...todayDoneList.sort((a,b) => priorityOrder(a) - priorityOrder(b))
       ];
 
-      // Upcoming (next 7 days, not today, not overdue) — legacy used in bottom strip
-      const upcoming = open
+      // Upcoming (next 7 days, not today, not overdue) — tasks + comms
+      const upcomingTasks = open
         .filter(t => t.taskType !== 'timeoff' && t.dueDate && t.dueDate > today && t.dueDate <= sunStr)
-        .sort((a,b) => a.dueDate.localeCompare(b.dueDate) || priorityOrder(a) - priorityOrder(b))
-        .slice(0, 5);
+        .map(t => ({ ...t, _kind: 'task' }));
+
+      // Upcoming comms: one-off comms + recurring comm occurrences within the week
+      const upcomingComms = [];
+      comms.forEach(c => {
+        if (c.recurrence && c.recurrence.freq) {
+          const occs = getAllOccurrences(c, 'date', sunStr);
+          const overrides = c.dateOverrides || {};
+          occs.forEach(orig => {
+            const actual = overrides[orig] || orig;
+            if (actual > today && actual <= sunStr)
+              upcomingComms.push({ ...c, date: actual, _kind: 'comm' });
+          });
+        } else if (c.date && c.date > today && c.date <= sunStr) {
+          upcomingComms.push({ ...c, _kind: 'comm' });
+        }
+      });
+
+      const upcoming = [
+        ...upcomingTasks,
+        ...upcomingComms
+      ].sort((a, b) => {
+        const da = a._kind === 'comm' ? a.date : a.dueDate;
+        const db = b._kind === 'comm' ? b.date : b.dueDate;
+        return da.localeCompare(db) || (a.startTime || '').localeCompare(b.startTime || '');
+      }).slice(0, 8);
 
       // Today's comms
       const todayComms = comms.filter(c => (c.date || '') === today || isRecurCommDueToday(c))
@@ -3414,13 +3438,26 @@ const renderers = {
             <button class="summary-card-link" onclick="showView('all')">All tasks →</button>
           </div>
           <div class="summary-task-list">
-            ${upcoming.map(t => `
-              <div class="summary-task-item" onclick="openTaskModal('${t.id}')">
-                <div class="s-task-dot s-dot-${t.priority.toLowerCase()}"></div>
-                <div class="summary-task-title">${esc(t.title)}</div>
-                <span class="summary-task-due">${formatDue(t.dueDate)}</span>
-                <span class="task-chip chip-${t.priority.toLowerCase()}">${t.priority}</span>
-              </div>`).join('')}
+            ${upcoming.map(item => {
+              if (item._kind === 'comm') {
+                const icon = COMM_ICONS[item.type] || '💬';
+                const timeLabel = item.startTime ? fmt12(item.startTime) : '';
+                return `
+                  <div class="summary-task-item" onclick="openCommModal('${item.id}')">
+                    <div class="s-task-dot" style="background:var(--primary);opacity:0.7"></div>
+                    <div class="summary-task-title">${icon} ${esc(item.title)}</div>
+                    <span class="summary-task-due">${formatDue(item.date)}${timeLabel ? ' · '+timeLabel : ''}</span>
+                    <span class="task-chip" style="background:#eff6ff;color:#2563eb">${item.type || 'Meeting'}</span>
+                  </div>`;
+              }
+              return `
+                <div class="summary-task-item" onclick="openTaskModal('${item.id}')">
+                  <div class="s-task-dot s-dot-${item.priority.toLowerCase()}"></div>
+                  <div class="summary-task-title">${esc(item.title)}</div>
+                  <span class="summary-task-due">${formatDue(item.dueDate)}</span>
+                  <span class="task-chip chip-${item.priority.toLowerCase()}">${item.priority}</span>
+                </div>`;
+            }).join('')}
           </div>
         </div>` : ''}
       `;
