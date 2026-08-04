@@ -1410,7 +1410,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.11</div>
+      <div class="sidebar-version">v1.5.12</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2269,6 +2269,9 @@
     let editingNoteId    = null;
     let filterState        = { search: '', category: '', priority: '', status: '', taskType: 'task' };
     let sortState          = { col: 'due', dir: 'asc' };
+    let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
+    let taskDateFrom       = '';
+    let taskDateTo         = '';
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
     let capacitySettings   = JSON.parse(localStorage.getItem('dp_capacity') || '{"workingDays":[1,2,3,4,5],"hoursPerDay":8,"bufferPct":20}');
 
@@ -4228,10 +4231,52 @@ const renderers = {
     /* ==============================
        ALL TASKS VIEW
     ============================== */
+    function _taskWindowDates() {
+      const fmtD  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const today = todayStr();
+      if (taskTimeTab === 'today') return { from: today, to: today };
+      if (taskTimeTab === 'week') {
+        const d = new Date(); d.setHours(0,0,0,0);
+        const mon = new Date(d); mon.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1));
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        return { from: fmtD(mon), to: fmtD(sun) };
+      }
+      if (taskTimeTab === 'month') {
+        const d = new Date();
+        return { from: fmtD(new Date(d.getFullYear(), d.getMonth(), 1)),
+                 to:   fmtD(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
+      }
+      if (taskTimeTab === 'custom') return { from: taskDateFrom || null, to: taskDateTo || null };
+      return { from: null, to: null }; // 'all': no date filter
+    }
+
+    function _taskInRange(t, from, to) {
+      if (!from && !to) return true;
+      if (t.recurrence && t.recurrence.freq) {
+        const fmtD = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+        const cap  = to || (() => { const d = new Date(); d.setMonth(d.getMonth()+6); return fmtD(d); })();
+        const occs = getAllOccurrences(t, 'dueDate', cap);
+        const overrides = t.dateOverrides || {};
+        return occs.some(orig => {
+          const actual = overrides[orig] || orig;
+          if (from && actual < from) return false;
+          if (to   && actual > to)   return false;
+          return true;
+        });
+      }
+      const d = t.dueDate || '';
+      if (!d) return !from; // tasks with no date: show only in 'all'
+      if (from && d < from) return false;
+      if (to   && d > to)   return false;
+      return true;
+    }
+
     function renderAll() {
       const fs = filterState;
+      const { from: fromDate, to: toDate } = _taskWindowDates();
+
       const filtered = tasks.filter(t => {
-        if (t.parentId) return false; // subtasks shown under parent, not in main list
+        if (t.parentId) return false;
         const tt = fs.taskType || 'task';
         if (tt === 'task'    && t.taskType === 'timeoff') return false;
         if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
@@ -4240,6 +4285,7 @@ const renderers = {
         if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
         if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
         if (fs.status   && t.status !== fs.status)   return false;
+        if (!_taskInRange(t, fromDate, toDate)) return false;
         return true;
       }).sort((a,b) => {
         if (isOverdue(a) && !isOverdue(b)) return -1;
@@ -4249,11 +4295,31 @@ const renderers = {
         return priorityOrder(a) - priorityOrder(b);
       });
 
+      const timeTabs = [
+        { key: 'today', label: 'Today' },
+        { key: 'week',  label: 'This Week' },
+        { key: 'month', label: 'This Month' },
+        { key: 'all',   label: 'All' },
+        { key: 'custom',label: '📅 Custom' }
+      ].map(t =>
+        `<button class="comm-time-tab ${taskTimeTab === t.key ? 'active' : ''}" onclick="setTaskTimeTab('${t.key}')">${t.label}</button>`
+      ).join('');
+
+      const customRangeHtml = taskTimeTab === 'custom' ? `
+        <div class="comm-custom-range">
+          <label>From</label>
+          <input type="date" value="${taskDateFrom}" onchange="setTaskCustomRange('from',this.value)">
+          <label>To</label>
+          <input type="date" value="${taskDateTo}" onchange="setTaskCustomRange('to',this.value)">
+        </div>` : '';
+
       return `
         <div class="view-header">
           <div><div class="view-title">All Tasks</div><div class="view-subtitle">${filtered.length} shown</div></div>
           <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
         </div>
+        <div class="comm-time-tabs">${timeTabs}</div>
+        ${customRangeHtml}
         <div class="filter-bar">
           <input type="text" class="filter-input" id="filterSearch" placeholder="Search…" value="${esc(fs.search)}" oninput="applyFilters()">
           <select class="filter-select" id="filterTaskType" onchange="applyFilters()" style="min-width:150px">
@@ -4344,6 +4410,15 @@ const renderers = {
         status:   document.getElementById('filterStatus')?.value   || ''
       };
       document.getElementById('mainContent').innerHTML = renderAll();
+    }
+    function setTaskTimeTab(tab) {
+      taskTimeTab = tab;
+      showView('all');
+    }
+    function setTaskCustomRange(field, val) {
+      if (field === 'from') taskDateFrom = val;
+      else                  taskDateTo   = val;
+      showView('all');
     }
 
     function tableRow(t) {
