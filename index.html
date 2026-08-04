@@ -1400,7 +1400,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.6</div>
+      <div class="sidebar-version">v1.5.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2490,6 +2490,24 @@
       return false;
     }
 
+    // Same logic as isRecurDueToday but for comm objects (uses c.date instead of t.dueDate)
+    function isRecurCommDueToday(c) {
+      if (!c.recurrence || !c.recurrence.freq) return false;
+      const today = todayStr();
+      if (c.completedOccurrences && c.completedOccurrences[today]) return false;
+      if ((c.date||'') >= today) return false;
+      let cur = c.date;
+      for (let i = 0; i < 730; i++) {
+        const next = nextRecurDate(cur, c.recurrence);
+        if (!next || next <= cur) break;
+        if (c.recurrence.endDate && next > c.recurrence.endDate) break;
+        if (next > today) break;
+        if (next === today) return true;
+        cur = next;
+      }
+      return false;
+    }
+
     function isOverdue(t) {
       if (!t.dueDate || t.status === 'Done') return false;
       if (isRecurDueToday(t)) return false;
@@ -3116,7 +3134,7 @@ const renderers = {
         .slice(0, 5);
 
       // Today's comms
-      const todayComms = comms.filter(c => (c.date || '') === today)
+      const todayComms = comms.filter(c => (c.date || '') === today || isRecurCommDueToday(c))
         .sort((a, b) => {
           const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
           if (da !== db) return da - db;
@@ -3988,7 +4006,11 @@ const renderers = {
       const todayOpen = allTodayTasks.filter(t => !isEffectiveDone(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayDone = [...allTodayTasks.filter(isEffectiveDone), ...recurDoneToday].sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayTasks    = [...todayOpen, ...todayDone];
-      const todayComms    = comms.filter(c => c.date === today).sort((a,b) => (a.title||'').localeCompare(b.title||''));
+      const todayComms    = comms.filter(c => c.date === today || isRecurCommDueToday(c)).sort((a, b) => {
+        const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
+        if (da !== db) return da - db;
+        return (a.startTime || '').localeCompare(b.startTime || '');
+      });
       const focusNote     = localStorage.getItem('dp_focus') || '';
 
       let html = `
@@ -5396,8 +5418,9 @@ const renderers = {
         type:         activeTypeBtn ? activeTypeBtn.dataset.type : 'Meeting',
         projectId:    document.getElementById('commProject').value      || '',
         personalId:   document.getElementById('commPersonal').value     || '',
-        notes:        document.getElementById('commDesc').innerHTML.trim() || '',
+        notes:               document.getElementById('commDesc').innerHTML.trim() || '',
         recurrence,
+        completedOccurrences: editingCommId ? (comms.find(c => c.id === editingCommId)?.completedOccurrences || {}) : {},
         createdAt:    editingCommId ? (comms.find(c => c.id === editingCommId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt:    new Date().toISOString()
       };
@@ -6221,7 +6244,8 @@ const renderers = {
         estimatedHours: parseFloat(document.getElementById('taskHours').value) || null,
         parentId:       existing?.parentId   || null,
         workLog:        existing?.workLog    || [],
-        recurrence:     getRecurrenceFromForm(),
+        recurrence:          getRecurrenceFromForm(),
+        completedOccurrences: existing?.completedOccurrences || {},
         createdAt:      existing?.createdAt  || new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
         completedAt:    document.getElementById('taskStatus').value === 'Done'
