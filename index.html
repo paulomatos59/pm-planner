@@ -1410,7 +1410,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.15</div>
+      <div class="sidebar-version">v1.5.16</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3739,41 +3739,88 @@ const renderers = {
 
       // ── Comm bars ──
       const COMM_BAR_COLOR = '#7c3aed';
-      const winComms = comms.filter(c => c.date && c.date >= winS && c.date <= winE);
+
+      // Include non-recurring comms in window AND recurring comms with any occurrence in window
+      const winComms = comms.filter(c => {
+        if (!c.date) return false;
+        if (c.recurrence && c.recurrence.freq) {
+          if (c.date > winE) return false;
+          if (c.recurrence.endDate && c.recurrence.endDate < winS) return false;
+          const cap = c.recurrence.endDate && c.recurrence.endDate < winE ? c.recurrence.endDate : winE;
+          const occs = getAllOccurrences(c, 'date', cap);
+          const ovr  = c.dateOverrides || {};
+          return occs.some(o => { const a = ovr[o]||o; return a >= winS && a <= winE; });
+        }
+        return c.date >= winS && c.date <= winE;
+      });
 
       function commBar(c) {
-        const x1    = clamp(xOf(c.date), 0, totalW - 2);
-        const barW  = Math.max(colPx - 2, 10);
-        const _CI   = { Meeting:'🤝', Slack:'💬', Email:'📧', Phone:'📞' };
+        const _CI = { Meeting:'🤝', Slack:'💬', Email:'📧', Phone:'📞' };
         const icon  = _CI[c.type] || '💬';
-        const timeStr = c.startTime ? ` · ${fmt12(c.startTime)}` : '';
-        const isDone  = c.status === 'Done';
-        const color   = isDone ? '#94a3b8' : COMM_BAR_COLOR;
-        const label   = barW > 50 ? (c.startTime ? fmt12(c.startTime) : '') : '';
+        const barW  = Math.max(colPx - 2, 10);
+        const recurPrefix = c.recurrence ? '🔁 ' : '';
+        let barsHtml = '';
+
+        if (c.recurrence && c.recurrence.freq) {
+          // Render one bar per occurrence within the window
+          const cap  = c.recurrence.endDate && c.recurrence.endDate < winE ? c.recurrence.endDate : winE;
+          const occs = getAllOccurrences(c, 'date', cap);
+          const ovr  = c.dateOverrides || {};
+          const comp = c.completedOccurrences || {};
+          occs.forEach(orig => {
+            const actual = ovr[orig] || orig;
+            if (actual < winS || actual > winE) return;
+            const isDone = !!comp[actual];
+            const color  = isDone ? '#94a3b8' : COMM_BAR_COLOR;
+            const x1     = clamp(xOf(actual), 0, totalW - 2);
+            const timeStr = c.startTime ? ` · ${fmt12(c.startTime)}` : '';
+            barsHtml += `<div class="gantt-bar ${isDone?'g-done':''}"
+              style="left:${x1}px;width:${barW}px;background:${color}"
+              onclick="openCommModal('${c.id}')"
+              title="${icon} ${esc(c.title)}${timeStr} · ${actual}"></div>`;
+          });
+        } else {
+          const isDone = c.status === 'Done';
+          const color  = isDone ? '#94a3b8' : COMM_BAR_COLOR;
+          const x1     = clamp(xOf(c.date), 0, totalW - 2);
+          const timeStr = c.startTime ? ` · ${fmt12(c.startTime)}` : '';
+          const label  = barW > 50 ? (c.startTime ? fmt12(c.startTime) : '') : '';
+          barsHtml = `<div class="gantt-bar ${isDone?'g-done':''}"
+            style="left:${x1}px;width:${barW}px;background:${color}"
+            onclick="openCommModal('${c.id}')"
+            title="${icon} ${esc(c.title)}${timeStr}">${label}</div>`;
+        }
+
         return `
           <div class="gantt-row">
-            <div class="gantt-task-lbl" onclick="openCommModal('${c.id}')" title="${icon} ${esc(c.title)}">${icon} ${esc(c.title)}</div>
+            <div class="gantt-task-lbl" onclick="openCommModal('${c.id}')" title="${recurPrefix}${icon} ${esc(c.title)}">${recurPrefix}${icon} ${esc(c.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
-              ${backdrop()}
-              <div class="gantt-bar ${isDone ? 'g-done' : ''}"
-                   style="left:${x1}px;width:${barW}px;background:${color}"
-                   onclick="openCommModal('${c.id}')"
-                   title="${icon} ${esc(c.title)}${timeStr}">${label}</div>
+              ${backdrop()}${barsHtml}
             </div>
           </div>`;
       }
 
-      // ── Groups ──
+      // ── Groups: tasks + comms together per project/personal ──
       const allProjects = projects.filter(p => ['Active','On Hold'].includes(p.status));
       const groups = [];
-      if (ganttFilter !== 'meetings') {
-        allProjects.forEach(p => {
-          const pt = workTasks.filter(t => t.projectId === p.id);
-          if (pt.length) groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt });
-        });
-        const unassigned = workTasks.filter(t => !t.projectId);
-        if (unassigned.length) groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassigned });
-      }
+      allProjects.forEach(p => {
+        const pt = ganttFilter !== 'meetings'
+          ? workTasks.filter(t => t.projectId === p.id)
+          : [];
+        const pc = ganttFilter !== 'tasks'
+          ? winComms.filter(c => c.projectId === p.id || c.personalId === p.id)
+              .sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.startTime||'').localeCompare(b.startTime||''))
+          : [];
+        if (pt.length || pc.length)
+          groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt, comms: pc });
+      });
+      // Unassigned: tasks/comms not linked to any project
+      const assignedTaskIds = new Set(groups.flatMap(g => g.tasks.map(t => t.id)));
+      const assignedCommIds = new Set(groups.flatMap(g => g.comms.map(c => c.id)));
+      const unassignedTasks = ganttFilter !== 'meetings' ? workTasks.filter(t => !assignedTaskIds.has(t.id)) : [];
+      const unassignedComms = ganttFilter !== 'tasks'    ? winComms.filter(c => !assignedCommIds.has(c.id))   : [];
+      if (unassignedTasks.length || unassignedComms.length)
+        groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassignedTasks, comms: unassignedComms });
 
       const timeoffSection = (ganttFilter === 'meetings' || timeoffs.length === 0) ? '' : `
         <div class="gantt-group-hdr">
@@ -3782,22 +3829,7 @@ const renderers = {
         </div>
         ${timeoffs.map(t => timeoffBar(t)).join('')}`;
 
-      // ── Meetings section (flat, sorted by date+time) ──
-      const showMeetings = ganttFilter !== 'tasks' && winComms.length > 0;
-      const sortedComms  = showMeetings
-        ? [...winComms].sort((a, b) => {
-            const dc = a.date.localeCompare(b.date);
-            return dc !== 0 ? dc : (a.startTime || '').localeCompare(b.startTime || '');
-          })
-        : [];
-      const meetingsSection = !showMeetings ? '' : `
-        <div class="gantt-group-hdr">
-          <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${COMM_BAR_COLOR};flex-shrink:0"></div>💬 Meetings</div>
-          <div class="gantt-group-band" style="background:linear-gradient(90deg,${COMM_BAR_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
-        </div>
-        ${sortedComms.map(c => commBar(c)).join('')}`;
-
-      const hasContent = groups.length > 0 || timeoffs.length > 0 || showMeetings;
+      const hasContent = groups.length > 0 || timeoffs.length > 0;
 
       // ── Sprint Plan rows ──
       const PI_COLORS = {
@@ -3872,8 +3904,8 @@ const renderers = {
                 <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
               </div>
               ${g.tasks.map(t => taskBar(t, g.color)).join('')}
+              ${g.comms.map(c => commBar(c)).join('')}
             `).join('')
-          + meetingsSection
           + sprintSection;
 
       // ── Toolbar ──
