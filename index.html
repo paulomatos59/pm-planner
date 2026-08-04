@@ -87,6 +87,8 @@
     .occ-pip-done     { background:var(--success-light); color:var(--success); }
     .occ-pip-missed   { background:var(--danger-light); color:var(--danger); }
     .occ-pip-upcoming { background:var(--bg); color:var(--text-muted); border:1px solid var(--border); }
+    .occ-date-input { font-size:13px; font-weight:500; flex:1; border:none; background:transparent; color:var(--text); cursor:pointer; padding:0; min-width:0; }
+    .occ-date-input:focus { outline:1px solid var(--primary); border-radius:3px; background:var(--primary-light); }
 
     /* Settings dropdown menu */
     .settings-menu { position:absolute; right:0; top:calc(100% + 6px); background:var(--surface); border:1px solid var(--border); border-radius:10px; box-shadow:0 8px 24px rgba(0,0,0,0.12); min-width:180px; z-index:400; padding:6px; }
@@ -1400,7 +1402,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.7</div>
+      <div class="sidebar-version">v1.5.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5278,6 +5280,7 @@ const renderers = {
       editingCommId = id || null;
       const c = id ? comms.find(x => x.id === id) : null;
 
+      document.getElementById('commId').value = id || '';
       document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
@@ -5421,6 +5424,7 @@ const renderers = {
         notes:               document.getElementById('commDesc').innerHTML.trim() || '',
         recurrence,
         completedOccurrences: editingCommId ? (comms.find(c => c.id === editingCommId)?.completedOccurrences || {}) : {},
+        dateOverrides:        editingCommId ? (comms.find(c => c.id === editingCommId)?.dateOverrides || {}) : {},
         createdAt:    editingCommId ? (comms.find(c => c.id === editingCommId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt:    new Date().toISOString()
       };
@@ -5827,35 +5831,37 @@ const renderers = {
     }
 
     function buildOccurrencesHtml(obj, type) {
-      const today = todayStr();
+      const today    = todayStr();
       const d8w = new Date(); d8w.setDate(d8w.getDate() - 56);
       const from = `${d8w.getFullYear()}-${pad(d8w.getMonth()+1)}-${pad(d8w.getDate())}`;
       const d6m = new Date(); d6m.setMonth(d6m.getMonth() + 6);
       const to   = `${d6m.getFullYear()}-${pad(d6m.getMonth()+1)}-${pad(d6m.getDate())}`;
       const key  = type === 'task' ? 'dueDate' : 'date';
       const allOccs = getAllOccurrences(obj, key, to).filter(d => d >= from);
-      const comp    = obj.completedOccurrences || {};
-      const hide    = _occHideDone[type];
+      const comp     = obj.completedOccurrences || {};
+      const overrides = obj.dateOverrides || {};
+      const hide     = _occHideDone[type];
       const toggleFn = type === 'task' ? 'toggleOccurrence' : 'toggleCommOccurrence';
+      const updateFn = type === 'task' ? 'updateOccurrenceDate' : 'updateCommOccurrenceDate';
       const DOW = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
       let html = '';
-      for (const date of allOccs) {
-        const done    = !!comp[date];
-        const isToday = date === today;
-        const past    = date < today;
+      for (const origDate of allOccs) {
+        const actualDate = overrides[origDate] || origDate;
+        const done    = !!comp[actualDate];
+        const isToday = actualDate === today;
+        const past    = actualDate < today;
         if (hide && done) continue;
-        const d  = parseLocal(date);
-        const fmtD = d.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric' });
-        const dow  = DOW[d.getDay()];
         let pip = '';
-        if (isToday)      pip = `<span class="occ-pip occ-pip-today">Today</span>`;
-        else if (done)    pip = `<span class="occ-pip occ-pip-done">Done</span>`;
-        else if (past)    pip = `<span class="occ-pip occ-pip-missed">Missed</span>`;
-        else              pip = `<span class="occ-pip occ-pip-upcoming">Upcoming</span>`;
+        if (isToday)   pip = `<span class="occ-pip occ-pip-today">Today</span>`;
+        else if (done) pip = `<span class="occ-pip occ-pip-done">Done</span>`;
+        else if (past) pip = `<span class="occ-pip occ-pip-missed">Missed</span>`;
+        else           pip = `<span class="occ-pip occ-pip-upcoming">Upcoming</span>`;
         html += `
-          <div class="occ-row" onclick="${toggleFn}('${obj.id}','${date}')">
+          <div class="occ-row" onclick="${toggleFn}('${obj.id}','${actualDate}')">
             <div class="occ-check ${done?'checked':''}">${done?'✓':''}</div>
-            <span class="occ-date-txt ${done?'crossed':''}">${dow} · ${fmtD}</span>
+            <input type="date" class="occ-date-input ${done?'crossed':''}" value="${actualDate}"
+              onclick="event.stopPropagation()"
+              onchange="event.stopPropagation();${updateFn}('${obj.id}','${origDate}',this.value)">
             ${pip}
           </div>`;
       }
@@ -5909,6 +5915,43 @@ const renderers = {
       const id = document.getElementById(type === 'task' ? 'taskId' : 'commId').value;
       if (type === 'task') renderTaskOccurrences(id);
       else renderCommOccurrences(id);
+    }
+
+    // Move completedOccurrences key and store dateOverride when user edits an occurrence date
+    function updateOccurrenceDate(taskId, origDate, newDate) {
+      if (!newDate || newDate === origDate) return;
+      const t = tasks.find(x => x.id === taskId);
+      if (!t) return;
+      if (!t.dateOverrides) t.dateOverrides = {};
+      if (!t.completedOccurrences) t.completedOccurrences = {};
+      const oldActual = t.dateOverrides[origDate] || origDate;
+      // Move completion to new date if the old actual date was marked done
+      if (t.completedOccurrences[oldActual]) {
+        t.completedOccurrences[newDate] = t.completedOccurrences[oldActual];
+        delete t.completedOccurrences[oldActual];
+      }
+      t.dateOverrides[origDate] = newDate;
+      t.updatedAt = new Date().toISOString();
+      persistTasks();
+      renderTaskOccurrences(taskId);
+      showView(currentView);
+    }
+
+    function updateCommOccurrenceDate(commId, origDate, newDate) {
+      if (!newDate || newDate === origDate) return;
+      const c = comms.find(x => x.id === commId);
+      if (!c) return;
+      if (!c.dateOverrides) c.dateOverrides = {};
+      if (!c.completedOccurrences) c.completedOccurrences = {};
+      const oldActual = c.dateOverrides[origDate] || origDate;
+      if (c.completedOccurrences[oldActual]) {
+        c.completedOccurrences[newDate] = c.completedOccurrences[oldActual];
+        delete c.completedOccurrences[oldActual];
+      }
+      c.dateOverrides[origDate] = newDate;
+      c.updatedAt = new Date().toISOString();
+      persistComms();
+      renderCommOccurrences(commId);
     }
 
     function toggleDone(id) {
@@ -6244,8 +6287,9 @@ const renderers = {
         estimatedHours: parseFloat(document.getElementById('taskHours').value) || null,
         parentId:       existing?.parentId   || null,
         workLog:        existing?.workLog    || [],
-        recurrence:          getRecurrenceFromForm(),
+        recurrence:           getRecurrenceFromForm(),
         completedOccurrences: existing?.completedOccurrences || {},
+        dateOverrides:        existing?.dateOverrides || {},
         createdAt:      existing?.createdAt  || new Date().toISOString(),
         updatedAt:      new Date().toISOString(),
         completedAt:    document.getElementById('taskStatus').value === 'Done'
