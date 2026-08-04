@@ -1412,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.20</div>
+      <div class="sidebar-version">v1.5.21</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3168,10 +3168,14 @@ const renderers = {
         return da.localeCompare(db) || (a.startTime || '').localeCompare(b.startTime || '');
       }).slice(0, 8);
 
-      // Today's comms
+      // Today's comms — annotate recurring occurrences with today's done state
+      const isCommDoneToday = c => c.recurrence && c.recurrence.freq
+        ? !!(c.completedOccurrences && c.completedOccurrences[today])
+        : c.status === 'Done';
       const todayComms = comms.filter(c => (c.date || '') === today || isRecurCommDueToday(c))
+        .map(c => ({ ...c, _occDone: isCommDoneToday(c) }))
         .sort((a, b) => {
-          const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
+          const da = a._occDone ? 1 : 0, db = b._occDone ? 1 : 0;
           if (da !== db) return da - db;
           return (a.startTime || '').localeCompare(b.startTime || '');
         });
@@ -3283,7 +3287,7 @@ const renderers = {
               ? `<div class="summary-empty">No comms scheduled for today</div>`
               : `<div class="summary-task-list">${todayComms.map(c => {
                   const icon    = COMM_ICONS[c.type] || '💬';
-                  const isDone  = c.status === 'Done';
+                  const isDone  = c._occDone !== undefined ? c._occDone : c.status === 'Done';
                   const timeStr = c.startTime
                     ? fmt12(c.startTime) + (c.endTime ? ' – ' + fmt12(c.endTime) : '')
                     : (c.duration ? c.duration + ' min' : '');
@@ -4179,8 +4183,13 @@ const renderers = {
       const todayOpen = allTodayTasks.filter(t => !isEffectiveDone(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayDone = [...allTodayTasks.filter(isEffectiveDone), ...recurDoneToday].sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayTasks    = [...todayOpen, ...todayDone];
-      const todayComms    = comms.filter(c => c.date === today || isRecurCommDueToday(c)).sort((a, b) => {
-        const da = a.status === 'Done' ? 1 : 0, db = b.status === 'Done' ? 1 : 0;
+      const isCommEffDone = c => c.recurrence && c.recurrence.freq
+        ? !!(c.completedOccurrences && c.completedOccurrences[today])
+        : c.status === 'Done';
+      const todayComms    = comms.filter(c => c.date === today || isRecurCommDueToday(c))
+        .map(c => ({ ...c, _occDone: isCommEffDone(c) }))
+        .sort((a, b) => {
+        const da = a._occDone ? 1 : 0, db = b._occDone ? 1 : 0;
         if (da !== db) return da - db;
         return (a.startTime || '').localeCompare(b.startTime || '');
       });
