@@ -1410,7 +1410,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.14</div>
+      <div class="sidebar-version">v1.5.15</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3798,7 +3798,72 @@ const renderers = {
         ${sortedComms.map(c => commBar(c)).join('')}`;
 
       const hasContent = groups.length > 0 || timeoffs.length > 0 || showMeetings;
-      const groupRows = !hasContent
+
+      // ── Sprint Plan rows ──
+      const PI_COLORS = {
+        'PI-Q12026':'#3b82f6','PI-Q22026':'#8b5cf6',
+        'PI-Q32026':'#10b981','PI-Q42026':'#f59e0b','25.4':'#6b7280'
+      };
+      const visSprints = SPRINTS.filter(s => s.start < winE && s.end >= winS);
+      let sprintSection = '';
+      if (visSprints.length > 0) {
+        // PI row: merge consecutive sprints in same PI
+        const piMap = {};
+        visSprints.forEach(s => {
+          if (!piMap[s.pi]) piMap[s.pi] = { name: s.pi, start: s.start, end: s.end };
+          else {
+            if (s.start < piMap[s.pi].start) piMap[s.pi].start = s.start;
+            if (s.end   > piMap[s.pi].end)   piMap[s.pi].end   = s.end;
+          }
+        });
+        let piBarHtml = '';
+        Object.values(piMap).forEach(pi => {
+          const x1 = Math.max(0, xOf(pi.start));
+          const x2 = Math.min(totalW, xOf(pi.end) + pxPerDay);
+          const w  = Math.max(4, x2 - x1 - 1);
+          const col = PI_COLORS[pi.name] || '#6366f1';
+          const lbl = w > 70 ? pi.name : '';
+          piBarHtml += `<div style="position:absolute;left:${x1}px;width:${w}px;top:4px;bottom:4px;
+            background:${col}18;border:1.5px solid ${col}55;border-radius:4px;
+            display:flex;align-items:center;padding:0 6px;overflow:hidden" title="${pi.name}">
+            <span style="font-size:10px;font-weight:700;color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${lbl}</span>
+          </div>`;
+        });
+
+        // Sprint row: one block per sprint
+        let sprintBlocksHtml = '';
+        visSprints.forEach(s => {
+          const x1 = Math.max(0, xOf(s.start));
+          const x2 = Math.min(totalW, xOf(s.end) + pxPerDay);
+          const w  = Math.max(4, x2 - x1 - 1);
+          const col = PI_COLORS[s.pi] || '#6366f1';
+          const cur = todStr >= s.start && todStr <= s.end;
+          const lbl = w > 44 ? s.name : '';
+          sprintBlocksHtml += `<div style="position:absolute;left:${x1}px;width:${w}px;top:4px;bottom:4px;
+            background:${cur ? col+'38' : col+'12'};
+            border:${cur ? '2px' : '1px'} solid ${col}${cur ? 'bb' : '40'};
+            border-radius:4px;display:flex;align-items:center;padding:0 5px;overflow:hidden"
+            title="${s.name} | ${s.pi} | ${s.start} – ${s.end}">
+            <span style="font-size:9px;font-weight:${cur?'800':'600'};color:${col};white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${cur?'🏃 ':''}${lbl}</span>
+          </div>`;
+        });
+
+        sprintSection = `
+          <div class="gantt-group-hdr">
+            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:#6366f1;flex-shrink:0"></div>🏃 Sprint Plan</div>
+            <div class="gantt-group-band" style="background:linear-gradient(90deg,#6366f118 0%,transparent 40%);width:${totalW}px"></div>
+          </div>
+          <div class="gantt-row">
+            <div class="gantt-task-lbl" style="font-size:10px;font-weight:600;color:var(--text-muted);cursor:default">PI</div>
+            <div class="gantt-bars-cell" style="width:${totalW}px">${backdrop()}${piBarHtml}</div>
+          </div>
+          <div class="gantt-row">
+            <div class="gantt-task-lbl" style="font-size:10px;font-weight:600;color:var(--text-muted);cursor:default">Sprint</div>
+            <div class="gantt-bars-cell" style="width:${totalW}px">${backdrop()}${sprintBlocksHtml}</div>
+          </div>`;
+      }
+
+      const groupRows = !hasContent && !sprintSection
         ? `<div class="gantt-empty-row">No items in this period.</div>`
         : timeoffSection
           + groups.map(g => `
@@ -3808,7 +3873,8 @@ const renderers = {
               </div>
               ${g.tasks.map(t => taskBar(t, g.color)).join('')}
             `).join('')
-          + meetingsSection;
+          + meetingsSection
+          + sprintSection;
 
       // ── Toolbar ──
       const rangeLabel = `${winStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(winEnd-MS).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
@@ -3853,6 +3919,7 @@ const renderers = {
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#94a3b8"></div> Done</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--danger);opacity:0.5"></div> Overdue</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;background:rgba(8,145,178,0.18);border-left:2px solid rgba(8,145,178,0.4)"></div> Time Off</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#10b98138;border:1.5px solid #10b981bb"></div> Current Sprint</div>
           <div class="gantt-legend-item"><div style="width:2px;height:14px;background:var(--danger)"></div> Today</div>
         </div>`;
     }
