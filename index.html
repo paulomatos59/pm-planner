@@ -1410,7 +1410,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.12</div>
+      <div class="sidebar-version">v1.5.13</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2272,6 +2272,8 @@
     let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let taskDateFrom       = '';
     let taskDateTo         = '';
+    let taskSortDir        = 'asc';   // 'asc' = oldest first, 'desc' = newest first
+    let taskHideDone       = false;
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
     let capacitySettings   = JSON.parse(localStorage.getItem('dp_capacity') || '{"workingDays":[1,2,3,4,5],"hoursPerDay":8,"bufferPct":20}');
 
@@ -4286,11 +4288,13 @@ const renderers = {
         if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
         if (fs.status   && t.status !== fs.status)   return false;
         if (!_taskInRange(t, fromDate, toDate)) return false;
+        if (taskHideDone && t.status === 'Done') return false;
         return true;
       }).sort((a,b) => {
         if (isOverdue(a) && !isOverdue(b)) return -1;
         if (!isOverdue(a) && isOverdue(b)) return 1;
-        if (a.dueDate && b.dueDate) return a.dueDate.localeCompare(b.dueDate);
+        const dir = taskSortDir === 'desc' ? -1 : 1;
+        if (a.dueDate && b.dueDate) return dir * a.dueDate.localeCompare(b.dueDate);
         if (a.dueDate) return -1; if (b.dueDate) return 1;
         return priorityOrder(a) - priorityOrder(b);
       });
@@ -4312,6 +4316,9 @@ const renderers = {
           <label>To</label>
           <input type="date" value="${taskDateTo}" onchange="setTaskCustomRange('to',this.value)">
         </div>` : '';
+
+      const taskSortBtn     = `<button class="comm-filter-chip${taskSortDir==='desc'?' active':''}" onclick="toggleTaskSortDir()" title="Toggle date order">${taskSortDir==='asc' ? '↑ Oldest First' : '↓ Newest First'}</button>`;
+      const taskHideDoneBtn = `<button class="comm-filter-chip${taskHideDone?' active':''}" onclick="toggleTaskHideDone()">${taskHideDone ? '✓ Hiding Done' : '👁 Show Done'}</button>`;
 
       return `
         <div class="view-header">
@@ -4349,6 +4356,7 @@ const renderers = {
             <option value="Delayed"     ${fs.status==='Delayed'     ?'selected':''}>Delayed</option>
             <option value="Blocked"     ${fs.status==='Blocked'     ?'selected':''}>Blocked</option>
           </select>
+          <span style="margin-left:auto;display:flex;gap:6px">${taskSortBtn}${taskHideDoneBtn}</span>
         </div>
         <div class="tasks-table">
           <div class="table-header">
@@ -4418,6 +4426,14 @@ const renderers = {
     function setTaskCustomRange(field, val) {
       if (field === 'from') taskDateFrom = val;
       else                  taskDateTo   = val;
+      showView('all');
+    }
+    function toggleTaskSortDir() {
+      taskSortDir = taskSortDir === 'asc' ? 'desc' : 'asc';
+      showView('all');
+    }
+    function toggleTaskHideDone() {
+      taskHideDone = !taskHideDone;
       showView('all');
     }
 
@@ -4829,6 +4845,8 @@ const renderers = {
     let commTimeTab    = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let commDateFrom   = '';
     let commDateTo     = '';
+    let commSortDir    = 'desc';  // 'desc' = newest first, 'asc' = oldest first
+    let commHideDone   = false;
 
     const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
 
@@ -5260,6 +5278,9 @@ const renderers = {
         `<button class="comm-filter-chip ${commTypeFilter === t ? 'active' : ''}" onclick="setCommFilter('${t}')">${t === 'All' ? '🗂 All' : COMM_ICONS[t] + ' ' + t}</button>`
       ).join('');
 
+      const sortBtn     = `<button class="comm-filter-chip${commSortDir==='desc'?' active':''}" onclick="toggleCommSortDir()" title="Toggle date order">${commSortDir==='desc' ? '↓ Newest First' : '↑ Oldest First'}</button>`;
+      const hideDoneBtn = `<button class="comm-filter-chip${commHideDone?' active':''}" onclick="toggleCommHideDone()">${commHideDone ? '✓ Hiding Done' : '👁 Show Done'}</button>`;
+
       let html = `
         <div class="view-header">
           <div>
@@ -5270,7 +5291,7 @@ const renderers = {
         </div>
         <div class="comm-time-tabs">${timeTabs}</div>
         ${customRangeHtml}
-        <div class="comm-filter-bar">${typeButtons}</div>`;
+        <div class="comm-filter-bar">${typeButtons}<span style="margin-left:auto;display:flex;gap:6px">${sortBtn}${hideDoneBtn}</span></div>`;
 
       // Build expanded occurrence entries within the window
       const groups = {};
@@ -5285,6 +5306,7 @@ const renderers = {
             if (fromDate && actualDate < fromDate) return;
             if (toDate   && actualDate > toDate)   return;
             const occDone = !!comp[actualDate];
+            if (commHideDone && occDone) return;
             const occEntry = { ...c, _occDate: actualDate, _occDone: occDone };
             if (!groups[actualDate]) groups[actualDate] = [];
             groups[actualDate].push(occEntry);
@@ -5293,6 +5315,7 @@ const renderers = {
           const d = c.date || 'No date';
           if (d !== 'No date' && fromDate && d < fromDate) return;
           if (d !== 'No date' && toDate   && d > toDate)   return;
+          if (commHideDone && c.status === 'Done') return;
           if (!groups[d]) groups[d] = [];
           groups[d].push(c);
         }
@@ -5303,7 +5326,11 @@ const renderers = {
       if (totalEntries === 0) {
         html += `<div class="empty-state"><div class="icon">💬</div><h3>${comms.length === 0 ? 'No communications yet' : 'Nothing here'}</h3><p>${comms.length === 0 ? 'Log meetings, calls, emails and Slack threads to keep a full comms history.' : 'No comms match this filter and time range.'}</p></div>`;
       } else {
-        Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(d => {
+        const sortedKeys = Object.keys(groups).filter(k => k !== 'No date').sort((a, b) =>
+          commSortDir === 'desc' ? b.localeCompare(a) : a.localeCompare(b)
+        );
+        if (groups['No date']) sortedKeys.push('No date');
+        sortedKeys.forEach(d => {
           const label = d === 'No date' ? 'No Date' : formatCommDate(d);
           const sorted = groups[d].sort((a, b) => {
             const da = (a._occDone !== undefined ? a._occDone : a.status === 'Done') ? 1 : 0;
@@ -5329,6 +5356,14 @@ const renderers = {
     function setCommCustomRange(field, val) {
       if (field === 'from') commDateFrom = val;
       else                  commDateTo   = val;
+      showView('comms');
+    }
+    function toggleCommSortDir() {
+      commSortDir = commSortDir === 'desc' ? 'asc' : 'desc';
+      showView('comms');
+    }
+    function toggleCommHideDone() {
+      commHideDone = !commHideDone;
       showView('comms');
     }
 
