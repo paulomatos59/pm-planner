@@ -735,6 +735,14 @@
     }
     .comm-filter-chip:hover  { border-color: var(--primary); color: var(--primary); }
     .comm-filter-chip.active { border-color: var(--primary); background: var(--primary-light); color: var(--primary); font-weight: 600; }
+    .comm-time-tabs { display: flex; gap: 2px; background: var(--surface-alt,#f1f5f9); border-radius: 10px; padding: 3px; margin-bottom: 12px; width: fit-content; }
+    .comm-time-tab  { padding: 5px 16px; border-radius: 8px; border: none; background: transparent; cursor: pointer; font-size: 12px; font-weight: 500; color: var(--text-secondary); transition: all 0.15s; white-space: nowrap; }
+    .comm-time-tab:hover  { color: var(--text-primary); background: var(--surface); }
+    .comm-time-tab.active { background: var(--surface); color: var(--primary); font-weight: 700; box-shadow: 0 1px 4px rgba(0,0,0,0.10); }
+    .comm-custom-range { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+    .comm-custom-range label { font-size: 12px; color: var(--text-muted); font-weight: 500; }
+    .comm-custom-range input[type=date] { font-size: 12px; padding: 4px 8px; border: 1.5px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text-primary); cursor: pointer; }
+    .comm-custom-range input[type=date]:focus { outline: none; border-color: var(--primary); }
 
     /* ── Kanban ── */
     .kb2-board { display: flex; flex-direction: column; gap: 28px; }
@@ -1402,7 +1410,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.9</div>
+      <div class="sidebar-version">v1.5.11</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4743,6 +4751,9 @@ const renderers = {
        COMMS VIEW
     ============================== */
     let commTypeFilter = 'All';
+    let commTimeTab    = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
+    let commDateFrom   = '';
+    let commDateTo     = '';
 
     const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
 
@@ -5121,12 +5132,54 @@ const renderers = {
       setTimeout(() => { document.getElementById('commPersonal').value = pid; }, 50);
     }
 
+    function _commWindowDates() {
+      const fmtD  = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+      const today = todayStr();
+      if (commTimeTab === 'today') return { from: today, to: today };
+      if (commTimeTab === 'week') {
+        const d = new Date(); d.setHours(0,0,0,0);
+        const mon = new Date(d); mon.setDate(d.getDate() - (d.getDay() === 0 ? 6 : d.getDay() - 1));
+        const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+        return { from: fmtD(mon), to: fmtD(sun) };
+      }
+      if (commTimeTab === 'month') {
+        const d = new Date();
+        return { from: fmtD(new Date(d.getFullYear(), d.getMonth(), 1)),
+                 to:   fmtD(new Date(d.getFullYear(), d.getMonth() + 1, 0)) };
+      }
+      if (commTimeTab === 'custom') {
+        return { from: commDateFrom || null, to: commDateTo || null };
+      }
+      // 'all': 8 weeks back → 6 months forward
+      const d8w = new Date(); d8w.setDate(d8w.getDate() - 56);
+      const d6m = new Date(); d6m.setMonth(d6m.getMonth() + 6);
+      return { from: fmtD(d8w), to: fmtD(d6m) };
+    }
+
     function renderComms() {
-      const filtered = commTypeFilter === 'All'
+      const typeFiltered = commTypeFilter === 'All'
         ? [...comms]
         : comms.filter(c => c.type === commTypeFilter);
 
-      filtered.sort((a, b) => (b.date || '').localeCompare(a.date || ''));
+      const { from: fromDate, to: toDate } = _commWindowDates();
+
+      const timeTabs = [
+        { key: 'today', label: 'Today' },
+        { key: 'week',  label: 'This Week' },
+        { key: 'month', label: 'This Month' },
+        { key: 'all',   label: 'All' },
+        { key: 'custom',label: '📅 Custom' }
+      ].map(t =>
+        `<button class="comm-time-tab ${commTimeTab === t.key ? 'active' : ''}" onclick="setCommTimeTab('${t.key}')">${t.label}</button>`
+      ).join('');
+
+      const customRangeHtml = commTimeTab === 'custom' ? `
+        <div class="comm-custom-range">
+          <label>From</label>
+          <input type="date" value="${commDateFrom}" onchange="setCommCustomRange('from',this.value)">
+          <label>To</label>
+          <input type="date" value="${commDateTo}" onchange="setCommCustomRange('to',this.value)">
+        </div>` : '';
 
       const typeButtons = ['All', 'Meeting', 'Slack', 'Email', 'Phone'].map(t =>
         `<button class="comm-filter-chip ${commTypeFilter === t ? 'active' : ''}" onclick="setCommFilter('${t}')">${t === 'All' ? '🗂 All' : COMM_ICONS[t] + ' ' + t}</button>`
@@ -5140,38 +5193,41 @@ const renderers = {
           </div>
           <button class="btn btn-primary" onclick="openCommModal()">＋ New Comm</button>
         </div>
+        <div class="comm-time-tabs">${timeTabs}</div>
+        ${customRangeHtml}
         <div class="comm-filter-bar">${typeButtons}</div>`;
 
-      if (filtered.length === 0) {
-        html += `<div class="empty-state"><div class="icon">💬</div><h3>${comms.length === 0 ? 'No communications yet' : 'No results for this filter'}</h3><p>${comms.length === 0 ? 'Log meetings, calls, emails and Slack threads to keep a full comms history.' : 'Try a different filter.'}</p></div>`;
-      } else {
-        // Expand recurring comms into individual occurrence entries
-        const d8w = new Date(); d8w.setDate(d8w.getDate() - 56);
-        const fromDate = `${d8w.getFullYear()}-${pad(d8w.getMonth()+1)}-${pad(d8w.getDate())}`;
-        const d6m = new Date(); d6m.setMonth(d6m.getMonth() + 6);
-        const toDate = `${d6m.getFullYear()}-${pad(d6m.getMonth()+1)}-${pad(d6m.getDate())}`;
+      // Build expanded occurrence entries within the window
+      const groups = {};
+      typeFiltered.forEach(c => {
+        if (c.recurrence && c.recurrence.freq) {
+          const maxTo = toDate || (() => { const d = new Date(); d.setMonth(d.getMonth()+6); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; })();
+          const allOccs = getAllOccurrences(c, 'date', maxTo);
+          const overrides = c.dateOverrides || {};
+          const comp      = c.completedOccurrences || {};
+          allOccs.forEach(origDate => {
+            const actualDate = overrides[origDate] || origDate;
+            if (fromDate && actualDate < fromDate) return;
+            if (toDate   && actualDate > toDate)   return;
+            const occDone = !!comp[actualDate];
+            const occEntry = { ...c, _occDate: actualDate, _occDone: occDone };
+            if (!groups[actualDate]) groups[actualDate] = [];
+            groups[actualDate].push(occEntry);
+          });
+        } else {
+          const d = c.date || 'No date';
+          if (d !== 'No date' && fromDate && d < fromDate) return;
+          if (d !== 'No date' && toDate   && d > toDate)   return;
+          if (!groups[d]) groups[d] = [];
+          groups[d].push(c);
+        }
+      });
 
-        const groups = {};
-        filtered.forEach(c => {
-          if (c.recurrence && c.recurrence.freq) {
-            // Expand into occurrences
-            const allOccs = getAllOccurrences(c, 'date', toDate).filter(d => d >= fromDate);
-            const overrides = c.dateOverrides || {};
-            const comp = c.completedOccurrences || {};
-            allOccs.forEach(origDate => {
-              const actualDate = overrides[origDate] || origDate;
-              const occDone = !!comp[actualDate];
-              // Build a virtual comm entry for this occurrence
-              const occEntry = { ...c, _occDate: actualDate, _occDone: occDone };
-              if (!groups[actualDate]) groups[actualDate] = [];
-              groups[actualDate].push(occEntry);
-            });
-          } else {
-            const d = c.date || 'No date';
-            if (!groups[d]) groups[d] = [];
-            groups[d].push(c);
-          }
-        });
+      const totalEntries = Object.values(groups).reduce((s, arr) => s + arr.length, 0);
+
+      if (totalEntries === 0) {
+        html += `<div class="empty-state"><div class="icon">💬</div><h3>${comms.length === 0 ? 'No communications yet' : 'Nothing here'}</h3><p>${comms.length === 0 ? 'Log meetings, calls, emails and Slack threads to keep a full comms history.' : 'No comms match this filter and time range.'}</p></div>`;
+      } else {
         Object.keys(groups).sort((a, b) => b.localeCompare(a)).forEach(d => {
           const label = d === 'No date' ? 'No Date' : formatCommDate(d);
           const sorted = groups[d].sort((a, b) => {
@@ -5189,6 +5245,15 @@ const renderers = {
 
     function setCommFilter(type) {
       commTypeFilter = type;
+      showView('comms');
+    }
+    function setCommTimeTab(tab) {
+      commTimeTab = tab;
+      showView('comms');
+    }
+    function setCommCustomRange(field, val) {
+      if (field === 'from') commDateFrom = val;
+      else                  commDateTo   = val;
       showView('comms');
     }
 
@@ -5784,14 +5849,26 @@ const renderers = {
       if (rec.freq === 'daily')   { d.setDate(d.getDate() + n); }
       else if (rec.freq === 'weekly') {
         if (rec.days && rec.days.length > 0) {
-          // Find the next matching weekday after dueDate
           // JS getDay: 0=Sun…6=Sat; our days: 1=Mon…7=Sun
           const jsToOur = dow => dow === 0 ? 7 : dow;
-          let cur = new Date(d); cur.setDate(cur.getDate() + 1);
-          for (let i = 0; i < 7 * n + 1; i++) {
-            if (rec.days.includes(jsToOur(cur.getDay()))) { d.setTime(cur.getTime()); break; }
-            cur.setDate(cur.getDate() + 1);
+          const dDow     = d.getDay();
+          const dFromMon = dDow === 0 ? 6 : dDow - 1; // days from Monday of current week
+          let found = null;
+          // Step 1: look for another matching day LATER in the same Mon–Sun week
+          for (let i = 1; i <= (6 - dFromMon); i++) {
+            const cand = new Date(d); cand.setDate(d.getDate() + i);
+            if (rec.days.includes(jsToOur(cand.getDay()))) { found = cand; break; }
           }
+          // Step 2: if none, jump n full weeks from this week's Monday and find first match
+          if (!found) {
+            const weekMon = new Date(d);
+            weekMon.setDate(d.getDate() - dFromMon + 7 * n);
+            for (let i = 0; i < 7; i++) {
+              const cand = new Date(weekMon); cand.setDate(weekMon.getDate() + i);
+              if (rec.days.includes(jsToOur(cand.getDay()))) { found = cand; break; }
+            }
+          }
+          if (found) d.setTime(found.getTime());
         } else {
           d.setDate(d.getDate() + 7 * n);
         }
