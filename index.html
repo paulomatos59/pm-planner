@@ -1412,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.17</div>
+      <div class="sidebar-version">v1.5.18</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1782,17 +1782,9 @@
             <div class="subtask-section-divider"></div>
             <div class="subtask-section-label">
               <span>Tasks &nbsp;<span id="commTaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
-              <button class="btn btn-secondary btn-sm" onclick="showCommTaskInput()">＋ Add task</button>
+              <button class="btn btn-secondary btn-sm" onclick="openTaskModalFromComm()">＋ Add task</button>
             </div>
             <div id="commTaskList"></div>
-            <div id="commTaskAddRow" style="display:none;margin-top:8px">
-              <div style="display:flex;gap:6px">
-                <input type="text" class="form-input" id="commTaskTitleInput" placeholder="Task title…"
-                  onkeydown="if(event.key==='Enter')saveCommTaskInline();if(event.key==='Escape')hideCommTaskInput()">
-                <button class="btn btn-primary btn-sm" onclick="saveCommTaskInline()">Add</button>
-                <button class="btn btn-secondary btn-sm" onclick="hideCommTaskInput()">✕</button>
-              </div>
-            </div>
           </div>
 
           <!-- Occurrences (recurring comms only) -->
@@ -2267,6 +2259,7 @@
     let projTimelineOffset   = 0;
     let projTimelineScale    = 'weeks';
     let editingTaskId    = null;
+    let _pendingCommTaskId = null; // commId to link when task modal opened from comm modal
     let editingProjId    = null;
     let editingFuId      = null;
     let editingNoteId    = null;
@@ -5965,8 +5958,24 @@ const renderers = {
         createdAt: new Date().toISOString(), updatedAt: new Date().toISOString()
       });
       persistTasks();
-      hideCommTaskInput();
       commTasksRender();
+    }
+
+    function openTaskModalFromComm() {
+      if (!editingCommId) return;
+      _pendingCommTaskId = editingCommId;
+      const c = comms.find(x => x.id === editingCommId);
+      const modal = document.getElementById('taskModal');
+      modal.style.zIndex = '1050';
+      openTaskModal(null, c?.projectId || null);
+      setTimeout(() => {
+        const catEl = document.getElementById('taskCategory');
+        if (catEl) catEl.value = 'Meeting';
+        const dueEl = document.getElementById('taskDueDate');
+        if (dueEl && c?.date) dueEl.value = c.date;
+        const projEl = document.getElementById('taskProjectLink');
+        if (projEl && c?.projectId) projEl.value = c.projectId;
+      }, 50);
     }
 
     /* ==============================
@@ -6605,8 +6614,10 @@ const renderers = {
     function closeTaskModal() {
       if (isPopupMode()) { window.close(); return; }
       document.getElementById('taskModal').classList.add('hidden');
+      document.getElementById('taskModal').style.zIndex = '';
       _clearDraft('task');
       editingTaskId = null;
+      _pendingCommTaskId = null;
     }
 
     function setTaskType(type) {
@@ -6675,6 +6686,20 @@ const renderers = {
         spawnNextRecurrence(task);
       }
       if (existing) { Object.assign(existing, task); } else { tasks.push(task); }
+      if (_pendingCommTaskId) {
+        task.commId = _pendingCommTaskId;
+        const savedCommId = _pendingCommTaskId;
+        _pendingCommTaskId = null;
+        document.getElementById('taskModal').style.zIndex = '';
+        document.getElementById('taskModal').classList.add('hidden');
+        _clearDraft('task');
+        editingTaskId = null;
+        persistTasks();
+        _notifyMainWindow();
+        // re-open comm modal is already showing; just refresh task list
+        setTimeout(commTasksRender, 0);
+        return;
+      }
       persistTasks();
       _notifyMainWindow();
       closeTaskModal();
