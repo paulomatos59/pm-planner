@@ -272,7 +272,9 @@
     .gantt-day-hdr .gd-num { font-size: 11px; font-weight: 700; }
     .gantt-day-hdr.is-today .gd-num { color: var(--primary); }
     .gantt-group-hdr { display: flex; align-items: stretch; background: var(--bg); border-bottom: 1px solid var(--border); }
-    .gantt-group-name { width: 190px; min-width: 190px; padding: 5px 12px; font-size: 12px; font-weight: 700; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+    .gantt-group-name { width: 190px; min-width: 190px; padding: 5px 12px; font-size: 12px; font-weight: 700; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; cursor: pointer; user-select: none; }
+    .gantt-group-name:hover { background: var(--surface-alt, #f1f5f9); color: var(--primary); }
+    .gantt-collapse-arrow { font-size: 9px; color: var(--text-muted); flex-shrink: 0; transition: transform 0.15s; }
     .gantt-group-band { flex: 1; }
     .gantt-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); min-height: 34px; }
     .gantt-row:hover { background: rgba(37,99,235,0.025); }
@@ -1410,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.16</div>
+      <div class="sidebar-version">v1.5.17</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2261,6 +2263,7 @@
     let ganttOffset          = 0;
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
+    const ganttCollapsed     = new Set(); // group keys currently collapsed
     let projTimelineOffset   = 0;
     let projTimelineScale    = 'weeks';
     let editingTaskId    = null;
@@ -3469,6 +3472,11 @@ const renderers = {
     function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
     function setGanttScale(s) { ganttScale = s; ganttOffset = 0; showView('gantt'); }
     function setGanttFilter(f) { ganttFilter = f; showView('gantt'); }
+    function toggleGanttGroup(key) {
+      if (ganttCollapsed.has(key)) ganttCollapsed.delete(key);
+      else ganttCollapsed.add(key);
+      showView('gantt');
+    }
     function setProjTimelineScale(s) { projTimelineScale = s; projTimelineOffset = 0; switchTab('timeline'); }
     function getWeekNumber(d) {
       const tmp = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
@@ -3822,12 +3830,19 @@ const renderers = {
       if (unassignedTasks.length || unassignedComms.length)
         groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassignedTasks, comms: unassignedComms });
 
-      const timeoffSection = (ganttFilter === 'meetings' || timeoffs.length === 0) ? '' : `
+      const timeoffSection = (ganttFilter === 'meetings' || timeoffs.length === 0) ? '' : (() => {
+        const key = '_timeoff';
+        const collapsed = ganttCollapsed.has(key);
+        return `
         <div class="gantt-group-hdr">
-          <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>🌴 Time Off / Events</div>
+          <div class="gantt-group-name" onclick="toggleGanttGroup('${key}')">
+            <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
+            <div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>🌴 Time Off / Events
+          </div>
           <div class="gantt-group-band" style="background:linear-gradient(90deg,${TOFF_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
-        ${timeoffs.map(t => timeoffBar(t)).join('')}`;
+        ${collapsed ? '' : timeoffs.map(t => timeoffBar(t)).join('')}`;
+      })();
 
       const hasContent = groups.length > 0 || timeoffs.length > 0;
 
@@ -3880,11 +3895,17 @@ const renderers = {
           </div>`;
         });
 
+        const sprintKey = '_sprint';
+        const sprintCollapsed = ganttCollapsed.has(sprintKey);
         sprintSection = `
           <div class="gantt-group-hdr">
-            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:#6366f1;flex-shrink:0"></div>🏃 Sprint Plan</div>
+            <div class="gantt-group-name" onclick="toggleGanttGroup('${sprintKey}')">
+              <span class="gantt-collapse-arrow">${sprintCollapsed ? '▶' : '▼'}</span>
+              <div style="width:9px;height:9px;border-radius:50%;background:#6366f1;flex-shrink:0"></div>🏃 Sprint Plan
+            </div>
             <div class="gantt-group-band" style="background:linear-gradient(90deg,#6366f118 0%,transparent 40%);width:${totalW}px"></div>
           </div>
+          ${sprintCollapsed ? '' : `
           <div class="gantt-row">
             <div class="gantt-task-lbl" style="font-size:10px;font-weight:600;color:var(--text-muted);cursor:default">PI</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">${backdrop()}${piBarHtml}</div>
@@ -3892,20 +3913,28 @@ const renderers = {
           <div class="gantt-row">
             <div class="gantt-task-lbl" style="font-size:10px;font-weight:600;color:var(--text-muted);cursor:default">Sprint</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">${backdrop()}${sprintBlocksHtml}</div>
-          </div>`;
+          </div>`}`;
       }
 
       const groupRows = !hasContent && !sprintSection
         ? `<div class="gantt-empty-row">No items in this period.</div>`
         : timeoffSection
-          + groups.map(g => `
+          + groups.map(g => {
+              const key = 'g_' + g.name;
+              const collapsed = ganttCollapsed.has(key);
+              const count = g.tasks.length + g.comms.length;
+              return `
               <div class="gantt-group-hdr">
-                <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>${esc(g.name)}</div>
+                <div class="gantt-group-name" onclick="toggleGanttGroup('${key.replace(/'/g,"\\'")}')">
+                  <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
+                  <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
+                  ${esc(g.name)}
+                  <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:2px">(${count})</span>
+                </div>
                 <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
               </div>
-              ${g.tasks.map(t => taskBar(t, g.color)).join('')}
-              ${g.comms.map(c => commBar(c)).join('')}
-            `).join('')
+              ${collapsed ? '' : g.tasks.map(t => taskBar(t, g.color)).join('') + g.comms.map(c => commBar(c)).join('')}`;
+            }).join('')
           + sprintSection;
 
       // ── Toolbar ──
