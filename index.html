@@ -1412,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.18</div>
+      <div class="sidebar-version">v1.5.19</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5881,6 +5881,11 @@ const renderers = {
       if (!row) return;
       const pri = ['Critical','High','Medium','Low'];
       const sts = ['Todo','In Progress','Blocked','Delayed','Done'];
+      const workProjs = projects.filter(p => p.type !== 'personal');
+      const personalProjs = projects.filter(p => p.type === 'personal');
+      let projOpts = `<option value="">— None —</option>`;
+      if (workProjs.length)    projOpts += `<optgroup label="Projects">`    + workProjs.map(p    => `<option value="${p.id}"${t.projectId===p.id?' selected':''}>${esc(p.name)}</option>`).join('') + `</optgroup>`;
+      if (personalProjs.length) projOpts += `<optgroup label="Personal">`   + personalProjs.map(p => `<option value="${p.id}"${t.projectId===p.id?' selected':''}>${esc(p.name)}</option>`).join('') + `</optgroup>`;
       const panel = document.createElement('div');
       panel.className = 'comm-task-expand';
       panel.id = 'cte-panel-' + taskId;
@@ -5895,7 +5900,7 @@ const renderers = {
             <input type="date" class="form-input" id="cte-due-${taskId}" value="${t.dueDate||''}" style="font-size:13px">
           </div>
         </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:10px">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px">
           <div class="form-group" style="margin:0">
             <label class="form-label" style="font-size:10px;margin-bottom:3px">Priority</label>
             <select class="form-select" id="cte-priority-${taskId}" style="font-size:13px">
@@ -5906,6 +5911,14 @@ const renderers = {
             <label class="form-label" style="font-size:10px;margin-bottom:3px">Status</label>
             <select class="form-select" id="cte-status-${taskId}" style="font-size:13px">
               ${sts.map(s => `<option${t.status===s?' selected':''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+        <div style="display:grid;grid-template-columns:1fr;gap:8px;margin-bottom:10px">
+          <div class="form-group" style="margin:0">
+            <label class="form-label" style="font-size:10px;margin-bottom:3px">Assign to</label>
+            <select class="form-select" id="cte-project-${taskId}" style="font-size:13px">
+              ${projOpts}
             </select>
           </div>
         </div>
@@ -5922,8 +5935,9 @@ const renderers = {
       if (!t) return;
       const title = document.getElementById('cte-title-' + taskId)?.value.trim();
       if (title) t.title = title;
-      t.dueDate  = document.getElementById('cte-due-' + taskId)?.value || '';
-      t.priority = document.getElementById('cte-priority-' + taskId)?.value || t.priority;
+      t.dueDate   = document.getElementById('cte-due-' + taskId)?.value || '';
+      t.priority  = document.getElementById('cte-priority-' + taskId)?.value || t.priority;
+      t.projectId = document.getElementById('cte-project-' + taskId)?.value || null;
       const newStatus = document.getElementById('cte-status-' + taskId)?.value;
       if (newStatus) {
         if (newStatus === 'Done' && t.status !== 'Done') t.completedAt = new Date().toISOString();
