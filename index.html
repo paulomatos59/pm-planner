@@ -1412,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.19</div>
+      <div class="sidebar-version">v1.5.20</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5986,7 +5986,19 @@ const renderers = {
         const catEl = document.getElementById('taskCategory');
         if (catEl) catEl.value = 'Meeting';
         const dueEl = document.getElementById('taskDueDate');
-        if (dueEl && c?.date) dueEl.value = c.date;
+        if (dueEl) {
+          // For recurring comms c.date is the series start (may be past); use today's occurrence instead
+          const today = new Date().toISOString().slice(0, 10);
+          if (c?.recurrence && c.recurrence.freq) {
+            // Find the closest upcoming (or today's) occurrence
+            const occs = getAllOccurrences(c, 'date', new Date(Date.now() + 90*86400000).toISOString().slice(0,10));
+            const ovr  = c?.dateOverrides || {};
+            const upcoming = occs.map(o => ovr[o] || o).filter(d => d >= today);
+            dueEl.value = upcoming.length ? upcoming[0] : today;
+          } else {
+            dueEl.value = c?.date || today;
+          }
+        }
         const projEl = document.getElementById('taskProjectLink');
         if (projEl && c?.projectId) projEl.value = c.projectId;
       }, 50);
