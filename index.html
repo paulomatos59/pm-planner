@@ -1412,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.21</div>
+      <div class="sidebar-version">v1.5.22</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2602,6 +2602,21 @@
       document.execCommand('removeFormat', false, null);
     }
 
+    function _rteSetLinkTarget(url) {
+      // After createLink, find the newly created <a> and add target="_blank"
+      const sel = window.getSelection();
+      if (sel && sel.rangeCount > 0) {
+        let node = sel.getRangeAt(0).commonAncestorContainer;
+        if (node.nodeType === 3) node = node.parentElement;
+        const a = node.closest ? node.closest('a') : null;
+        if (a) { a.target = '_blank'; a.rel = 'noopener noreferrer'; return; }
+      }
+      // Fallback: find by href
+      document.querySelectorAll('.rte-editor a[href="' + url + '"]').forEach(a => {
+        if (!a.target) { a.target = '_blank'; a.rel = 'noopener noreferrer'; }
+      });
+    }
+
     function rteAddLink() {
       const sel = window.getSelection();
       const selText = sel && !sel.isCollapsed ? sel.toString() : '';
@@ -2610,10 +2625,11 @@
       document.getElementById('taskDesc').focus();
       if (selText) {
         document.execCommand('createLink', false, url);
+        _rteSetLinkTarget(url);
       } else {
         const txt = prompt('Link text:', url) || url;
         document.execCommand('insertHTML', false,
-          `<a href="${url.replace(/"/g,'&quot;')}" target="_blank">${esc(txt)}</a>`);
+          `<a href="${url.replace(/"/g,'&quot;')}" target="_blank" rel="noopener noreferrer">${esc(txt)}</a>`);
       }
     }
 
@@ -5840,7 +5856,7 @@ const renderers = {
     }
     function commRteAddLink() {
       const url = prompt('Enter URL:');
-      if (url) { document.getElementById('commDesc').focus(); document.execCommand('createLink', false, url); }
+      if (url) { document.getElementById('commDesc').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
     }
 
     /* ── Comm linked tasks ── */
@@ -7035,8 +7051,18 @@ const renderers = {
     }
     function fuRteAddLink() {
       const url = prompt('Enter URL:');
-      if (url) { document.getElementById('followupNotes').focus(); document.execCommand('createLink', false, url); }
+      if (url) { document.getElementById('followupNotes').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
     }
+
+    // Global handler: make links inside any RTE editor clickable
+    document.addEventListener('click', function(e) {
+      const a = e.target.closest('a');
+      if (a && a.href && a.closest('.rte-editor')) {
+        e.preventDefault();
+        e.stopPropagation();
+        window.open(a.href, '_blank', 'noopener,noreferrer');
+      }
+    });
 
     /* ==============================
        NOTE MODAL
