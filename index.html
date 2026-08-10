@@ -1413,7 +1413,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.27</div>
+      <div class="sidebar-version">v1.5.28</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3194,7 +3194,15 @@ const renderers = {
         }
         return c.status === 'Done' ? 'done' : 'planned';
       };
-      const todayComms = comms.filter(c => (c.date || '') === today || isRecurCommDueToday(c))
+      const todayComms = comms.filter(c =>
+        (c.date || '') === today ||
+        isRecurCommDueToday(c) ||
+        // Keep done/not-done recurring occurrences visible on the dashboard
+        (c.recurrence && c.recurrence.freq && (
+          (c.completedOccurrences && c.completedOccurrences[today]) ||
+          (c.notDoneOccurrences   && c.notDoneOccurrences[today])
+        ))
+      )
         .map(c => ({ ...c, _occStatus: getCommTodayStatus(c), _occDone: getCommTodayStatus(c) === 'done' }))
         .sort((a, b) => {
           const da = a._occDone ? 1 : 0, db = b._occDone ? 1 : 0;
