@@ -1412,7 +1412,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.22</div>
+      <div class="sidebar-version">v1.5.23</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6290,13 +6290,18 @@ const renderers = {
         else if (done) pip = `<span class="occ-pip occ-pip-done">Done</span>`;
         else if (past) pip = `<span class="occ-pip occ-pip-missed">Missed</span>`;
         else           pip = `<span class="occ-pip occ-pip-upcoming">Upcoming</span>`;
+        const undoBtn = done
+          ? `<button class="btn btn-secondary btn-sm" style="font-size:10px;padding:1px 7px;line-height:1.4;margin-left:4px"
+               onclick="event.stopPropagation();${toggleFn}('${obj.id}','${actualDate}')"
+               title="Mark as not done">Undo</button>`
+          : '';
         html += `
           <div class="occ-row" onclick="${toggleFn}('${obj.id}','${actualDate}')">
             <div class="occ-check ${done?'checked':''}">${done?'✓':''}</div>
             <input type="date" class="occ-date-input ${done?'crossed':''}" value="${actualDate}"
               onclick="event.stopPropagation()"
               onchange="event.stopPropagation();${updateFn}('${obj.id}','${origDate}',this.value)">
-            ${pip}
+            ${pip}${undoBtn}
           </div>`;
       }
       if (!html) html = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No occurrences to show.</div>`;
