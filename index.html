@@ -1413,7 +1413,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.26</div>
+      <div class="sidebar-version">v1.5.27</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5822,6 +5822,7 @@ const renderers = {
         notes:               document.getElementById('commDesc').innerHTML.trim() || '',
         recurrence,
         completedOccurrences: editingCommId ? (comms.find(c => c.id === editingCommId)?.completedOccurrences || {}) : {},
+        notDoneOccurrences:   editingCommId ? (comms.find(c => c.id === editingCommId)?.notDoneOccurrences   || {}) : {},
         dateOverrides:        editingCommId ? (comms.find(c => c.id === editingCommId)?.dateOverrides || {}) : {},
         createdAt:    editingCommId ? (comms.find(c => c.id === editingCommId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt:    new Date().toISOString()
