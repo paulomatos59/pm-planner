@@ -1413,7 +1413,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.28</div>
+      <div class="sidebar-version">v1.5.29</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2520,6 +2520,25 @@
       return false;
     }
 
+    // Like isRecurCommDueToday but ignores done/not-done status — used to validate
+    // that today is genuinely a recurrence date before keeping done items on the dashboard.
+    function isRecurCommOccurrenceToday(c) {
+      if (!c.recurrence || !c.recurrence.freq) return false;
+      const today = todayStr();
+      if ((c.date||'') === today) return true;
+      if ((c.date||'') > today) return false;
+      let cur = c.date;
+      for (let i = 0; i < 730; i++) {
+        const next = nextRecurDate(cur, c.recurrence);
+        if (!next || next <= cur) break;
+        if (c.recurrence.endDate && next > c.recurrence.endDate) break;
+        if (next > today) break;
+        if (next === today) return true;
+        cur = next;
+      }
+      return false;
+    }
+
     function isOverdue(t) {
       if (!t.dueDate || t.status === 'Done') return false;
       if (isRecurDueToday(t)) return false;
@@ -3197,8 +3216,9 @@ const renderers = {
       const todayComms = comms.filter(c =>
         (c.date || '') === today ||
         isRecurCommDueToday(c) ||
-        // Keep done/not-done recurring occurrences visible on the dashboard
-        (c.recurrence && c.recurrence.freq && (
+        // Keep done/not-done recurring occurrences visible — but only if today
+        // is actually a valid occurrence date (prevents yesterday's meetings leaking in)
+        (isRecurCommOccurrenceToday(c) && (
           (c.completedOccurrences && c.completedOccurrences[today]) ||
           (c.notDoneOccurrences   && c.notDoneOccurrences[today])
         ))
