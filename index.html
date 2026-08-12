@@ -1413,7 +1413,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.29</div>
+      <div class="sidebar-version">v1.5.30</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2502,22 +2502,20 @@
       return false;
     }
 
-    // Same logic as isRecurDueToday but for comm objects (uses c.date instead of t.dueDate)
+    // Returns the set of actual occurrence dates (after applying dateOverrides) for a comm, up to maxDate.
+    function _commActualOccurrencesUpTo(c, maxDate) {
+      const overrides = c.dateOverrides || {};
+      return getAllOccurrences(c, 'date', maxDate)
+        .map(orig => overrides[orig] || orig);
+    }
+
+    // Same logic as isRecurDueToday but for comm objects (uses c.date instead of t.dueDate).
+    // Respects dateOverrides so a moved occurrence doesn't falsely match today.
     function isRecurCommDueToday(c) {
       if (!c.recurrence || !c.recurrence.freq) return false;
       const today = todayStr();
       if (c.completedOccurrences && c.completedOccurrences[today]) return false;
-      if ((c.date||'') >= today) return false;
-      let cur = c.date;
-      for (let i = 0; i < 730; i++) {
-        const next = nextRecurDate(cur, c.recurrence);
-        if (!next || next <= cur) break;
-        if (c.recurrence.endDate && next > c.recurrence.endDate) break;
-        if (next > today) break;
-        if (next === today) return true;
-        cur = next;
-      }
-      return false;
+      return _commActualOccurrencesUpTo(c, today).includes(today);
     }
 
     // Like isRecurCommDueToday but ignores done/not-done status — used to validate
@@ -2525,18 +2523,7 @@
     function isRecurCommOccurrenceToday(c) {
       if (!c.recurrence || !c.recurrence.freq) return false;
       const today = todayStr();
-      if ((c.date||'') === today) return true;
-      if ((c.date||'') > today) return false;
-      let cur = c.date;
-      for (let i = 0; i < 730; i++) {
-        const next = nextRecurDate(cur, c.recurrence);
-        if (!next || next <= cur) break;
-        if (c.recurrence.endDate && next > c.recurrence.endDate) break;
-        if (next > today) break;
-        if (next === today) return true;
-        cur = next;
-      }
-      return false;
+      return _commActualOccurrencesUpTo(c, today).includes(today);
     }
 
     function isOverdue(t) {
