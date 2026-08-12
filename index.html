@@ -969,6 +969,15 @@
     .sidebar-section-left { display: flex; align-items: center; gap: 5px; }
     .sidebar-section-right { display: flex; align-items: center; gap: 4px; }
     .section-arrow { display: inline-block; font-size: 8px; transition: transform 0.2s; }
+
+    .comm-modal-section-header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 7px 2px; cursor: pointer; user-select: none;
+      font-size: 12px; font-weight: 600; color: var(--text);
+      border-top: 1px solid var(--border); margin-top: 14px;
+      transition: opacity 0.1s; border-radius: 4px;
+    }
+    .comm-modal-section-header:hover { opacity: 0.75; }
     .section-arrow.open   { transform: rotate(0deg); }
     .section-arrow.closed { transform: rotate(-90deg); }
     .section-add-btn {
@@ -1413,7 +1422,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.30</div>
+      <div class="sidebar-version">v1.5.31</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1736,9 +1745,15 @@
           </div>
 
           <!-- Description / Notes (RTE) -->
-          <div class="form-group">
-            <label class="form-label">Description / Notes</label>
-            <div class="rte-wrapper">
+          <div>
+            <div class="comm-modal-section-header" onclick="toggleCommSection('notes')">
+              <div class="sidebar-section-left">
+                <span class="section-arrow open" id="comm-arrow-notes">▶</span>
+                <span>Description / Notes</span>
+              </div>
+            </div>
+            <div class="sidebar-section-body" id="comm-section-notes" style="max-height:1000px">
+            <div class="rte-wrapper" style="margin-top:8px">
               <div class="rte-toolbar">
                 <button type="button" class="rte-btn" id="commRteBoldBtn" title="Bold" onmousedown="event.preventDefault();commRteExec('bold');commRteUpdateToolbar()"><b style="font-size:14px">B</b></button>
                 <div class="rte-divider"></div>
@@ -1776,26 +1791,39 @@
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
                    onkeyup="commRteUpdateToolbar()" onmouseup="commRteUpdateToolbar()" onfocus="commRteUpdateToolbar()" onclick="commRteCloseColorPicker()" oninput="scheduleDraftSave('comm')"></div>
             </div>
-          </div>
+            </div><!-- /comm-section-notes -->
+          </div><!-- /notes collapsible wrapper -->
 
           <!-- Linked Tasks -->
           <div id="commTasksSection" style="display:none">
-            <div class="subtask-section-divider"></div>
-            <div class="subtask-section-label">
-              <span>Tasks &nbsp;<span id="commTaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
-              <button class="btn btn-secondary btn-sm" onclick="openTaskModalFromComm()">＋ Add task</button>
+            <div class="comm-modal-section-header" onclick="toggleCommSection('tasks')">
+              <div class="sidebar-section-left">
+                <span class="section-arrow open" id="comm-arrow-tasks">▶</span>
+                <span>Tasks &nbsp;<span id="commTaskCountLabel" style="font-weight:500;color:var(--text-muted)"></span></span>
+              </div>
+              <div class="sidebar-section-right">
+                <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();openTaskModalFromComm()">＋ Add task</button>
+              </div>
             </div>
-            <div id="commTaskList"></div>
+            <div class="sidebar-section-body" id="comm-section-tasks">
+              <div id="commTaskList"></div>
+            </div>
           </div>
 
           <!-- Occurrences (recurring comms only) -->
           <div id="commOccurrencesSection" style="display:none">
-            <div class="subtask-section-divider"></div>
-            <div class="subtask-section-label">
-              <span>🔁 Occurrences &nbsp;<span id="commOccCount" style="font-weight:500;color:var(--text-muted)"></span></span>
-              <button class="btn btn-secondary btn-sm" id="commOccHideBtn" onclick="toggleOccHideDone('comm')">Hide Done</button>
+            <div class="comm-modal-section-header" onclick="toggleCommSection('occurrences')">
+              <div class="sidebar-section-left">
+                <span class="section-arrow open" id="comm-arrow-occurrences">▶</span>
+                <span>🔁 Occurrences &nbsp;<span id="commOccCount" style="font-weight:500;color:var(--text-muted)"></span></span>
+              </div>
+              <div class="sidebar-section-right">
+                <button class="btn btn-secondary btn-sm" id="commOccHideBtn" onclick="event.stopPropagation();toggleOccHideDone('comm')">Hide Done</button>
+              </div>
             </div>
-            <div id="commOccList" style="max-height:230px;overflow-y:auto;margin-top:2px"></div>
+            <div class="sidebar-section-body" id="comm-section-occurrences">
+              <div id="commOccList" style="max-height:230px;overflow-y:auto;margin-top:2px"></div>
+            </div>
           </div>
 
         </div>
@@ -5770,6 +5798,7 @@ const renderers = {
         commOccSec.style.display = 'none';
       }
 
+      applyCommSectionStates();
       document.getElementById('commModal').classList.remove('hidden');
       setTimeout(() => {
         _checkAndRestoreDraft('comm', id);
@@ -7232,6 +7261,28 @@ const renderers = {
         if (body)  { body.classList.toggle('collapsed', !open); }
         if (arrow) { arrow.classList.toggle('open', open); arrow.classList.toggle('closed', !open); }
       }
+    }
+
+    /* ==============================
+       COMM MODAL COLLAPSE / EXPAND
+    ============================== */
+    let commSectionState = { notes: true, tasks: true, occurrences: true };
+
+    function toggleCommSection(name) {
+      commSectionState[name] = !commSectionState[name];
+      _applyCommSectionState(name);
+    }
+
+    function _applyCommSectionState(name) {
+      const open  = commSectionState[name];
+      const body  = document.getElementById('comm-section-' + name);
+      const arrow = document.getElementById('comm-arrow-' + name);
+      if (body)  body.classList.toggle('collapsed', !open);
+      if (arrow) { arrow.classList.toggle('open', open); arrow.classList.toggle('closed', !open); }
+    }
+
+    function applyCommSectionStates() {
+      Object.keys(commSectionState).forEach(_applyCommSectionState);
     }
 
     function updateSidebarProjects() {
