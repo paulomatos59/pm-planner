@@ -1422,7 +1422,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.32</div>
+      <div class="sidebar-version">v1.5.33</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6069,7 +6069,8 @@ const renderers = {
       const c = comms.find(x => x.id === editingCommId);
       const modal = document.getElementById('taskModal');
       modal.style.zIndex = '1050';
-      openTaskModal(null, c?.projectId || null);
+      const commAssignId = c?.projectId || c?.personalId || null;
+      openTaskModal(null, commAssignId);
       setTimeout(() => {
         const catEl = document.getElementById('taskCategory');
         if (catEl) catEl.value = 'Meeting';
@@ -6088,7 +6089,7 @@ const renderers = {
           }
         }
         const projEl = document.getElementById('taskProjectLink');
-        if (projEl && c?.projectId) projEl.value = c.projectId;
+        if (projEl && commAssignId) projEl.value = commAssignId;
       }, 50);
     }
 
