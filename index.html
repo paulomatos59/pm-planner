@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.51</div>
+      <div class="sidebar-version">v1.5.52</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2327,6 +2327,7 @@
     }
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
     let weekOffset       = 0;  // 0 = current week, -1 = prev, +1 = next
+    let dayOffset        = 0;  // 0 = today, -1 = yesterday, +1 = tomorrow
     let ganttOffset          = 0;
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
@@ -2618,9 +2619,9 @@
     }
     // Returns true if a recurring task's next occurrence lands on today,
     // meaning the task should surface as "today's task" rather than overdue.
-    function isRecurDueToday(t) {
+    function isRecurDueToday(t, dateStr) {
       if (!t.recurrence || !t.recurrence.freq || t.status === 'Done') return false;
-      const today = todayStr();
+      const today = dateStr || todayStr();
       // If today's occurrence is already marked done, remove from today list
       if (t.completedOccurrences && t.completedOccurrences[today]) return false;
       if ((t.dueDate||'') >= today) return false; // already current/future
@@ -2645,9 +2646,9 @@
 
     // Same logic as isRecurDueToday but for comm objects (uses c.date instead of t.dueDate).
     // Respects dateOverrides so a moved occurrence doesn't falsely match today.
-    function isRecurCommDueToday(c) {
+    function isRecurCommDueToday(c, dateStr) {
       if (!c.recurrence || !c.recurrence.freq) return false;
-      const today = todayStr();
+      const today = dateStr || todayStr();
       if (c.completedOccurrences && c.completedOccurrences[today]) return false;
       return _commActualOccurrencesUpTo(c, today).includes(today);
     }
@@ -4362,10 +4363,18 @@ const renderers = {
     /* ==============================
        TODAY VIEW
     ============================== */
+    function navDay(delta) { dayOffset += delta; showView('today'); }
+
     function renderToday() {
-      const today        = todayStr();
-      const overdueTasks  = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-      const allTodayTasks = tasks.filter(t => ((t.dueDate||'').slice(0,10) === today || isRecurDueToday(t)) && !isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId);
+      const isRealToday = dayOffset === 0;
+      const dObj = new Date(); dObj.setHours(0,0,0,0); dObj.setDate(dObj.getDate() + dayOffset);
+      const today = `${dObj.getFullYear()}-${pad(dObj.getMonth()+1)}-${pad(dObj.getDate())}`;
+      const dateLabel = dObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
+
+      const overdueTasks  = isRealToday
+        ? tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b))
+        : [];
+      const allTodayTasks = tasks.filter(t => ((t.dueDate||'').slice(0,10) === today || isRecurDueToday(t, today)) && t.taskType !== 'timeoff' && !t.parentId);
       // Recurring-done-today: occurrence marked done, so also include them in "today done"
       const recurDoneToday = tasks.filter(t => t.recurrence && t.recurrence.freq && !!(t.completedOccurrences?.[today]) && t.taskType !== 'timeoff' && !t.parentId && !allTodayTasks.includes(t));
       const isEffectiveDone = t => t.recurrence ? !!(t.completedOccurrences?.[today]) : t.status === 'Done';
@@ -4375,7 +4384,7 @@ const renderers = {
       const isCommEffDone = c => c.recurrence && c.recurrence.freq
         ? !!(c.completedOccurrences && c.completedOccurrences[today])
         : c.status === 'Done';
-      const todayComms    = comms.filter(c => c.date === today || isRecurCommDueToday(c))
+      const todayComms    = comms.filter(c => c.date === today || isRecurCommDueToday(c, today))
         .map(c => ({ ...c, _occDone: isCommEffDone(c) }))
         .sort((a, b) => {
         const da = a._occDone ? 1 : 0, db = b._occDone ? 1 : 0;
@@ -4388,17 +4397,26 @@ const renderers = {
         <div class="view-header">
           <div>
             <div class="view-title">Today</div>
-            <div class="view-subtitle">${new Date().toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'})}</div>
+            <div class="view-subtitle">${dateLabel}</div>
           </div>
-          <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="month-nav">
+              <button class="month-nav-btn" onclick="navDay(-1)" title="Previous day">‹</button>
+              <span class="month-nav-label">${dateLabel}</span>
+              <button class="month-nav-btn" onclick="navDay(1)" title="Next day">›</button>
+            </div>
+            ${!isRealToday ? `<button class="btn btn-secondary btn-sm" onclick="dayOffset=0;showView('today')">Today</button>` : ''}
+            <button class="btn btn-primary" onclick="openTaskModalWithDate('${today}')">＋ New Task</button>
+          </div>
         </div>
+        ${isRealToday ? `
         <div class="morning-card">
           <div class="morning-title">🌅 Daily Focus</div>
           <div class="morning-sub">What is your #1 priority today?</div>
           <input class="focus-input" type="text" id="focusInput"
             placeholder="My main focus today is…" value="${esc(focusNote)}"
             onchange="localStorage.setItem('dp_focus', this.value)">
-        </div>
+        </div>` : ''}
         ${dayCapacityBar(today, 'today')}`;
 
       if (overdueTasks.length > 0) {
@@ -4415,8 +4433,8 @@ const renderers = {
       }
 
       html += `<div class="section-header"><span class="section-title">Scheduled</span><span class="section-count">${todayTasks.length}</span></div>`;
-      if (todayTasks.length === 0 && overdueTasks.length === 0) {
-        html += `<div class="empty-state"><div class="icon">🎉</div><h3>All clear!</h3><p>Nothing scheduled for today. Add a task to get started.</p></div>`;
+      if (todayTasks.length === 0 && overdueTasks.length === 0 && todayComms.length === 0) {
+        html += `<div class="empty-state"><div class="icon">🎉</div><h3>All clear!</h3><p>${isRealToday ? 'Nothing scheduled for today.' : 'Nothing scheduled for this day.'} Add a task to get started.</p></div>`;
       } else if (todayTasks.length === 0) {
         html += `<div style="padding:16px;font-size:13px;color:var(--text-muted)">No additional tasks scheduled.</div>`;
       } else {
