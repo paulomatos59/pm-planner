@@ -1422,7 +1422,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.36</div>
+      <div class="sidebar-version">v1.5.37</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5602,6 +5602,7 @@ const renderers = {
     }
     function setCommTimeTab(tab) {
       commTimeTab = tab;
+      if (tab === 'week' || tab === 'nextweek') commSortDir = 'asc';
       showView('comms');
     }
     function setCommCustomRange(field, val) {
