@@ -1428,7 +1428,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.40</div>
+      <div class="sidebar-version">v1.5.41</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1586,7 +1586,7 @@
 
         <!-- ── Right: sidebar (metadata) ── -->
         <div class="modal-sidebar-col">
-          <!-- Work Task fields -->
+          <!-- Task/Event fields (Status, Category, Assign to shown for both types) -->
           <div id="workFields">
             <div class="form-group">
               <label class="form-label">Status</label>
@@ -1598,7 +1598,7 @@
                 <option value="Blocked">Blocked</option>
               </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="taskPriorityGroup">
               <label class="form-label">Priority</label>
               <select class="form-select" id="taskPriority">
                 <option value="High">🔴 High</option>
@@ -6895,8 +6895,8 @@ const renderers = {
       document.getElementById('typeBtnTask').classList.toggle('active', !isTimeoff);
       document.getElementById('typeBtnTimeoff').classList.toggle('active', isTimeoff);
       document.getElementById('typeBtnTimeoff').classList.toggle('timeoff', isTimeoff);
-      document.getElementById('workFields').style.display     = isTimeoff ? 'none' : '';
-      document.getElementById('workOnlyFields').style.display = isTimeoff ? 'none' : '';
+      document.getElementById('taskPriorityGroup').style.display = isTimeoff ? 'none' : '';
+      document.getElementById('workOnlyFields').style.display    = isTimeoff ? 'none' : '';
       document.getElementById('titleLabel').textContent       = isTimeoff ? 'Event Name *' : 'Task Title *';
       document.getElementById('startDateLabel').textContent   = isTimeoff ? 'From' : 'Start Date';
       document.getElementById('dueDateLabel').textContent     = isTimeoff ? 'To' : 'Due Date';
