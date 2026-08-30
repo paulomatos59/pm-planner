@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.52</div>
+      <div class="sidebar-version">v1.5.53</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4396,7 +4396,7 @@ const renderers = {
       let html = `
         <div class="view-header">
           <div>
-            <div class="view-title">Today</div>
+            <div class="view-title">${isRealToday ? 'Today' : 'Daily'}</div>
             <div class="view-subtitle">${dateLabel}</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
