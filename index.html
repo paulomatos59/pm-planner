@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.47</div>
+      <div class="sidebar-version">v1.5.48</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2300,6 +2300,7 @@
         </div>`;
     }
     let monthOffset      = 0;  // 0 = current month, -1 = prev, +1 = next
+    let weekOffset       = 0;  // 0 = current week, -1 = prev, +1 = next
     let ganttOffset          = 0;
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
@@ -4411,16 +4412,28 @@ const renderers = {
     /* ==============================
        WEEK VIEW
     ============================== */
+    function navWeek(delta) { weekOffset += delta; showView('week'); }
+
     function renderWeek() {
       const today = new Date(); today.setHours(0,0,0,0);
       const dow   = today.getDay();
       const mon   = new Date(today);
-      mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1));
+      mon.setDate(today.getDate() - (dow === 0 ? 6 : dow - 1) + weekOffset * 7);
+      const sun   = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const rangeLabel = `${mon.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${sun.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
 
       let html = `
         <div class="view-header">
-          <div><div class="view-title">This Week</div><div class="view-subtitle">Mon – Sun</div></div>
-          <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+          <div><div class="view-title">Week</div><div class="view-subtitle">${rangeLabel}</div></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="month-nav">
+              <button class="month-nav-btn" onclick="navWeek(-1)" title="Previous week">‹</button>
+              <span class="month-nav-label">${rangeLabel}</span>
+              <button class="month-nav-btn" onclick="navWeek(1)" title="Next week">›</button>
+            </div>
+            ${weekOffset !== 0 ? `<button class="btn btn-secondary btn-sm" onclick="weekOffset=0;showView('week')">Today</button>` : ''}
+            <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
+          </div>
         </div>
         <div class="week-grid">`;
 
