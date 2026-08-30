@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.53</div>
+      <div class="sidebar-version">v1.5.54</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4400,12 +4400,12 @@ const renderers = {
             <div class="view-subtitle">${dateLabel}</div>
           </div>
           <div style="display:flex;gap:8px;align-items:center">
+            ${!isRealToday ? `<button class="btn btn-secondary btn-sm" onclick="dayOffset=0;showView('today')">Today</button>` : ''}
             <div class="month-nav">
               <button class="month-nav-btn" onclick="navDay(-1)" title="Previous day">‹</button>
               <span class="month-nav-label">${dateLabel}</span>
               <button class="month-nav-btn" onclick="navDay(1)" title="Next day">›</button>
             </div>
-            ${!isRealToday ? `<button class="btn btn-secondary btn-sm" onclick="dayOffset=0;showView('today')">Today</button>` : ''}
             <button class="btn btn-primary" onclick="openTaskModalWithDate('${today}')">＋ New Task</button>
           </div>
         </div>
