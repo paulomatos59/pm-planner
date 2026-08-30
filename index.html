@@ -1428,7 +1428,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.39</div>
+      <div class="sidebar-version">v1.5.40</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5685,6 +5685,7 @@ const renderers = {
     }
     function toggleCommSearch() {
       commSearchOpen = !commSearchOpen;
+      if (commSearchOpen) commTimeTab = 'all';
       showView('comms');
     }
     function setCommSearchField(field, val) {
