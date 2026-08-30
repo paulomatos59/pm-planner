@@ -731,6 +731,12 @@
     }
     .comm-card-notes { font-size: 12px; color: var(--text-muted); margin-top: 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
     .comm-filter-bar { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 16px; align-items: center; }
+    .comm-search-panel {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 14px 16px; margin: -6px 0 16px;
+    }
+    .comm-search-panel .form-group { margin-bottom: 0; }
     .comm-filter-chip {
       padding: 4px 12px; border-radius: 16px; border: 1.5px solid var(--border);
       background: var(--surface); cursor: pointer; font-size: 12px; font-weight: 500;
@@ -1422,7 +1428,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.38</div>
+      <div class="sidebar-version">v1.5.39</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5091,7 +5097,8 @@ const renderers = {
     let commDateTo     = '';
     let commSortDir    = 'desc';  // 'desc' = newest first, 'asc' = oldest first
     let commHideDone   = false;
-    let commSearchQuery = '';
+    let commSearchOpen = false;
+    let commSearch = { title:'', organizer:'', participants:'', projectId:'', personalId:'', dateFrom:'', dateTo:'' };
 
     const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
 
@@ -5500,15 +5507,14 @@ const renderers = {
       return { from: fmtD(d8w), to: fmtD(d6m) };
     }
 
-    function commMatchesSearch(c, needle) {
-      if (!needle) return true;
-      const proj = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
-      const pers = c.personalId ? projects.find(p => p.id === c.personalId) : null;
-      const haystack = [
-        c.title, c.date, formatCommDate(c.date), c.organizer, c.participants,
-        proj?.name, pers?.name
-      ].filter(Boolean).join(' ').toLowerCase();
-      return haystack.includes(needle);
+    function commMatchesSearch(c) {
+      const s = commSearch;
+      if (s.title && !(c.title || '').toLowerCase().includes(s.title.toLowerCase())) return false;
+      if (s.organizer && !(c.organizer || '').toLowerCase().includes(s.organizer.toLowerCase())) return false;
+      if (s.participants && !(c.participants || '').toLowerCase().includes(s.participants.toLowerCase())) return false;
+      if (s.projectId && c.projectId !== s.projectId) return false;
+      if (s.personalId && c.personalId !== s.personalId) return false;
+      return true;
     }
 
     function renderComms() {
@@ -5516,12 +5522,17 @@ const renderers = {
         ? [...comms]
         : comms.filter(c => c.type === commTypeFilter);
 
-      const searchNeedle = commSearchQuery.trim().toLowerCase();
-      const typeFiltered = searchNeedle
-        ? typeFiltered0.filter(c => commMatchesSearch(c, searchNeedle))
+      const hasTextSearch = !!(commSearch.title || commSearch.organizer || commSearch.participants || commSearch.projectId || commSearch.personalId);
+      const typeFiltered = hasTextSearch
+        ? typeFiltered0.filter(commMatchesSearch)
         : typeFiltered0;
 
-      const { from: fromDate, to: toDate } = _commWindowDates();
+      let { from: fromDate, to: toDate } = _commWindowDates();
+      if (commSearch.dateFrom || commSearch.dateTo) {
+        // An explicit search date range overrides the quick time-tab window.
+        fromDate = commSearch.dateFrom || null;
+        toDate   = commSearch.dateTo   || null;
+      }
 
       const timeTabs = [
         { key: 'today', label: 'Today' },
@@ -5546,7 +5557,54 @@ const renderers = {
         `<button class="comm-filter-chip ${commTypeFilter === t ? 'active' : ''}" onclick="setCommFilter('${t}')">${t === 'All' ? '🗂 All' : COMM_ICONS[t] + ' ' + t}</button>`
       ).join('');
 
-      const searchInput = `<input type="text" class="filter-input" id="commSearch" placeholder="🔍 Search title, date, organizer, participants, project…" autocomplete="off" value="${esc(commSearchQuery)}" oninput="setCommSearch(this.value)">`;
+      const activeSearchCount = Object.values(commSearch).filter(Boolean).length;
+      const searchToggleBtn = `<button class="comm-filter-chip${commSearchOpen || activeSearchCount ? ' active' : ''}" onclick="toggleCommSearch()">🔍 Search${activeSearchCount ? ` (${activeSearchCount})` : ''}</button>`;
+      const searchClearBtn  = activeSearchCount ? `<button class="comm-filter-chip" onclick="clearCommSearch()">✕ Clear search</button>` : '';
+
+      const projOptions = projects.filter(p => p.type !== 'personal').map(p =>
+        `<option value="${p.id}" ${commSearch.projectId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+      ).join('');
+      const persOptions = projects.filter(p => p.type === 'personal').map(p =>
+        `<option value="${p.id}" ${commSearch.personalId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+      ).join('');
+
+      const searchPanelHtml = commSearchOpen ? `
+        <div class="comm-search-panel">
+          <div class="form-group">
+            <label class="form-label">Title</label>
+            <input type="text" class="form-input" id="commSearch_title" placeholder="e.g. Sprint planning" autocomplete="off" value="${esc(commSearch.title)}" oninput="setCommSearchField('title',this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Organizer</label>
+            <input type="text" class="form-input" id="commSearch_organizer" placeholder="e.g. Alice" autocomplete="off" value="${esc(commSearch.organizer)}" oninput="setCommSearchField('organizer',this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Participants</label>
+            <input type="text" class="form-input" id="commSearch_participants" placeholder="e.g. Alice" autocomplete="off" value="${esc(commSearch.participants)}" oninput="setCommSearchField('participants',this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <select class="form-select" id="commSearch_projectId" onchange="setCommSearchField('projectId',this.value)">
+              <option value="">— Any —</option>
+              ${projOptions}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Personal</label>
+            <select class="form-select" id="commSearch_personalId" onchange="setCommSearchField('personalId',this.value)">
+              <option value="">— Any —</option>
+              ${persOptions}
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date From</label>
+            <input type="date" id="commSearch_dateFrom" value="${commSearch.dateFrom}" onchange="setCommSearchField('dateFrom',this.value)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Date To</label>
+            <input type="date" id="commSearch_dateTo" value="${commSearch.dateTo}" onchange="setCommSearchField('dateTo',this.value)">
+          </div>
+        </div>` : '';
 
       const sortBtn     = `<button class="comm-filter-chip${commSortDir==='desc'?' active':''}" onclick="toggleCommSortDir()" title="Toggle date order">${commSortDir==='desc' ? '↓ Newest First' : '↑ Oldest First'}</button>`;
       const hideDoneBtn = `<button class="comm-filter-chip${commHideDone?' active':''}" onclick="toggleCommHideDone()">${commHideDone ? '✓ Hiding Done' : '👁 Show Done'}</button>`;
@@ -5561,7 +5619,8 @@ const renderers = {
         </div>
         <div class="comm-time-tabs">${timeTabs}</div>
         ${customRangeHtml}
-        <div class="comm-filter-bar">${searchInput}${typeButtons}<span style="margin-left:auto;display:flex;gap:6px">${sortBtn}${hideDoneBtn}</span></div>`;
+        <div class="comm-filter-bar">${searchToggleBtn}${searchClearBtn}${typeButtons}<span style="margin-left:auto;display:flex;gap:6px">${sortBtn}${hideDoneBtn}</span></div>
+        ${searchPanelHtml}`;
 
       // Build expanded occurrence entries within the window
       const groups = {};
@@ -5624,12 +5683,21 @@ const renderers = {
       if (tab === 'week' || tab === 'nextweek') commSortDir = 'asc';
       showView('comms');
     }
-    function setCommSearch(val) {
-      commSearchQuery = val;
-      const caret = document.getElementById('commSearch')?.selectionStart ?? val.length;
+    function toggleCommSearch() {
+      commSearchOpen = !commSearchOpen;
       showView('comms');
-      const el = document.getElementById('commSearch');
-      if (el) { el.focus(); el.setSelectionRange(caret, caret); }
+    }
+    function setCommSearchField(field, val) {
+      commSearch[field] = val;
+      const id = 'commSearch_' + field;
+      const caret = document.getElementById(id)?.selectionStart ?? (val ? val.length : 0);
+      showView('comms');
+      const el = document.getElementById(id);
+      if (el) { el.focus(); if (el.setSelectionRange && (el.type === 'text')) el.setSelectionRange(caret, caret); }
+    }
+    function clearCommSearch() {
+      commSearch = { title:'', organizer:'', participants:'', projectId:'', personalId:'', dateFrom:'', dateTo:'' };
+      showView('comms');
     }
     function setCommCustomRange(field, val) {
       if (field === 'from') commDateFrom = val;
