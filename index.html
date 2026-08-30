@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.54</div>
+      <div class="sidebar-version">v1.5.55</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4491,8 +4491,8 @@ const renderers = {
         const day    = new Date(mon); day.setDate(mon.getDate() + i);
         const dayStr = `${day.getFullYear()}-${pad(day.getMonth()+1)}-${pad(day.getDate())}`;
         const isTdy  = dayStr === todayStr();
-        const dayTasks = tasks.filter(t => t.dueDate === dayStr).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-        const dayComms = comms.filter(c => c.date === dayStr);
+        const dayTasks = tasks.filter(t => t.dueDate === dayStr || isRecurDueToday(t, dayStr)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+        const dayComms = comms.filter(c => c.date === dayStr || isRecurCommDueToday(c, dayStr));
 
         html += `
           <div class="week-day ${isTdy ? 'today' : ''}">
@@ -4576,8 +4576,8 @@ const renderers = {
             const inMonth   = d.getMonth() === month;
             const isToday   = ds === todStr;
             // Work tasks: due on this day
-            const dayTasks  = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === ds).sort((a,b) => priorityOrder(a) - priorityOrder(b));
-            const dayCommsM = comms.filter(c => c.date === ds);
+            const dayTasks  = tasks.filter(t => t.taskType !== 'timeoff' && (t.dueDate === ds || isRecurDueToday(t, ds))).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+            const dayCommsM = comms.filter(c => c.date === ds || isRecurCommDueToday(c, ds));
             const totalItems = dayTasks.length + dayCommsM.length;
             const visible   = dayTasks.slice(0, 2);
             const extra     = totalItems - visible.length - Math.min(dayCommsM.length, 1);
