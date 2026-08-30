@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.50</div>
+      <div class="sidebar-version">v1.5.51</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3132,6 +3132,12 @@
     function projectStatusClass(s) {
       return { 'Active':'active','On Hold':'onhold','Completed':'completed','Cancelled':'cancelled' }[s] || 'active';
     }
+    function projectPriorityBadge(p) {
+      if (!p.priority || p.priority === 'None') return '';
+      const dot  = p.priority === 'High' ? '🔴' : p.priority === 'Medium' ? '🟡' : '🟢';
+      const rank = p.priorityRank ? ` <span style="opacity:.65">#${p.priorityRank}</span>` : '';
+      return `<span class="task-priority priority-${p.priority.toLowerCase()}" style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600">${dot} ${p.priority}${rank}</span>`;
+    }
     function fuStatusClass(s) {
       return { 'Open':'open','Discussed':'discussed','Resolved':'resolved' }[s] || 'open';
     }
@@ -4304,7 +4310,7 @@ const renderers = {
               return `
                 <div onclick="openProject('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < allProjects.length-1 ? '1px solid var(--border)' : 'none'};transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
                   <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(p.color||'#2563eb')}"></div>
-                  <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}</span>
+                  <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}${p.priorityRank ? ` <span style="opacity:.65">#${p.priorityRank}</span>` : ''}</span>
                   <div style="flex:1;min-width:0">
                     <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
                     <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:2px">
@@ -4868,7 +4874,7 @@ const renderers = {
           <div class="project-card-body">
             <div class="project-card-header">
               <div class="project-card-name">${esc(p.name)}</div>
-              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${p.priority && p.priority !== 'None' ? `<span class="task-priority priority-${p.priority.toLowerCase()}" style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600">${p.priority==='High'?'🔴':p.priority==='Medium'?'🟡':'🟢'} ${p.priority}</span>` : ''}
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
             </div>
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
@@ -4904,7 +4910,7 @@ const renderers = {
               ${p.description ? `<div class="project-detail-desc">${esc(p.description)}</div>` : ''}
             </div>
             <div class="project-detail-actions">
-              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${p.priority && p.priority !== 'None' ? `<span class="task-priority priority-${p.priority.toLowerCase()}" style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600">${p.priority==='High'?'🔴':p.priority==='Medium'?'🟡':'🟢'} ${p.priority}</span>` : ''}
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
               <button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}')">Edit</button>
             </div>
           </div>
@@ -5054,7 +5060,7 @@ const renderers = {
           <div class="project-card-body">
             <div class="project-card-header">
               <div class="project-card-name">${esc(p.name)}</div>
-              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${p.priority && p.priority !== 'None' ? `<span class="task-priority priority-${p.priority.toLowerCase()}" style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600">${p.priority==='High'?'🔴':p.priority==='Medium'?'🟡':'🟢'} ${p.priority}</span>` : ''}
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
             </div>
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
@@ -5089,7 +5095,7 @@ const renderers = {
               ${p.description ? `<div class="project-detail-desc">${esc(p.description)}</div>` : ''}
             </div>
             <div class="project-detail-actions">
-              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${p.priority && p.priority !== 'None' ? `<span class="task-priority priority-${p.priority.toLowerCase()}" style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600">${p.priority==='High'?'🔴':p.priority==='Medium'?'🟡':'🟢'} ${p.priority}</span>` : ''}
+              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
               <button class="btn btn-secondary btn-sm" onclick="openProjectModal('${p.id}','personal')">Edit</button>
             </div>
           </div>
