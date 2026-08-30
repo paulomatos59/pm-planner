@@ -1428,7 +1428,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.41</div>
+      <div class="sidebar-version">v1.5.42</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5347,29 +5347,30 @@ const renderers = {
       }
 
       const projColor = p.color || '#2563eb';
+      const TOFF_COLOR = '#0891b2';
       const minBarW   = Math.max(colPx - 2, 10);
 
-      // ── Task rows ──
+      // ── Task rows (includes Time Off / Events) ──
       const visTasks = ptasks.filter(t => {
-        if (t.taskType === 'timeoff') return false;
         const from = t.startDate || t.dueDate;
         return from && t.dueDate && t.dueDate >= winS && from <= winE;
       }).sort((a,b) => (a.startDate||a.dueDate||'').localeCompare(b.startDate||b.dueDate||''));
 
       const taskRows = visTasks.map(t => {
+        const isToff = t.taskType === 'timeoff';
         const from  = t.startDate || t.dueDate;
         const x1    = clamp(xOf(from), 0, totalW-2);
         const xEnd  = xOf(t.dueDate) + (projTimelineScale==='days'?colPx:0);
         const rawW  = clamp(xEnd-x1-2, minBarW, totalW-x1);
         const od    = isOverdue(t);
-        const bc    = t.status==='Done' ? '#94a3b8' : projColor;
-        const label = rawW > 44 ? esc(t.title) : '';
+        const bc    = t.status==='Done' ? '#94a3b8' : (isToff ? TOFF_COLOR : projColor);
+        const label = rawW > 44 ? `${isToff?'🌴 ':''}${esc(t.title)}` : '';
         return `<div class="gantt-row">
-          <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${esc(t.title)}</div>
+          <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${isToff?'🌴 ':''}${esc(t.title)}</div>
           <div class="gantt-bars-cell" style="width:${totalW}px">
             ${backdrop()}
             <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
-                 style="left:${x1}px;width:${rawW}px;background:${bc}"
+                 style="left:${x1}px;width:${rawW}px;background:${bc};${isToff?'opacity:0.85':''}"
                  onclick="openTaskModal('${t.id}')"
                  title="${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
           </div></div>`;
