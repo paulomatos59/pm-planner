@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.45</div>
+      <div class="sidebar-version">v1.5.46</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5895,10 +5895,10 @@ const renderers = {
     let editingCommId = null;
 
     function openCommModal(id) {
-      editingCommId = id || null;
+      editingCommId = id || uid();
       const c = id ? comms.find(x => x.id === id) : null;
 
-      document.getElementById('commId').value = id || '';
+      document.getElementById('commId').value = editingCommId;
       document.getElementById('commModalTitle').textContent = c ? 'Edit Communication' : 'New Communication';
       document.getElementById('commTitle').value        = c?.title        || '';
       document.getElementById('commDate').value         = c?.date         || todayStr();
@@ -5960,10 +5960,11 @@ const renderers = {
 
       document.getElementById('commBtnDelete').style.display = c ? 'inline-flex' : 'none';
 
-      // Tasks section — only for existing comms
+      // Tasks section — available even for a new (unsaved) comm, since tasks
+      // link via commId and are persisted independently of the comm record.
       const tasksSection = document.getElementById('commTasksSection');
-      tasksSection.style.display = c ? 'block' : 'none';
-      if (c) setTimeout(commTasksRender, 0);
+      tasksSection.style.display = 'block';
+      setTimeout(commTasksRender, 0);
 
       // ── Occurrences section ──
       const commOccSec = document.getElementById('commOccurrencesSection');
@@ -6049,12 +6050,8 @@ const renderers = {
         updatedAt:    new Date().toISOString()
       };
 
-      if (editingCommId) {
-        const idx = comms.findIndex(c => c.id === editingCommId);
-        if (idx > -1) comms[idx] = entry;
-      } else {
-        comms.push(entry);
-      }
+      const idx = comms.findIndex(c => c.id === entry.id);
+      if (idx > -1) { comms[idx] = entry; } else { comms.push(entry); }
 
       registerContacts(entry.organizer);
       registerContacts(entry.participants);
@@ -6798,8 +6795,11 @@ const renderers = {
           projectId:      document.getElementById('taskProjectLink').value,
         };
       } else if (type === 'comm') {
+        // commId is pre-generated even for new comms (so an added task can link to it
+        // before the comm itself is saved) — only treat it as "existing" if it's actually saved.
+        const commIdVal = document.getElementById('commId').value || null;
         data = {
-          _id:          document.getElementById('commId').value || null,
+          _id:          (commIdVal && comms.some(c => c.id === commIdVal)) ? commIdVal : null,
           title:        document.getElementById('commTitle').value,
           notes:        document.getElementById('commDesc').innerHTML,
           date:         document.getElementById('commDate').value,
