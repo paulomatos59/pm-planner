@@ -1436,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.55</div>
+      <div class="sidebar-version">v1.5.56</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7883,11 +7883,12 @@ const renderers = {
       const safe = h * (1 - cap.bufferPct / 100);
 
       // Estimate: task estimated hours + Planned comm hours for this day
+      // (includes recurring tasks/comms whose occurrence falls on this day, not just their anchor date)
       const taskEst = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.dueDate === dayStr && t.estimatedHours)
+        .filter(t => t.taskType !== 'timeoff' && t.estimatedHours && (t.dueDate === dayStr || isRecurDueToday(t, dayStr)))
         .reduce((s, t) => s + (t.estimatedHours || 0), 0);
       const commEst = comms
-        .filter(c => c.date === dayStr && c.status !== 'Done' && c.duration)
+        .filter(c => c.status !== 'Done' && c.duration && (c.date === dayStr || isRecurCommDueToday(c, dayStr)))
         .reduce((s, c) => s + (parseFloat(c.duration) || 0) / 60, 0);
       const estHours = Math.round((taskEst + commEst) * 100) / 100;
 
