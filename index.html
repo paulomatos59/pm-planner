@@ -869,6 +869,14 @@
     .tz-popup-item .tz-pi-label { font-weight: 600; white-space: nowrap; }
     .tz-popup-item .tz-pi-meta { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
     .tz-popup-item .tz-pi-time { font-size: 12px; font-weight: 600; color: var(--text-muted); white-space: nowrap; margin-left: auto; }
+    .contact-suggest {
+      position: absolute; top: 100%; left: 0; right: 0; z-index: 400; margin-top: 2px;
+      background: var(--surface); border: 1px solid var(--border); border-radius: 8px;
+      box-shadow: 0 8px 20px rgba(0,0,0,0.15); max-height: 180px; overflow-y: auto;
+    }
+    .contact-suggest.hidden { display: none; }
+    .contact-suggest-item { padding: 7px 12px; font-size: 13px; color: var(--text); cursor: pointer; }
+    .contact-suggest-item:hover { background: var(--bg); }
 
     .summary-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
     .summary-stat {
@@ -1428,7 +1436,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.44</div>
+      <div class="sidebar-version">v1.5.45</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1871,14 +1879,18 @@
           </div>
           <input type="hidden" id="commDuration">
 
-          <div class="form-group">
+          <div class="form-group" style="position:relative">
             <label class="form-label">Organizer / Sent by</label>
-            <input type="text" class="form-input" id="commOrganizer" placeholder="e.g. Alice">
+            <input type="text" class="form-input" id="commOrganizer" placeholder="e.g. Alice" autocomplete="off"
+                   oninput="contactAutocomplete(this)" onfocus="contactAutocomplete(this)" onblur="hideContactSuggest('commOrganizerSuggest')">
+            <div class="contact-suggest hidden" id="commOrganizerSuggest" data-input="commOrganizer" data-multi="0"></div>
           </div>
 
-          <div class="form-group">
+          <div class="form-group" style="position:relative">
             <label class="form-label">Participants</label>
-            <input type="text" class="form-input" id="commParticipants" placeholder="e.g. Alice, Bob">
+            <input type="text" class="form-input" id="commParticipants" placeholder="e.g. Alice, Bob" autocomplete="off"
+                   oninput="contactAutocomplete(this)" onfocus="contactAutocomplete(this)" onblur="hideContactSuggest('commParticipantsSuggest')">
+            <div class="contact-suggest hidden" id="commParticipantsSuggest" data-input="commParticipants" data-multi="1"></div>
           </div>
 
           <div class="form-group">
@@ -2222,6 +2234,7 @@
     let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
     let projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
     let comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
+    let knownContacts = JSON.parse(localStorage.getItem('dp_contacts_v1') || '[]');
 
     let currentView      = 'today';
     let activeProjectId  = null;
@@ -2325,6 +2338,66 @@
     function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups));    scheduleGistSave(); scheduleAutoDownload(); }
     function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); scheduleAutoDownload(); }
     function persistComms()    { localStorage.setItem('dp_comms_v1',    JSON.stringify(comms));        scheduleGistSave(); scheduleAutoDownload(); }
+    function persistContacts() { localStorage.setItem('dp_contacts_v1', JSON.stringify(knownContacts)); }
+
+    /* ── Known contacts (Organizer / Participants autocomplete) ── */
+    function splitNames(str) {
+      return (str || '').split(',').map(s => s.trim()).filter(Boolean);
+    }
+    function registerContacts(str) {
+      let changed = false;
+      splitNames(str).forEach(name => {
+        if (!knownContacts.some(n => n.toLowerCase() === name.toLowerCase())) {
+          knownContacts.push(name);
+          changed = true;
+        }
+      });
+      if (changed) persistContacts();
+    }
+    function contactAutocomplete(el) {
+      const box = document.getElementById(el.id + 'Suggest');
+      if (!box) return;
+      const multi = box.dataset.multi === '1';
+      const raw   = el.value;
+      const lastComma = raw.lastIndexOf(',');
+      const query = (multi && lastComma >= 0 ? raw.slice(lastComma + 1) : raw).trim();
+      if (!query) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+      const q = query.toLowerCase();
+      const already = multi ? splitNames(raw.slice(0, lastComma + 1)).map(n => n.toLowerCase()) : [];
+      const matches = knownContacts
+        .filter(n => { const ln = n.toLowerCase(); return ln.includes(q) && ln !== q && !already.includes(ln); })
+        .sort((a, b) => a.localeCompare(b))
+        .slice(0, 8);
+      if (!matches.length) { box.classList.add('hidden'); box.innerHTML = ''; return; }
+      box.innerHTML = matches.map(n =>
+        `<div class="contact-suggest-item" data-name="${esc(n)}" onmousedown="event.preventDefault();pickContactSuggestion(this)">${esc(n)}</div>`
+      ).join('');
+      box.classList.remove('hidden');
+    }
+    function pickContactSuggestion(el) {
+      const name  = el.dataset.name;
+      const box   = el.parentElement;
+      const input = document.getElementById(box.dataset.input);
+      const multi = box.dataset.multi === '1';
+      if (multi) {
+        const raw = input.value;
+        const lastComma = raw.lastIndexOf(',');
+        const prefix = lastComma >= 0 ? raw.slice(0, lastComma + 1).replace(/\s+$/, '') + ' ' : '';
+        input.value = prefix + name + ', ';
+      } else {
+        input.value = name;
+      }
+      box.classList.add('hidden');
+      box.innerHTML = '';
+      input.focus();
+    }
+    function hideContactSuggest(id) {
+      // Delay so a click on a suggestion (mousedown) can still register before we hide it.
+      setTimeout(() => {
+        const box = document.getElementById(id);
+        if (box) { box.classList.add('hidden'); box.innerHTML = ''; }
+      }, 150);
+    }
 
     function scheduleAutoDownload() {
       if (!autoDownload || backupFrequency !== 'save') return;
@@ -5982,6 +6055,9 @@ const renderers = {
       } else {
         comms.push(entry);
       }
+
+      registerContacts(entry.organizer);
+      registerContacts(entry.participants);
 
       persistComms();
       _notifyMainWindow();
