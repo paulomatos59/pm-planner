@@ -1422,7 +1422,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.37</div>
+      <div class="sidebar-version">v1.5.38</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5091,6 +5091,7 @@ const renderers = {
     let commDateTo     = '';
     let commSortDir    = 'desc';  // 'desc' = newest first, 'asc' = oldest first
     let commHideDone   = false;
+    let commSearchQuery = '';
 
     const COMM_ICONS = { Meeting: '🤝', Slack: '💬', Email: '📧', Phone: '📞' };
 
@@ -5499,10 +5500,26 @@ const renderers = {
       return { from: fmtD(d8w), to: fmtD(d6m) };
     }
 
+    function commMatchesSearch(c, needle) {
+      if (!needle) return true;
+      const proj = c.projectId  ? projects.find(p => p.id === c.projectId)  : null;
+      const pers = c.personalId ? projects.find(p => p.id === c.personalId) : null;
+      const haystack = [
+        c.title, c.date, formatCommDate(c.date), c.organizer, c.participants,
+        proj?.name, pers?.name
+      ].filter(Boolean).join(' ').toLowerCase();
+      return haystack.includes(needle);
+    }
+
     function renderComms() {
-      const typeFiltered = commTypeFilter === 'All'
+      const typeFiltered0 = commTypeFilter === 'All'
         ? [...comms]
         : comms.filter(c => c.type === commTypeFilter);
+
+      const searchNeedle = commSearchQuery.trim().toLowerCase();
+      const typeFiltered = searchNeedle
+        ? typeFiltered0.filter(c => commMatchesSearch(c, searchNeedle))
+        : typeFiltered0;
 
       const { from: fromDate, to: toDate } = _commWindowDates();
 
@@ -5529,6 +5546,8 @@ const renderers = {
         `<button class="comm-filter-chip ${commTypeFilter === t ? 'active' : ''}" onclick="setCommFilter('${t}')">${t === 'All' ? '🗂 All' : COMM_ICONS[t] + ' ' + t}</button>`
       ).join('');
 
+      const searchInput = `<input type="text" class="filter-input" id="commSearch" placeholder="🔍 Search title, date, organizer, participants, project…" autocomplete="off" value="${esc(commSearchQuery)}" oninput="setCommSearch(this.value)">`;
+
       const sortBtn     = `<button class="comm-filter-chip${commSortDir==='desc'?' active':''}" onclick="toggleCommSortDir()" title="Toggle date order">${commSortDir==='desc' ? '↓ Newest First' : '↑ Oldest First'}</button>`;
       const hideDoneBtn = `<button class="comm-filter-chip${commHideDone?' active':''}" onclick="toggleCommHideDone()">${commHideDone ? '✓ Hiding Done' : '👁 Show Done'}</button>`;
 
@@ -5542,7 +5561,7 @@ const renderers = {
         </div>
         <div class="comm-time-tabs">${timeTabs}</div>
         ${customRangeHtml}
-        <div class="comm-filter-bar">${typeButtons}<span style="margin-left:auto;display:flex;gap:6px">${sortBtn}${hideDoneBtn}</span></div>`;
+        <div class="comm-filter-bar">${searchInput}${typeButtons}<span style="margin-left:auto;display:flex;gap:6px">${sortBtn}${hideDoneBtn}</span></div>`;
 
       // Build expanded occurrence entries within the window
       const groups = {};
@@ -5604,6 +5623,13 @@ const renderers = {
       commTimeTab = tab;
       if (tab === 'week' || tab === 'nextweek') commSortDir = 'asc';
       showView('comms');
+    }
+    function setCommSearch(val) {
+      commSearchQuery = val;
+      const caret = document.getElementById('commSearch')?.selectionStart ?? val.length;
+      showView('comms');
+      const el = document.getElementById('commSearch');
+      if (el) { el.focus(); el.setSelectionRange(caret, caret); }
     }
     function setCommCustomRange(field, val) {
       if (field === 'from') commDateFrom = val;
