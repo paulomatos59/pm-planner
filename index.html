@@ -969,6 +969,8 @@
     .swd-cap-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
     .swd-count.has-tasks { color: white; background: var(--primary); border-radius: 10px; padding: 0 6px; font-size: 10px; }
     .swd-count.has-overdue { background: var(--danger); color: white; border-radius: 10px; padding: 0 6px; font-size: 10px; }
+    .swd-comms { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
+    .swd-comm { font-size: 9px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border-left: 2px solid #3b82f6; border-radius: 2px; padding: 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; line-height: 1.4; }
 
     /* ── Collapsible Sidebar Sections ── */
     .sidebar-section { border-bottom: 1px solid var(--border); }
@@ -1437,7 +1439,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.58</div>
+      <div class="sidebar-version">v1.5.59</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3286,13 +3288,15 @@ const renderers = {
       const hour = new Date().getHours();
       const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
 
-      // Week day task counts
+      // Week day task + comm counts
       const weekDays = Array.from({length:7}, (_,i) => {
         const d   = new Date(mon); d.setDate(mon.getDate() + i);
         const ds  = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
         const cnt = open.filter(t => t.dueDate === ds).length;
         const od  = open.filter(t => t.dueDate === ds && isOverdue({...t, dueDate:ds})).length;
-        return { date: d, str: ds, count: cnt, overdue: ds < today && cnt > 0, isToday: ds === today };
+        const dayComms = comms.filter(c => c.date === ds || isRecurCommDueToday(c, ds))
+          .sort((a,b) => (a.startTime||'').localeCompare(b.startTime||''));
+        return { date: d, str: ds, count: cnt, overdue: ds < today && cnt > 0, isToday: ds === today, dayComms };
       });
 
       // Top tasks for today: overdue first, then open today's, then done today's
@@ -3613,6 +3617,7 @@ const renderers = {
                 const remPct   = Math.min(remH / h * 100, Math.max(0, 100 - donePct));
                 const loadColor = totalH > h ? '#ef4444' : totalH >= safe ? '#f59e0b' : '#2563eb';
                 const capBar = isWorkDay ? `<div class="swd-cap" title="${totalH}h total (${remH}h remaining) / ${h}h available" style="overflow:hidden"><div style="display:flex;height:100%;overflow:hidden"><div style="width:${donePct}%;background:#22c55e;height:100%"></div><div style="width:${remPct}%;background:${totalPct>0?loadColor:'transparent'};height:100%"></div></div></div>` : '';
+                const commsHtml = d.dayComms.length ? `<div class="swd-comms">${d.dayComms.map(c=>`<div class="swd-comm" title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`).join('')}</div>` : '';
                 return `<div class="summary-week-day ${d.isToday ? 's-today' : ''}" onclick="showView('week')">
                   <div class="swd-name">${d.date.toLocaleDateString('en-US',{weekday:'short'})}</div>
                   <div class="swd-num">${d.date.getDate()}</div>
@@ -3620,6 +3625,7 @@ const renderers = {
                     ${d.count > 0 ? d.count : '·'}
                   </div>
                   ${capBar}
+                  ${commsHtml}
                 </div>`;
               })()}`).join('')}
           </div>
