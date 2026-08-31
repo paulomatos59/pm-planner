@@ -1439,7 +1439,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.60</div>
+      <div class="sidebar-version">v1.5.61</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3607,7 +3607,17 @@ const renderers = {
                 const cap = capacitySettings;
                 const dow = d.date.getDay();
                 const isWorkDay = cap.workingDays.includes(dow);
-                const totalH = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
+                const commH  = isWorkDay ? d.dayComms.reduce((s,c) => {
+                  if (c.startTime && c.endTime) {
+                    const [sh,sm] = c.startTime.split(':').map(Number);
+                    const [eh,em] = c.endTime.split(':').map(Number);
+                    const diff = (eh*60+em) - (sh*60+sm);
+                    return s + (diff > 0 ? diff/60 : 0);
+                  }
+                  return s + (c.duration ? parseFloat(c.duration)||0 : 0);
+                }, 0) : 0;
+                const taskTotalH = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
+                const totalH = taskTotalH + commH;
                 const doneH  = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
                 const remH   = totalH - doneH;
                 const h      = cap.hoursPerDay;
