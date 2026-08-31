@@ -1437,7 +1437,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.57</div>
+      <div class="sidebar-version">v1.5.58</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3476,7 +3476,7 @@ const renderers = {
                                 || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
                   const st = c._occStatus || 'planned';
                   const stIcon  = st==='done' ? '✅' : st==='not_done' ? '✕' : st==='not_attended' ? '✕' : icon;
-                  const stLabel = st==='done' ? 'Done' : st==='not_done' ? 'Not Done' : st==='not_attended' ? 'Not Attended' : 'Planned';
+                  const stLabel = st==='done' ? 'Done' : st==='not_done' ? 'Canceled' : st==='not_attended' ? 'Not Attended' : 'Planned';
                   const stColor = st==='done' ? '#16a34a' : st==='not_done' ? '#dc2626' : st==='not_attended' ? '#d97706' : '#2563eb';
                   const stBg    = st==='done' ? '#f0fdf4' : st==='not_done' ? '#fef2f2' : st==='not_attended' ? '#fffbeb' : '#eff6ff';
                   const stBorder= st==='done' ? '#bbf7d0' : st==='not_done' ? '#fecaca' : st==='not_attended' ? '#fde68a' : '#bfdbfe';
@@ -3491,7 +3491,7 @@ const renderers = {
                             style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid ${stBorder};color:${stColor};background:${stBg}">
                       <option value="planned"      ${st==='planned'     ?'selected':''}>📅 Planned</option>
                       <option value="done"         ${st==='done'        ?'selected':''}>✅ Done</option>
-                      <option value="not_done"     ${st==='not_done'    ?'selected':''}>✕ Not Done</option>
+                      <option value="not_done"     ${st==='not_done'    ?'selected':''}>✕ Canceled</option>
                       <option value="not_attended" ${st==='not_attended'?'selected':''}>✕ Not Attended</option>
                     </select>
                   </div>`;
@@ -6613,7 +6613,7 @@ const renderers = {
               onchange="event.stopPropagation();${setFn}('${obj.id}','${actualDate}',this.value)">
               <option value="planned"      ${curStatus==='planned'     ?'selected':''}>📅 Planned</option>
               <option value="done"         ${curStatus==='done'        ?'selected':''}>✅ Done</option>
-              <option value="not_done"     ${curStatus==='not_done'    ?'selected':''}>✕ Not Done</option>
+              <option value="not_done"     ${curStatus==='not_done'    ?'selected':''}>✕ Canceled</option>
               <option value="not_attended" ${curStatus==='not_attended'?'selected':''}>✕ Not Attended</option>
             </select>
           </div>`;
