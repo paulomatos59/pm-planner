@@ -80,7 +80,8 @@
     .occ-row:hover { background:var(--bg); }
     .occ-check { width:18px; height:18px; border-radius:50%; border:2px solid var(--border); flex-shrink:0; display:flex; align-items:center; justify-content:center; font-size:10px; transition:all .15s; color:#fff; }
     .occ-check.checked  { background:var(--success); border-color:var(--success); }
-    .occ-check.not-done { background:#dc2626; border-color:#dc2626; font-size:9px; }
+    .occ-check.not-done     { background:#dc2626; border-color:#dc2626; font-size:9px; }
+    .occ-check.not-attended { background:#d97706; border-color:#d97706; font-size:9px; }
     .occ-date-txt { font-size:13px; font-weight:500; flex:1; }
     .occ-date-txt.crossed { text-decoration:line-through; color:var(--text-muted); }
     .occ-pip { font-size:10px; font-weight:700; padding:2px 7px; border-radius:10px; flex-shrink:0; }
@@ -1436,7 +1437,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.56</div>
+      <div class="sidebar-version">v1.5.57</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3335,8 +3336,9 @@ const renderers = {
       // Today's comms — annotate recurring occurrences with today's status
       const getCommTodayStatus = c => {
         if (c.recurrence && c.recurrence.freq) {
-          if (c.completedOccurrences && c.completedOccurrences[today]) return 'done';
-          if (c.notDoneOccurrences   && c.notDoneOccurrences[today])   return 'not_done';
+          if (c.completedOccurrences   && c.completedOccurrences[today])   return 'done';
+          if (c.notDoneOccurrences     && c.notDoneOccurrences[today])     return 'not_done';
+          if (c.notAttendedOccurrences && c.notAttendedOccurrences[today]) return 'not_attended';
           return 'planned';
         }
         return c.status === 'Done' ? 'done' : 'planned';
@@ -3347,8 +3349,9 @@ const renderers = {
         // Keep done/not-done recurring occurrences visible — but only if today
         // is actually a valid occurrence date (prevents yesterday's meetings leaking in)
         (isRecurCommOccurrenceToday(c) && (
-          (c.completedOccurrences && c.completedOccurrences[today]) ||
-          (c.notDoneOccurrences   && c.notDoneOccurrences[today])
+          (c.completedOccurrences   && c.completedOccurrences[today])   ||
+          (c.notDoneOccurrences     && c.notDoneOccurrences[today])     ||
+          (c.notAttendedOccurrences && c.notAttendedOccurrences[today])
         ))
       )
         .map(c => ({ ...c, _occStatus: getCommTodayStatus(c), _occDone: getCommTodayStatus(c) === 'done' }))
@@ -3472,11 +3475,11 @@ const renderers = {
                   const linked  = (c.projectId  ? projects.find(p => p.id === c.projectId)  : null)
                                 || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
                   const st = c._occStatus || 'planned';
-                  const stIcon = st==='done' ? '✅' : st==='not_done' ? '✕' : icon;
-                  const stLabel = st==='done' ? 'Done' : st==='not_done' ? 'Not Done' : 'Planned';
-                  const stColor = st==='done' ? '#16a34a' : st==='not_done' ? '#dc2626' : '#2563eb';
-                  const stBg    = st==='done' ? '#f0fdf4' : st==='not_done' ? '#fef2f2' : '#eff6ff';
-                  const stBorder= st==='done' ? '#bbf7d0' : st==='not_done' ? '#fecaca' : '#bfdbfe';
+                  const stIcon  = st==='done' ? '✅' : st==='not_done' ? '✕' : st==='not_attended' ? '✕' : icon;
+                  const stLabel = st==='done' ? 'Done' : st==='not_done' ? 'Not Done' : st==='not_attended' ? 'Not Attended' : 'Planned';
+                  const stColor = st==='done' ? '#16a34a' : st==='not_done' ? '#dc2626' : st==='not_attended' ? '#d97706' : '#2563eb';
+                  const stBg    = st==='done' ? '#f0fdf4' : st==='not_done' ? '#fef2f2' : st==='not_attended' ? '#fffbeb' : '#eff6ff';
+                  const stBorder= st==='done' ? '#bbf7d0' : st==='not_done' ? '#fecaca' : st==='not_attended' ? '#fde68a' : '#bfdbfe';
                   return `<div class="summary-task-item" onclick="openCommModal('${c.id}')">
                     <span style="font-size:15px;line-height:1;flex-shrink:0">${stIcon}</span>
                     <div style="flex:1;min-width:0">
@@ -3486,9 +3489,10 @@ const renderers = {
                     <select onclick="event.stopPropagation()"
                             onchange="event.stopPropagation();dashSetCommStatus('${c.id}',this.value)"
                             style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid ${stBorder};color:${stColor};background:${stBg}">
-                      <option value="planned"  ${st==='planned' ?'selected':''}>📅 Planned</option>
-                      <option value="done"     ${st==='done'    ?'selected':''}>✅ Done</option>
-                      <option value="not_done" ${st==='not_done'?'selected':''}>✕ Not Done</option>
+                      <option value="planned"      ${st==='planned'     ?'selected':''}>📅 Planned</option>
+                      <option value="done"         ${st==='done'        ?'selected':''}>✅ Done</option>
+                      <option value="not_done"     ${st==='not_done'    ?'selected':''}>✕ Not Done</option>
+                      <option value="not_attended" ${st==='not_attended'?'selected':''}>✕ Not Attended</option>
                     </select>
                   </div>`;
                 }).join('')}</div>`
@@ -6106,8 +6110,9 @@ const renderers = {
         personalId:   document.getElementById('commPersonal').value     || '',
         notes:               document.getElementById('commDesc').innerHTML.trim() || '',
         recurrence,
-        completedOccurrences: editingCommId ? (comms.find(c => c.id === editingCommId)?.completedOccurrences || {}) : {},
-        notDoneOccurrences:   editingCommId ? (comms.find(c => c.id === editingCommId)?.notDoneOccurrences   || {}) : {},
+        completedOccurrences:   editingCommId ? (comms.find(c => c.id === editingCommId)?.completedOccurrences   || {}) : {},
+        notDoneOccurrences:     editingCommId ? (comms.find(c => c.id === editingCommId)?.notDoneOccurrences     || {}) : {},
+        notAttendedOccurrences: editingCommId ? (comms.find(c => c.id === editingCommId)?.notAttendedOccurrences || {}) : {},
         dateOverrides:        editingCommId ? (comms.find(c => c.id === editingCommId)?.dateOverrides || {}) : {},
         createdAt:    editingCommId ? (comms.find(c => c.id === editingCommId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
         updatedAt:    new Date().toISOString()
@@ -6576,34 +6581,40 @@ const renderers = {
       const to   = `${d6m.getFullYear()}-${pad(d6m.getMonth()+1)}-${pad(d6m.getDate())}`;
       const key  = type === 'task' ? 'dueDate' : 'date';
       const allOccs = getAllOccurrences(obj, key, to).filter(d => d >= from);
-      const comp     = obj.completedOccurrences || {};
-      const notDone  = obj.notDoneOccurrences   || {};
+      const comp         = obj.completedOccurrences    || {};
+      const notDone      = obj.notDoneOccurrences      || {};
+      const notAttended  = obj.notAttendedOccurrences  || {};
       const overrides = obj.dateOverrides || {};
       const hide     = _occHideDone[type];
       const setFn    = type === 'task' ? 'setOccurrenceStatus' : 'setCommOccurrenceStatus';
       const updateFn = type === 'task' ? 'updateOccurrenceDate' : 'updateCommOccurrenceDate';
       let html = '';
       for (const origDate of allOccs) {
-        const actualDate = overrides[origDate] || origDate;
-        const isDone    = !!comp[actualDate];
-        const isNotDone = !!notDone[actualDate];
-        const curStatus = isDone ? 'done' : isNotDone ? 'not_done' : 'planned';
+        const actualDate    = overrides[origDate] || origDate;
+        const isDone        = !!comp[actualDate];
+        const isNotDone     = !!notDone[actualDate];
+        const isNotAttended = !!notAttended[actualDate];
+        const curStatus = isDone ? 'done' : isNotDone ? 'not_done' : isNotAttended ? 'not_attended' : 'planned';
         if (hide && isDone) continue;
-        const statusColor = isDone ? '#16a34a' : isNotDone ? '#dc2626' : '#2563eb';
-        const statusBg    = isDone ? '#f0fdf4' : isNotDone ? '#fef2f2' : '#eff6ff';
+        const statusColor = isDone ? '#16a34a' : isNotDone ? '#dc2626' : isNotAttended ? '#d97706' : '#2563eb';
+        const statusBg    = isDone ? '#f0fdf4' : isNotDone ? '#fef2f2' : isNotAttended ? '#fffbeb' : '#eff6ff';
+        const checkClass  = isDone ? 'checked' : isNotDone ? 'not-done' : isNotAttended ? 'not-attended' : '';
+        const checkIcon   = isDone ? '✓' : (isNotDone || isNotAttended) ? '✕' : '';
+        const crossedCls  = (isDone || isNotDone || isNotAttended) ? 'crossed' : '';
         html += `
           <div class="occ-row" style="cursor:default">
-            <div class="occ-check ${isDone?'checked':isNotDone?'not-done':''}">${isDone?'✓':isNotDone?'✕':''}</div>
-            <input type="date" class="occ-date-input ${isDone||isNotDone?'crossed':''}" value="${actualDate}"
+            <div class="occ-check ${checkClass}">${checkIcon}</div>
+            <input type="date" class="occ-date-input ${crossedCls}" value="${actualDate}"
               onclick="event.stopPropagation()"
               onchange="event.stopPropagation();${updateFn}('${obj.id}','${origDate}',this.value)">
             <select class="occ-status-select"
               style="font-size:11px;font-weight:600;padding:1px 4px;border-radius:4px;border:1px solid ${statusColor};color:${statusColor};background:${statusBg};cursor:pointer"
               onclick="event.stopPropagation()"
               onchange="event.stopPropagation();${setFn}('${obj.id}','${actualDate}',this.value)">
-              <option value="planned" ${curStatus==='planned'?'selected':''}>📅 Planned</option>
-              <option value="done"    ${curStatus==='done'   ?'selected':''}>✅ Done</option>
-              <option value="not_done"${curStatus==='not_done'?'selected':''}>✕ Not Done</option>
+              <option value="planned"      ${curStatus==='planned'     ?'selected':''}>📅 Planned</option>
+              <option value="done"         ${curStatus==='done'        ?'selected':''}>✅ Done</option>
+              <option value="not_done"     ${curStatus==='not_done'    ?'selected':''}>✕ Not Done</option>
+              <option value="not_attended" ${curStatus==='not_attended'?'selected':''}>✕ Not Attended</option>
             </select>
           </div>`;
       }
@@ -6655,12 +6666,15 @@ const renderers = {
     function setCommOccurrenceStatus(commId, dateStr, status) {
       const c = comms.find(x => x.id === commId);
       if (!c) return;
-      if (!c.completedOccurrences) c.completedOccurrences = {};
-      if (!c.notDoneOccurrences)   c.notDoneOccurrences   = {};
+      if (!c.completedOccurrences)   c.completedOccurrences   = {};
+      if (!c.notDoneOccurrences)     c.notDoneOccurrences     = {};
+      if (!c.notAttendedOccurrences) c.notAttendedOccurrences = {};
       delete c.completedOccurrences[dateStr];
       delete c.notDoneOccurrences[dateStr];
-      if (status === 'done')     c.completedOccurrences[dateStr] = new Date().toISOString();
-      if (status === 'not_done') c.notDoneOccurrences[dateStr]   = new Date().toISOString();
+      delete c.notAttendedOccurrences[dateStr];
+      if (status === 'done')         c.completedOccurrences[dateStr]   = new Date().toISOString();
+      if (status === 'not_done')     c.notDoneOccurrences[dateStr]     = new Date().toISOString();
+      if (status === 'not_attended') c.notAttendedOccurrences[dateStr] = new Date().toISOString();
       c.updatedAt = new Date().toISOString();
       persistComms();
       renderCommOccurrences(commId);
@@ -6686,12 +6700,15 @@ const renderers = {
       if (!c) return;
       const today = todayStr();
       if (c.recurrence && c.recurrence.freq) {
-        if (!c.completedOccurrences) c.completedOccurrences = {};
-        if (!c.notDoneOccurrences)   c.notDoneOccurrences   = {};
+        if (!c.completedOccurrences)   c.completedOccurrences   = {};
+        if (!c.notDoneOccurrences)     c.notDoneOccurrences     = {};
+        if (!c.notAttendedOccurrences) c.notAttendedOccurrences = {};
         delete c.completedOccurrences[today];
         delete c.notDoneOccurrences[today];
-        if (status === 'done')     c.completedOccurrences[today] = new Date().toISOString();
-        if (status === 'not_done') c.notDoneOccurrences[today]   = new Date().toISOString();
+        delete c.notAttendedOccurrences[today];
+        if (status === 'done')         c.completedOccurrences[today]   = new Date().toISOString();
+        if (status === 'not_done')     c.notDoneOccurrences[today]     = new Date().toISOString();
+        if (status === 'not_attended') c.notAttendedOccurrences[today] = new Date().toISOString();
       } else {
         c.status = status === 'done' ? 'Done' : 'Planned';
       }
