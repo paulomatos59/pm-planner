@@ -970,7 +970,8 @@
     .swd-count.has-tasks { color: white; background: var(--primary); border-radius: 10px; padding: 0 6px; font-size: 10px; }
     .swd-count.has-overdue { background: var(--danger); color: white; border-radius: 10px; padding: 0 6px; font-size: 10px; }
     .swd-comms { margin-top: 4px; display: flex; flex-direction: column; gap: 2px; }
-    .swd-comm { font-size: 9px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border-left: 2px solid #3b82f6; border-radius: 2px; padding: 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; line-height: 1.4; }
+    .swd-comm          { font-size: 9px; font-weight: 600; color: #1d4ed8; background: #eff6ff; border-left: 2px solid #3b82f6; border-radius: 2px; padding: 1px 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-align: left; line-height: 1.4; }
+    .swd-comm.canceled { color: #9ca3af; background: #f3f4f6; border-left-color: #d1d5db; text-decoration: line-through; }
 
     /* ── Collapsible Sidebar Sections ── */
     .sidebar-section { border-bottom: 1px solid var(--border); }
@@ -1439,7 +1440,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.61</div>
+      <div class="sidebar-version">v1.5.62</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3627,7 +3628,12 @@ const renderers = {
                 const remPct   = Math.min(remH / h * 100, Math.max(0, 100 - donePct));
                 const loadColor = totalH > h ? '#ef4444' : totalH >= safe ? '#f59e0b' : '#2563eb';
                 const capBar = isWorkDay ? `<div class="swd-cap" title="${totalH}h total (${remH}h remaining) / ${h}h available" style="overflow:hidden"><div style="display:flex;height:100%;overflow:hidden"><div style="width:${donePct}%;background:#22c55e;height:100%"></div><div style="width:${remPct}%;background:${totalPct>0?loadColor:'transparent'};height:100%"></div></div></div>` : '';
-                const commsHtml = d.dayComms.length ? `<div class="swd-comms">${d.dayComms.map(c=>`<div class="swd-comm" title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`).join('')}</div>` : '';
+                const commsHtml = d.dayComms.length ? `<div class="swd-comms">${d.dayComms.map(c => {
+                  const isCanceled = (c.recurrence && c.recurrence.freq)
+                    ? !!(c.notDoneOccurrences && c.notDoneOccurrences[d.str])
+                    : c.status === 'Canceled';
+                  return `<div class="swd-comm${isCanceled?' canceled':''}" title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`;
+                }).join('')}</div>` : '';
                 return `<div class="summary-week-day ${d.isToday ? 's-today' : ''}" onclick="showView('week')">
                   <div class="swd-name">${d.date.toLocaleDateString('en-US',{weekday:'short'})}</div>
                   <div class="swd-num">${d.date.getDate()}</div>
