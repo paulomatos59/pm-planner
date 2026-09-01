@@ -1440,7 +1440,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.62</div>
+      <div class="sidebar-version">v1.5.63</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2626,19 +2626,13 @@
     function isRecurDueToday(t, dateStr) {
       if (!t.recurrence || !t.recurrence.freq || t.status === 'Done') return false;
       const today = dateStr || todayStr();
-      // If today's occurrence is already marked done, remove from today list
       if (t.completedOccurrences && t.completedOccurrences[today]) return false;
-      if ((t.dueDate||'') >= today) return false; // already current/future
-      let cur = t.dueDate;
-      for (let i = 0; i < 730; i++) {
-        const next = nextRecurDate(cur, t.recurrence);
-        if (!next || next <= cur) break;
-        if (t.recurrence.endDate && next > t.recurrence.endDate) break;
-        if (next > today) break;
-        if (next === today) return true;
-        cur = next;
-      }
-      return false;
+      // Use startDate as anchor when it precedes dueDate (series start model)
+      const anchor = (t.startDate && t.startDate < (t.dueDate || '9999-99-99'))
+        ? t.startDate : t.dueDate;
+      if (!anchor) return false;
+      const anchorObj = { ...t, dueDate: anchor };
+      return getAllOccurrences(anchorObj, 'dueDate', today).includes(today);
     }
 
     // Returns the set of actual occurrence dates (after applying dateOverrides) for a comm, up to maxDate.
@@ -6601,8 +6595,17 @@ const renderers = {
       const from = `${d8w.getFullYear()}-${pad(d8w.getMonth()+1)}-${pad(d8w.getDate())}`;
       const d6m = new Date(); d6m.setMonth(d6m.getMonth() + 6);
       const to   = `${d6m.getFullYear()}-${pad(d6m.getMonth()+1)}-${pad(d6m.getDate())}`;
+      let firstDate;
+      if (type === 'task') {
+        // Use startDate as the series anchor when it predates dueDate
+        firstDate = (obj.startDate && obj.startDate < (obj.dueDate || '9999-99-99'))
+          ? obj.startDate : obj.dueDate;
+      } else {
+        firstDate = obj.date;
+      }
+      const occAnchorObj = type === 'task' ? { ...obj, dueDate: firstDate } : obj;
       const key  = type === 'task' ? 'dueDate' : 'date';
-      const allOccs = getAllOccurrences(obj, key, to).filter(d => d >= from);
+      const allOccs = getAllOccurrences(occAnchorObj, key, to).filter(d => d >= from);
       const comp         = obj.completedOccurrences    || {};
       const notDone      = obj.notDoneOccurrences      || {};
       const notAttended  = obj.notAttendedOccurrences  || {};
