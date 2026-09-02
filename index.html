@@ -1458,7 +1458,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.64</div>
+      <div class="sidebar-version">v1.5.65</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8120,32 +8120,42 @@ const renderers = {
     /* ==============================
        EMOJI PICKER
     ============================== */
-    const EMOJI_DATA = [
-      { cat: 'Smileys', e: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🫣','🤫','🤔','🫡','🤐','🥴','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥱','😵','🤯','🤠','🥸','😎','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🫥','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👾','🤖'] },
-      { cat: 'People', e: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🫰','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','💪','🦾','🖕','🦵','🦿','🦻','🧠','🫀','🦷','👀','👁️','👅','👃','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'] },
-      { cat: 'Nature', e: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦀','🦞','🦐','🦣','🐠','🐟','🐡','🐬','🦭','🐳','🐋','🦈','🦩','🦚','🦜','🌵','🌲','🌳','🌴','🌾','🌿','☘️','🍀','🍁','🍂','🍃','🌺','🌸','🌼','🌻','🌹','🌷','💐','🍄','🌊','🌬️','🌀','🌈','☀️','🌤️','⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','🌬️','💧','💦','🌍','🌎','🌏','🌐'] },
-      { cat: 'Food', e: ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🌽','🍠','🥐','🥖','🍞','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥙','🧆','🌮','🌯','🥗','🍜','🍝','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','☕','🍵','🧉','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🍾'] },
-      { cat: 'Travel', e: ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛺','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏟️','🏛️','🏗️','🧱','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋'] },
-      { cat: 'Objects', e: ['⌚','📱','💻','🖥️','🖨️','⌨️','🖱️','🖲️','💾','💿','📀','🎥','📷','📸','📹','📼','🔍','🔎','📡','📺','📻','📠','📟','☎️','📞','📲','📳','📴','📵','📶','📷','🔋','🔌','💡','🔦','🕯️','🪔','🧯','💰','💴','💵','💶','💷','💸','💳','🧾','💹','📈','📉','📊','📋','📌','📍','📎','🖇️','📐','📏','✂️','🗃️','🗄️','🗑️','🔒','🔓','🔏','🔐','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🔫','🏹','🛡️','🔧','🔩','⚙️','🗜️','⚖️','🦯','🔗','⛓️','🧲','🪝','🧰','🪛','🔬','🔭','📡','💊','🩺','🩹','🩻','🚑','🏮','🧲','🎁','🎀','🎊','🎉','🎈','🎏','🎐','🧧','🎑','🎃','🎄'] },
-      { cat: 'Symbols', e: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🔕','🔇','🔈','🔉','🔊','📣','📢','🔔','🔕','🎵','🎶','💹','🔱','⚜️','🏁','🚩','🎌','🏴','🏳️','✅','❎','🔀','🔁','🔂','⏩','⏪','⏫','⏬','🔼','🔽','⏭️','⏮️','⏯️','🔃','💠','Ⓜ️','🌀','♻️','🔚','🔛','🔜','🔝','🆒','🆓','🆕','🆙','🆗','🅿️','🈳','🈂️','🛂','🛃','🛄','🛅','⚠️','🚸','⛔','🚫','🚳','🚭','🚯','🚱','🚷','⚡','🔥','✨','⭐','🌟','💥','💫','💦','💨'] },
+    // Flat list: [emoji, keywords...] — used for search
+    const EMOJI_FLAT = [
+      ['😀','grinning smile happy'],['😃','big smile happy grin'],['😄','smile happy joy'],['😁','grin beam happy'],['😆','laugh happy haha'],['😅','sweat smile'],['🤣','rolling floor laugh lol'],['😂','joy laugh cry tears'],['🙂','slightly smile'],['🙃','upside smile'],['😉','wink'],['😊','blush smile happy'],['😇','angel halo smile'],['🥰','love hearts smile'],['😍','heart eyes love'],['🤩','star eyes excited'],['😘','kiss blow love'],['😎','sunglasses cool'],['🤔','thinking hmm'],['😐','neutral expressionless'],['😑','expressionless blank'],['😒','unamused'],['🙄','eye roll'],['😬','grimace'],['😴','sleep sleepy zzz'],['😷','mask sick ill'],['🤒','sick thermometer ill'],['🤕','sick hurt injury'],['🤢','sick nausea green'],['🤮','sick vomit'],['🤧','sneeze sick'],['😵','dizzy'],['🤯','explode mind blown'],['😤','steam angry'],['😡','angry red mad'],['😠','angry mad'],['🤬','cursing swear'],['😈','devil evil smirk'],['👿','devil angry'],['💀','skull death dead'],['💩','poop shit'],['👻','ghost spooky'],['🤖','robot'],
+      ['👋','wave hello hi'],['👍','thumbs up like good ok'],['👎','thumbs down dislike bad'],['👏','clap applause'],['🙏','pray thanks please'],['💪','muscle strong flex'],['✌️','peace victory'],['🤝','handshake deal'],['🫶','heart hands love'],['👀','eyes look see'],['🤦','facepalm'],['🤷','shrug dunno'],
+      ['❤️','red heart love'],['🧡','orange heart'],['💛','yellow heart'],['💚','green heart'],['💙','blue heart'],['💜','purple heart'],['🖤','black heart'],['🤍','white heart'],['💔','broken heart'],['❤️‍🔥','heart fire love'],['💯','100 perfect'],['✅','check mark done ok'],['❌','cross no wrong'],['⚠️','warning alert'],['🔥','fire hot lit'],['⭐','star'],['🌟','glowing star'],['💥','boom explosion'],['✨','sparkles shine'],['🎉','party celebrate tada'],['🎊','confetti party'],['🎈','balloon party'],['🏆','trophy win prize'],['🥇','gold medal first'],['🏅','medal award'],['🎯','target bullseye'],['📌','pin pushpin'],['📍','pin location'],['📎','paperclip'],['🔑','key'],['🔒','lock secure'],['🔓','unlock'],['🔍','search magnify'],['💡','idea lightbulb'],['📢','announcement'],['📣','megaphone'],['🚀','rocket launch'],['⏰','alarm clock time'],['📅','calendar date'],['📆','calendar'],['📝','memo note write'],['✏️','pencil edit write'],['📊','chart graph bar'],['📈','chart up growth'],['📉','chart down decline'],['🗂️','folder file'],['📁','folder'],['📂','open folder'],['💾','save disk'],['💻','laptop computer'],['📱','phone mobile'],['📞','phone call'],['📧','email envelope'],['🔔','bell notification'],['🔕','mute no bell'],
+      ['🐶','dog'],['🐱','cat'],['🐻','bear'],['🐼','panda'],['🦁','lion'],['🐯','tiger'],['🦊','fox'],['🐮','cow'],['🐷','pig'],['🐸','frog'],['🐵','monkey'],['🦄','unicorn'],['🐢','turtle'],['🦋','butterfly'],['🐝','bee'],['🦀','crab'],['🐬','dolphin'],['🌵','cactus'],['🌹','rose flower'],['🌺','flower hibiscus'],['🌸','cherry blossom flower'],['🌻','sunflower'],['🍀','clover lucky'],['☀️','sun sunny'],['🌙','moon night'],['⛅','cloud sun partly'],['🌧️','rain cloud'],['❄️','snow cold ice'],['🌈','rainbow'],
+      ['🍎','apple red'],['🍊','orange fruit'],['🍋','lemon'],['🍇','grapes'],['🍓','strawberry'],['🫐','blueberry'],['🍒','cherry'],['🍑','peach'],['🥑','avocado'],['🍕','pizza'],['🍔','burger hamburger'],['🍟','fries'],['🌭','hotdog'],['🌮','taco'],['🌯','wrap burrito'],['🍜','noodles ramen'],['🍣','sushi'],['🧁','cupcake'],['🎂','cake birthday'],['🍰','cake slice'],['🍫','chocolate'],['🍬','candy'],['🍭','lollipop'],['🍿','popcorn'],['☕','coffee'],['🍵','tea'],['🍺','beer'],['🍷','wine'],['🍸','cocktail'],['🥂','champagne toast'],
+      ['🚗','car vehicle'],['🚕','taxi'],['🚌','bus'],['✈️','plane airplane fly travel'],['🚂','train'],['🚢','ship boat'],['🚲','bike bicycle'],['🏠','house home'],['🏢','office building'],['🏥','hospital'],['🏦','bank'],['🏫','school'],['🏖️','beach'],['🏔️','mountain'],['🗺️','map travel'],
+      ['💰','money bag cash'],['💳','credit card'],['📈','growth up chart'],['💹','chart yen money'],['🏦','bank money'],
+    ];
+
+    // Group by category for display (when no search)
+    const EMOJI_CATS = [
+      { cat: 'Smileys & Emotion', keys: ['smile','happy','laugh','love','angry','sad','cry','scared'] },
+      { cat: 'People & Hands',    keys: ['wave','thumbs','clap','pray','muscle','handshake'] },
+      { cat: 'Objects & Symbols', keys: ['heart','fire','star','check','pin','key','lock','search','idea','chart','note','bell','phone','laptop','email','rocket','clock','calendar','100'] },
+      { cat: 'Nature',            keys: ['dog','cat','bear','lion','fox','flower','sun','moon','rain','snow','rainbow'] },
+      { cat: 'Food & Drink',      keys: ['apple','pizza','burger','sushi','coffee','beer','wine','cake'] },
+      { cat: 'Travel',            keys: ['car','plane','bus','train','ship','house','office','beach','mountain'] },
     ];
 
     let _emojiPickerTarget = null; // The RTE editor element that requested the picker
     let _emojiPickerSaved  = null; // Saved selection range
 
+    function _emojiBtn(e) {
+      return `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')" title="${e}">${e}</button>`;
+    }
+
     function _buildEmojiPicker() {
       const wrap = document.createElement('div');
       wrap.id = 'rteEmojiPicker';
       wrap.innerHTML = `
-        <input id="rteEmojiSearch" type="text" placeholder="Search emoji…" oninput="_filterEmojis(this.value)">
-        <div id="rteEmojiScroll">
-          ${EMOJI_DATA.map(cat => `
-            <div class="emoji-category-label">${cat.cat}</div>
-            <div class="emoji-grid">${cat.e.map(e => `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')">${e}</button>`).join('')}</div>
-          `).join('')}
-        </div>`;
+        <input id="rteEmojiSearch" type="text" placeholder="Search emoji…" oninput="_filterEmojis(this.value)" autocomplete="off">
+        <div id="rteEmojiScroll"></div>`;
       document.body.appendChild(wrap);
-      // Close on outside click
+      _filterEmojis(''); // render initial state
       document.addEventListener('mousedown', e => {
         if (!wrap.contains(e.target) && !e.target.classList.contains('rte-emoji-toggle')) {
           wrap.classList.remove('open');
@@ -8156,15 +8166,24 @@ const renderers = {
     function _filterEmojis(q) {
       const scroll = document.getElementById('rteEmojiScroll');
       if (!scroll) return;
-      if (!q) {
-        scroll.innerHTML = EMOJI_DATA.map(cat => `
-          <div class="emoji-category-label">${cat.cat}</div>
-          <div class="emoji-grid">${cat.e.map(e => `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')">${e}</button>`).join('')}</div>
-        `).join('');
+      const term = (q || '').toLowerCase().trim();
+      if (!term) {
+        // Show all grouped by category
+        scroll.innerHTML = EMOJI_CATS.map(cat => {
+          const emojis = EMOJI_FLAT.filter(row => cat.keys.some(k => row[1].includes(k)));
+          if (!emojis.length) return '';
+          return `<div class="emoji-category-label">${cat.cat}</div><div class="emoji-grid">${emojis.map(r => _emojiBtn(r[0])).join('')}</div>`;
+        }).join('') +
+        // Anything not grouped
+        `<div class="emoji-category-label">All</div><div class="emoji-grid">${EMOJI_FLAT.map(r => _emojiBtn(r[0])).join('')}</div>`;
         return;
       }
-      const all = EMOJI_DATA.flatMap(c => c.e);
-      scroll.innerHTML = `<div class="emoji-grid">${all.map(e => `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')">${e}</button>`).join('')}</div>`;
+      const results = EMOJI_FLAT.filter(row => row[1].includes(term));
+      if (!results.length) {
+        scroll.innerHTML = `<div style="padding:12px;font-size:13px;color:var(--text-muted);text-align:center">No results for "${q}"</div>`;
+      } else {
+        scroll.innerHTML = `<div class="emoji-grid">${results.map(r => _emojiBtn(r[0])).join('')}</div>`;
+      }
     }
 
     function openEmojiPicker(btn, editorId) {
@@ -8176,9 +8195,10 @@ const renderers = {
       _emojiPickerSaved = (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
       // Toggle
       if (picker.classList.contains('open')) { picker.classList.remove('open'); return; }
-      // Clear search
+      // Reset search
       const search = document.getElementById('rteEmojiSearch');
-      if (search) { search.value = ''; _filterEmojis(''); }
+      if (search) { search.value = ''; }
+      _filterEmojis('');
       // Position near button
       const rect = btn.getBoundingClientRect();
       picker.style.left = Math.min(rect.left, window.innerWidth - 295) + 'px';
