@@ -557,6 +557,24 @@
       box-shadow: 0 8px 24px rgba(0,0,0,0.18);
     }
     .rte-color-popup.hidden { display: none; }
+    /* Emoji picker */
+    #rteEmojiPicker {
+      position: fixed; z-index: 9999; background: var(--surface);
+      border: 1px solid var(--border); border-radius: 10px;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.18);
+      width: 280px; padding: 8px; display: none; flex-direction: column; gap: 6px;
+    }
+    #rteEmojiPicker.open { display: flex; }
+    #rteEmojiSearch {
+      width: 100%; border: 1px solid var(--border); border-radius: 6px;
+      padding: 5px 9px; font-size: 13px; background: var(--bg); color: var(--text);
+      outline: none; box-sizing: border-box;
+    }
+    .emoji-category-label { font-size: 10px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; padding: 2px 0; }
+    .emoji-grid { display: grid; grid-template-columns: repeat(8, 1fr); gap: 1px; }
+    .emoji-btn { font-size: 20px; background: none; border: none; cursor: pointer; border-radius: 5px; padding: 3px; line-height: 1.3; transition: background .1s; }
+    .emoji-btn:hover { background: var(--bg); }
+    #rteEmojiScroll { max-height: 220px; overflow-y: auto; }
     .rte-color-swatch {
       width: 22px; height: 22px; border-radius: 4px; border: 1.5px solid transparent;
       cursor: pointer; transition: transform 0.1s;
@@ -1440,7 +1458,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.63</div>
+      <div class="sidebar-version">v1.5.64</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1554,6 +1572,7 @@
                 </div>
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();rteAddLink()">🔗</button>
+                <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'taskDesc')">😊</button>
                 <label class="rte-btn" title="Attach file" style="cursor:pointer" onmousedown="event.preventDefault()">
                   📎<input type="file" id="rteFileInput" style="display:none" onchange="rteAttachFile(this)" multiple>
                 </label>
@@ -1804,6 +1823,7 @@
                 </div>
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();commRteAddLink()">🔗</button>
+                <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'commDesc')">😊</button>
               </div>
               <div class="rte-editor" id="commDesc" contenteditable="true" data-placeholder="Key points, decisions, action items…"
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
@@ -2055,6 +2075,7 @@
                 </div>
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();fuRteAddLink()">🔗</button>
+                <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'followupNotes')">😊</button>
               </div>
               <div class="rte-editor" id="followupNotes" contenteditable="true" data-placeholder="Context, owner, next steps…"
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
@@ -8095,6 +8116,95 @@ const renderers = {
       _fpStart.setDate(document.getElementById('taskStartDate').value || null, false);
       _fpTask.setDate(document.getElementById('taskDueDate').value   || null, false);
     };
+
+    /* ==============================
+       EMOJI PICKER
+    ============================== */
+    const EMOJI_DATA = [
+      { cat: 'Smileys', e: ['😀','😃','😄','😁','😆','😅','🤣','😂','🙂','🙃','😉','😊','😇','🥰','😍','🤩','😘','😗','😚','😙','🥲','😋','😛','😜','🤪','😝','🤑','🤗','🤭','🫢','🫣','🤫','🤔','🫡','🤐','🥴','😶','😏','😒','🙄','😬','🤥','😌','😔','😪','🤤','😴','😷','🤒','🤕','🤢','🤮','🤧','🥵','🥶','🥱','😵','🤯','🤠','🥸','😎','🧐','😕','🫤','😟','🙁','☹️','😮','😯','😲','😳','🥺','🫥','😦','😧','😨','😰','😥','😢','😭','😱','😖','😣','😞','😓','😩','😫','🥱','😤','😡','😠','🤬','😈','👿','💀','☠️','💩','🤡','👹','👺','👻','👾','🤖'] },
+      { cat: 'People', e: ['👋','🤚','🖐️','✋','🖖','👌','🤌','🤏','✌️','🤞','🫰','🤙','👈','👉','👆','🖕','👇','☝️','🫵','👍','👎','✊','👊','🤛','🤜','👏','🙌','🫶','👐','🤲','🤝','🙏','💪','🦾','🖕','🦵','🦿','🦻','🧠','🫀','🦷','👀','👁️','👅','👃','👶','🧒','👦','👧','🧑','👱','👨','🧔','👩','🧓','👴','👵'] },
+      { cat: 'Nature', e: ['🐶','🐱','🐭','🐹','🐰','🦊','🐻','🐼','🐨','🐯','🦁','🐮','🐷','🐸','🐵','🙈','🙉','🙊','🐔','🐧','🐦','🦆','🦅','🦉','🦇','🐺','🐗','🐴','🦄','🐝','🐛','🦋','🐌','🐞','🐜','🦟','🦗','🕷️','🦂','🐢','🐍','🦎','🦖','🦕','🐙','🦑','🦀','🦞','🦐','🦣','🐠','🐟','🐡','🐬','🦭','🐳','🐋','🦈','🦩','🦚','🦜','🌵','🌲','🌳','🌴','🌾','🌿','☘️','🍀','🍁','🍂','🍃','🌺','🌸','🌼','🌻','🌹','🌷','💐','🍄','🌊','🌬️','🌀','🌈','☀️','🌤️','⛅','🌥️','☁️','🌦️','🌧️','⛈️','🌩️','🌨️','❄️','☃️','⛄','🌬️','💧','💦','🌍','🌎','🌏','🌐'] },
+      { cat: 'Food', e: ['🍎','🍊','🍋','🍇','🍓','🫐','🍈','🍒','🍑','🥭','🍍','🥥','🥝','🍅','🍆','🥑','🥦','🥬','🥒','🌶️','🫑','🧄','🧅','🥔','🌽','🍠','🥐','🥖','🍞','🧀','🥚','🍳','🧈','🥞','🧇','🥓','🥩','🍗','🍖','🌭','🍔','🍟','🍕','🫓','🥙','🧆','🌮','🌯','🥗','🍜','🍝','🍛','🍣','🍱','🥟','🍤','🍙','🍚','🍘','🍥','🥮','🍢','🧁','🍰','🎂','🍮','🍭','🍬','🍫','🍿','🍩','🍪','🌰','🥜','🍯','🧃','🥤','🧋','☕','🍵','🧉','🍺','🍻','🥂','🍷','🥃','🍸','🍹','🍾'] },
+      { cat: 'Travel', e: ['🚗','🚕','🚙','🚌','🚎','🏎️','🚓','🚑','🚒','🚐','🛻','🚚','🚛','🚜','🏍️','🛵','🚲','🛴','🛺','🚍','🚘','🚖','🚡','🚠','🚟','🚃','🚋','🚞','🚝','🚄','🚅','🚈','🚂','🚆','🚇','🚊','🚉','✈️','🛫','🛬','🛩️','💺','🛸','🚁','🛶','⛵','🚤','🛥️','🛳️','⛴️','🚢','🗺️','🧭','🏔️','⛰️','🌋','🗻','🏕️','🏖️','🏜️','🏝️','🏟️','🏛️','🏗️','🧱','🏘️','🏚️','🏠','🏡','🏢','🏣','🏤','🏥','🏦','🏨','🏩','🏪','🏫','🏬','🏭','🏯','🏰','💒','🗼','🗽','⛪','🕌','🛕','🕍','⛩️','🕋'] },
+      { cat: 'Objects', e: ['⌚','📱','💻','🖥️','🖨️','⌨️','🖱️','🖲️','💾','💿','📀','🎥','📷','📸','📹','📼','🔍','🔎','📡','📺','📻','📠','📟','☎️','📞','📲','📳','📴','📵','📶','📷','🔋','🔌','💡','🔦','🕯️','🪔','🧯','💰','💴','💵','💶','💷','💸','💳','🧾','💹','📈','📉','📊','📋','📌','📍','📎','🖇️','📐','📏','✂️','🗃️','🗄️','🗑️','🔒','🔓','🔏','🔐','🔑','🗝️','🔨','🪓','⛏️','⚒️','🛠️','🗡️','⚔️','🔫','🏹','🛡️','🔧','🔩','⚙️','🗜️','⚖️','🦯','🔗','⛓️','🧲','🪝','🧰','🪛','🔬','🔭','📡','💊','🩺','🩹','🩻','🚑','🏮','🧲','🎁','🎀','🎊','🎉','🎈','🎏','🎐','🧧','🎑','🎃','🎄'] },
+      { cat: 'Symbols', e: ['❤️','🧡','💛','💚','💙','💜','🖤','🤍','🤎','💔','❤️‍🔥','❤️‍🩹','💕','💞','💓','💗','💖','💘','💝','💟','☮️','✝️','☪️','🕉️','☸️','✡️','🔯','🕎','☯️','☦️','🛐','⛎','♈','♉','♊','♋','♌','♍','♎','♏','♐','♑','♒','♓','🆔','⚛️','🉑','☢️','☣️','📴','📳','🈶','🈚','🈸','🈺','🈷️','✴️','🆚','💮','🉐','㊙️','㊗️','🈴','🈵','🈹','🈲','🅰️','🅱️','🆎','🆑','🅾️','🆘','❌','⭕','🛑','⛔','📛','🚫','💯','💢','♨️','🚷','🚯','🚳','🚱','🔞','📵','🔕','🔇','🔈','🔉','🔊','📣','📢','🔔','🔕','🎵','🎶','💹','🔱','⚜️','🏁','🚩','🎌','🏴','🏳️','✅','❎','🔀','🔁','🔂','⏩','⏪','⏫','⏬','🔼','🔽','⏭️','⏮️','⏯️','🔃','💠','Ⓜ️','🌀','♻️','🔚','🔛','🔜','🔝','🆒','🆓','🆕','🆙','🆗','🅿️','🈳','🈂️','🛂','🛃','🛄','🛅','⚠️','🚸','⛔','🚫','🚳','🚭','🚯','🚱','🚷','⚡','🔥','✨','⭐','🌟','💥','💫','💦','💨'] },
+    ];
+
+    let _emojiPickerTarget = null; // The RTE editor element that requested the picker
+    let _emojiPickerSaved  = null; // Saved selection range
+
+    function _buildEmojiPicker() {
+      const wrap = document.createElement('div');
+      wrap.id = 'rteEmojiPicker';
+      wrap.innerHTML = `
+        <input id="rteEmojiSearch" type="text" placeholder="Search emoji…" oninput="_filterEmojis(this.value)">
+        <div id="rteEmojiScroll">
+          ${EMOJI_DATA.map(cat => `
+            <div class="emoji-category-label">${cat.cat}</div>
+            <div class="emoji-grid">${cat.e.map(e => `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')">${e}</button>`).join('')}</div>
+          `).join('')}
+        </div>`;
+      document.body.appendChild(wrap);
+      // Close on outside click
+      document.addEventListener('mousedown', e => {
+        if (!wrap.contains(e.target) && !e.target.classList.contains('rte-emoji-toggle')) {
+          wrap.classList.remove('open');
+        }
+      }, true);
+    }
+
+    function _filterEmojis(q) {
+      const scroll = document.getElementById('rteEmojiScroll');
+      if (!scroll) return;
+      if (!q) {
+        scroll.innerHTML = EMOJI_DATA.map(cat => `
+          <div class="emoji-category-label">${cat.cat}</div>
+          <div class="emoji-grid">${cat.e.map(e => `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')">${e}</button>`).join('')}</div>
+        `).join('');
+        return;
+      }
+      const all = EMOJI_DATA.flatMap(c => c.e);
+      scroll.innerHTML = `<div class="emoji-grid">${all.map(e => `<button type="button" class="emoji-btn" onmousedown="event.preventDefault();rteInsertEmoji('${e}')">${e}</button>`).join('')}</div>`;
+    }
+
+    function openEmojiPicker(btn, editorId) {
+      const picker = document.getElementById('rteEmojiPicker');
+      if (!picker) return;
+      _emojiPickerTarget = document.getElementById(editorId);
+      // Save cursor
+      const sel = window.getSelection();
+      _emojiPickerSaved = (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
+      // Toggle
+      if (picker.classList.contains('open')) { picker.classList.remove('open'); return; }
+      // Clear search
+      const search = document.getElementById('rteEmojiSearch');
+      if (search) { search.value = ''; _filterEmojis(''); }
+      // Position near button
+      const rect = btn.getBoundingClientRect();
+      picker.style.left = Math.min(rect.left, window.innerWidth - 295) + 'px';
+      picker.style.top  = (rect.bottom + 4) + 'px';
+      picker.classList.add('open');
+      setTimeout(() => search && search.focus(), 50);
+    }
+
+    function rteInsertEmoji(emoji) {
+      const el = _emojiPickerTarget;
+      if (!el) return;
+      el.focus();
+      if (_emojiPickerSaved) {
+        const sel = window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(_emojiPickerSaved);
+        _emojiPickerSaved = null;
+      }
+      document.execCommand('insertText', false, emoji);
+      document.getElementById('rteEmojiPicker').classList.remove('open');
+      // Trigger draft save
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Build picker on load
+    document.addEventListener('DOMContentLoaded', _buildEmojiPicker);
   </script>
 </body>
 </html>
