@@ -1458,7 +1458,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.65</div>
+      <div class="sidebar-version">v1.5.66</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6634,20 +6634,19 @@ const renderers = {
       const hide     = _occHideDone[type];
       const setFn    = type === 'task' ? 'setOccurrenceStatus' : 'setCommOccurrenceStatus';
       const updateFn = type === 'task' ? 'updateOccurrenceDate' : 'updateCommOccurrenceDate';
-      let html = '';
-      for (const origDate of allOccs) {
+
+      function occRowHtml(origDate) {
         const actualDate    = overrides[origDate] || origDate;
         const isDone        = !!comp[actualDate];
         const isNotDone     = !!notDone[actualDate];
         const isNotAttended = !!notAttended[actualDate];
         const curStatus = isDone ? 'done' : isNotDone ? 'not_done' : isNotAttended ? 'not_attended' : 'planned';
-        if (hide && isDone) continue;
         const statusColor = isDone ? '#16a34a' : isNotDone ? '#6b7280' : isNotAttended ? '#d97706' : '#2563eb';
         const statusBg    = isDone ? '#f0fdf4' : isNotDone ? '#f3f4f6' : isNotAttended ? '#fffbeb' : '#eff6ff';
         const checkClass  = isDone ? 'checked' : isNotDone ? 'not-done' : isNotAttended ? 'not-attended' : '';
         const checkIcon   = isDone ? '✓' : (isNotDone || isNotAttended) ? '✕' : '';
         const crossedCls  = (isDone || isNotDone || isNotAttended) ? 'crossed' : '';
-        html += `
+        return `
           <div class="occ-row" style="cursor:default">
             <div class="occ-check ${checkClass}">${checkIcon}</div>
             <input type="date" class="occ-date-input ${crossedCls}" value="${actualDate}"
@@ -6664,7 +6663,41 @@ const renderers = {
             </select>
           </div>`;
       }
-      if (!html) html = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No occurrences to show.</div>`;
+
+      // Split into upcoming (planned/future) vs history (past + non-planned)
+      let upcomingHtml = '';
+      let historyRows  = [];
+      for (const origDate of allOccs) {
+        const actualDate    = overrides[origDate] || origDate;
+        const isDone        = !!comp[actualDate];
+        const isNotDone     = !!notDone[actualDate];
+        const isNotAttended = !!notAttended[actualDate];
+        const isHistory = actualDate < today && (isDone || isNotDone || isNotAttended);
+        if (isHistory) {
+          historyRows.push(origDate);
+        } else {
+          if (!(hide && isDone)) upcomingHtml += occRowHtml(origDate);
+        }
+      }
+
+      let html = upcomingHtml;
+      if (!html) html = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No upcoming occurrences.</div>`;
+
+      // History section (collapsed by default)
+      if (historyRows.length) {
+        const histId = 'occ-hist-' + obj.id;
+        const histContent = historyRows.map(d => occRowHtml(d)).join('');
+        html += `
+          <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">
+            <div style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;font-size:11px;font-weight:600;color:var(--text-muted)"
+                 onclick="event.stopPropagation();(function(el){const b=document.getElementById('${histId}');const open=b.style.display!=='none';b.style.display=open?'none':'block';el.querySelector('.occ-hist-arrow').textContent=open?'▶':'▼';})(this)">
+              <span class="occ-hist-arrow">▶</span>
+              <span>History (${historyRows.length})</span>
+            </div>
+            <div id="${histId}" style="display:none">${histContent}</div>
+          </div>`;
+      }
+
       return { html, total: allOccs.length };
     }
 
