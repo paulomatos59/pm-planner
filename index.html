@@ -557,6 +557,8 @@
     .rte-editor ol ol ol { list-style-type: lower-roman; }
     .rte-editor a { color: var(--primary); text-decoration: underline; }
     .rte-editor b, .rte-editor strong { font-weight: 700; }
+    .rte-editor img { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; display: block; cursor: default; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+    .rte-editor.rte-drag-over { outline: 2px dashed var(--primary); background: var(--primary-light); }
     .rte-color-wrap { position: relative; }
     .rte-color-popup {
       position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
@@ -1468,7 +1470,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.73</div>
+      <div class="sidebar-version">v1.5.74</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2758,6 +2760,80 @@
         e.preventDefault();
         document.execCommand(e.shiftKey ? 'outdent' : 'indent');
       }
+    }
+
+    // ── RTE image drag-and-drop (shared by all .rte-editor elements) ──
+    function _rteInsertImageFile(file, targetEl) {
+      if (!file || !file.type.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = e => {
+        targetEl.focus();
+        const img = document.createElement('img');
+        img.src = e.target.result;
+        img.style.maxWidth = '100%';
+        const sel = window.getSelection();
+        if (sel && sel.rangeCount) {
+          const range = sel.getRangeAt(0);
+          range.deleteContents();
+          range.insertNode(img);
+          // Move cursor after image
+          range.setStartAfter(img);
+          range.collapse(true);
+          sel.removeAllRanges();
+          sel.addRange(range);
+        } else {
+          targetEl.appendChild(img);
+        }
+        targetEl.dispatchEvent(new Event('input', { bubbles: true }));
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function rteInitDragDrop() {
+      document.addEventListener('dragover', e => {
+        const el = e.target.closest('.rte-editor');
+        if (!el) return;
+        e.preventDefault();
+        e.dataTransfer.dropEffect = 'copy';
+        el.classList.add('rte-drag-over');
+      });
+      document.addEventListener('dragleave', e => {
+        const el = e.target.closest('.rte-editor');
+        if (el && !el.contains(e.relatedTarget)) el.classList.remove('rte-drag-over');
+      });
+      document.addEventListener('drop', e => {
+        const el = e.target.closest('.rte-editor');
+        if (!el) return;
+        e.preventDefault();
+        el.classList.remove('rte-drag-over');
+        // Position caret at drop point
+        if (document.caretRangeFromPoint) {
+          const range = document.caretRangeFromPoint(e.clientX, e.clientY);
+          if (range) { const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(range); }
+        }
+        const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
+        files.forEach(f => _rteInsertImageFile(f, el));
+        // Also handle image dragged from another browser tab / web page
+        if (!files.length) {
+          const url = e.dataTransfer.getData('text/uri-list') || e.dataTransfer.getData('text/plain');
+          if (url && /\.(png|jpe?g|gif|webp|svg)(\?|$)/i.test(url)) {
+            el.focus();
+            document.execCommand('insertImage', false, url);
+            el.dispatchEvent(new Event('input', { bubbles: true }));
+          }
+        }
+      });
+      // Also handle paste of images (Ctrl+V from clipboard)
+      document.addEventListener('paste', e => {
+        const el = e.target.closest('.rte-editor');
+        if (!el) return;
+        const items = Array.from(e.clipboardData?.items || []);
+        const imgItem = items.find(i => i.type.startsWith('image/'));
+        if (imgItem) {
+          e.preventDefault();
+          _rteInsertImageFile(imgItem.getAsFile(), el);
+        }
+      });
     }
 
     function rteUpdateToolbar() {
@@ -8393,7 +8469,10 @@ const renderers = {
     }
 
     // Build picker on load
-    document.addEventListener('DOMContentLoaded', _buildEmojiPicker);
+    document.addEventListener('DOMContentLoaded', () => {
+      _buildEmojiPicker();
+      rteInitDragDrop();
+    });
   </script>
 </body>
 </html>
