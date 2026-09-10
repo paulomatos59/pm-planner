@@ -1471,7 +1471,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.76</div>
+      <div class="sidebar-version">v1.5.77</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2707,14 +2707,16 @@
 
     // True if a task is "active" on a given date:
     // covers its due date, recurring occurrences, and multi-day spans (startDate ≤ ds ≤ dueDate).
+    // NOTE: multi-day span logic is intentionally excluded for recurring tasks — they have a far-future
+    // dueDate (end date) that would otherwise match every day between start and end.
     function isTaskActiveOn(t, ds) {
       if (!ds) return false;
       const due = (t.dueDate || '').slice(0, 10);
       if (due === ds) return true;
-      if (t.status === 'Done') return false; // done tasks only appear on their due date
+      if (t.status === 'Done') return false;
       if (isRecurDueToday(t, ds)) return true;
-      // Multi-day span: startDate starts on or before ds, dueDate is after ds
-      if (t.startDate && t.startDate <= ds && due > ds) return true;
+      // Multi-day span: only for non-recurring tasks
+      if (!t.recurrence?.freq && t.startDate && t.startDate <= ds && due > ds) return true;
       return false;
     }
 
