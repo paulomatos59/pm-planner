@@ -557,7 +557,8 @@
     .rte-editor ol ol ol { list-style-type: lower-roman; }
     .rte-editor a { color: var(--primary); text-decoration: underline; }
     .rte-editor b, .rte-editor strong { font-weight: 700; }
-    .rte-editor img { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; display: block; cursor: default; box-shadow: 0 1px 4px rgba(0,0,0,.12); }
+    .rte-editor img { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; display: block; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); transition: outline 0.1s; }
+    .rte-editor img:hover { outline: 2px solid rgba(37,99,235,0.35); outline-offset: 1px; }
     .rte-editor.rte-drag-over { outline: 2px dashed var(--primary); background: var(--primary-light); }
     .rte-color-wrap { position: relative; }
     .rte-color-popup {
@@ -1470,7 +1471,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.75</div>
+      <div class="sidebar-version">v1.5.76</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8481,10 +8482,148 @@ const renderers = {
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
+    // ── RTE image resize ──
+    function rteInitImageResize() {
+      let selImg = null, overlay = null, isDragging = false, startX = 0, startW = 0;
+
+      function updatePos() {
+        if (!selImg || !overlay) return;
+        const r = selImg.getBoundingClientRect();
+        Object.assign(overlay.style, {
+          left: r.left + 'px', top: r.top + 'px',
+          width: r.width + 'px', height: r.height + 'px'
+        });
+      }
+
+      function deselect() {
+        overlay?.remove(); overlay = null; selImg = null;
+      }
+
+      function select(img) {
+        if (selImg === img) return;
+        deselect();
+        selImg = img;
+
+        overlay = document.createElement('div');
+        Object.assign(overlay.style, {
+          position: 'fixed', border: '2px solid #2563eb', zIndex: '9998',
+          pointerEvents: 'none', boxSizing: 'border-box', borderRadius: '6px'
+        });
+        document.body.appendChild(overlay);
+
+        // Quick-size toolbar (above image)
+        const tb = document.createElement('div');
+        Object.assign(tb.style, {
+          position: 'absolute', bottom: 'calc(100% + 7px)', left: '0',
+          background: '#1e293b', borderRadius: '6px', padding: '4px 6px',
+          display: 'flex', gap: '4px', pointerEvents: 'all',
+          whiteSpace: 'nowrap', boxShadow: '0 2px 10px rgba(0,0,0,.35)',
+          alignItems: 'center', fontSize: '10px'
+        });
+        tb.innerHTML = '<span style="color:#94a3b8;margin-right:2px">↔</span>';
+        ['25%','50%','75%','100%'].forEach(pct => {
+          const b = document.createElement('button');
+          b.textContent = pct;
+          Object.assign(b.style, {
+            fontSize: '10px', padding: '2px 7px', background: 'transparent',
+            border: '1px solid #475569', color: 'white', borderRadius: '4px', cursor: 'pointer'
+          });
+          b.onmouseenter = () => b.style.background = '#334155';
+          b.onmouseleave = () => b.style.background = 'transparent';
+          b.onclick = e => {
+            e.stopPropagation();
+            const ed = img.closest('.rte-editor');
+            if (pct === '100%') {
+              img.style.width = '100%'; img.style.height = 'auto';
+            } else {
+              const pw = ed ? ed.clientWidth - 24 : img.naturalWidth;
+              img.style.width = Math.round(pw * parseInt(pct) / 100) + 'px';
+              img.style.height = 'auto';
+            }
+            requestAnimationFrame(updatePos);
+            ed?.dispatchEvent(new Event('input', { bubbles: true }));
+          };
+          tb.appendChild(b);
+        });
+        // Custom width input
+        const inp = document.createElement('input');
+        Object.assign(inp.style, {
+          width: '52px', fontSize: '10px', padding: '2px 5px',
+          background: '#0f172a', border: '1px solid #475569',
+          color: 'white', borderRadius: '4px', textAlign: 'center'
+        });
+        inp.placeholder = 'px / %';
+        inp.title = 'Custom width (e.g. 300px or 60%)';
+        inp.onkeydown = e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            const v = inp.value.trim();
+            if (v) {
+              img.style.width = /^\d+$/.test(v) ? v + 'px' : v;
+              img.style.height = 'auto';
+              requestAnimationFrame(updatePos);
+              img.closest('.rte-editor')?.dispatchEvent(new Event('input', { bubbles: true }));
+            }
+          }
+        };
+        tb.appendChild(inp);
+        overlay.appendChild(tb);
+
+        // Bottom-right drag handle
+        const handle = document.createElement('div');
+        Object.assign(handle.style, {
+          position: 'absolute', bottom: '-6px', right: '-6px',
+          width: '13px', height: '13px', background: '#2563eb',
+          border: '2px solid white', borderRadius: '3px',
+          cursor: 'se-resize', pointerEvents: 'all', zIndex: '9999'
+        });
+        handle.addEventListener('mousedown', e => {
+          e.preventDefault(); e.stopPropagation();
+          isDragging = true;
+          startX = e.clientX;
+          startW = img.offsetWidth;
+          document.body.style.cursor = 'se-resize';
+          document.body.style.userSelect = 'none';
+        });
+        overlay.appendChild(handle);
+
+        updatePos();
+        requestAnimationFrame(updatePos);
+      }
+
+      document.addEventListener('mousedown', e => {
+        if (e.target.closest('#rteImgOverlay, [id="rteImgOverlay"]') || e.target === overlay || overlay?.contains(e.target)) return;
+        const img = e.target.nodeName === 'IMG' && e.target.closest('.rte-editor') ? e.target : null;
+        if (img) { e.preventDefault(); select(img); }
+        else deselect();
+      });
+
+      document.addEventListener('mousemove', e => {
+        if (!isDragging || !selImg) return;
+        const nw = Math.max(40, startW + (e.clientX - startX));
+        selImg.style.width = nw + 'px';
+        selImg.style.height = 'auto';
+        updatePos();
+      });
+
+      document.addEventListener('mouseup', () => {
+        if (!isDragging) return;
+        isDragging = false;
+        document.body.style.cursor = '';
+        document.body.style.userSelect = '';
+        selImg?.closest('.rte-editor')?.dispatchEvent(new Event('input', { bubbles: true }));
+      });
+
+      // Keep overlay aligned on scroll/resize
+      document.addEventListener('scroll', updatePos, true);
+      window.addEventListener('resize', updatePos);
+    }
+
     // Build picker on load
     document.addEventListener('DOMContentLoaded', () => {
       _buildEmojiPicker();
       rteInitDragDrop();
+      rteInitImageResize();
     });
   </script>
 </body>
