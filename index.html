@@ -268,8 +268,11 @@
     .gantt-label-col { width: 190px; min-width: 190px; padding: 8px 12px; font-size: 10px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted); border-right: 1px solid var(--border); flex-shrink: 0; }
     .gantt-days-header { display: flex; }
     .gantt-day-hdr { width: 30px; min-width: 30px; text-align: center; border-right: 1px solid var(--border); padding: 4px 0 2px; flex-shrink: 0; }
-    .gantt-day-hdr.is-today { background: var(--primary-light); }
+    .gantt-day-hdr.is-today   { background: var(--primary-light); }
     .gantt-day-hdr.is-weekend { background: #f8fafc; }
+    .gantt-day-hdr.is-holiday { background: rgba(245,158,11,0.12); }
+    .gantt-day-hdr.is-today.is-holiday { background: linear-gradient(135deg, var(--primary-light) 50%, rgba(245,158,11,0.15) 100%); }
+    .gd-hol { font-size: 6px; font-weight: 700; color: #92400e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28px; line-height: 1.2; margin-top: 1px; }
     .gantt-day-hdr .gd-mon { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px; height: 11px; }
     .gantt-day-hdr .gd-num { font-size: 11px; font-weight: 700; }
     .gantt-day-hdr.is-today .gd-num { color: var(--primary); }
@@ -1462,7 +1465,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.70</div>
+      <div class="sidebar-version">v1.5.71</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2361,8 +2364,18 @@
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
     const ganttCollapsed     = new Set(); // group keys currently collapsed
-    let ganttHolidayCountry  = '';    // ISO country code e.g. 'PT', 'US', ''
-    const ganttHolidaysCache = {};    // { 'PT-2026': [...] }
+    let ganttHolidayCountries   = new Set(); // selected ISO codes e.g. Set(['PT','US'])
+    let ganttHolidayDropOpen    = false;
+    const ganttHolidaysCache    = {};        // { 'PT-2026': [...] }
+    const GANTT_HOL_COUNTRIES = [
+      {code:'PT',flag:'🇵🇹',name:'Portugal'},{code:'US',flag:'🇺🇸',name:'USA'},
+      {code:'GB',flag:'🇬🇧',name:'UK'},{code:'DE',flag:'🇩🇪',name:'Germany'},
+      {code:'FR',flag:'🇫🇷',name:'France'},{code:'ES',flag:'🇪🇸',name:'Spain'},
+      {code:'IT',flag:'🇮🇹',name:'Italy'},{code:'NL',flag:'🇳🇱',name:'Netherlands'},
+      {code:'BR',flag:'🇧🇷',name:'Brazil'},{code:'CA',flag:'🇨🇦',name:'Canada'},
+      {code:'AU',flag:'🇦🇺',name:'Australia'},{code:'IN',flag:'🇮🇳',name:'India'},
+      {code:'JP',flag:'🇯🇵',name:'Japan'},
+    ];
     let projTimelineOffset   = 0;
     let projTimelineScale    = 'days';
     let editingTaskId    = null;
@@ -3709,7 +3722,13 @@ const renderers = {
     function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
     function setGanttScale(s) { ganttScale = s; ganttOffset = 0; showView('gantt'); }
     function setGanttFilter(f) { ganttFilter = f; showView('gantt'); }
-    function setGanttHolidayCountry(code) { ganttHolidayCountry = code; showView('gantt'); }
+    function toggleGanttHolidayCountry(code) {
+      if (ganttHolidayCountries.has(code)) ganttHolidayCountries.delete(code);
+      else ganttHolidayCountries.add(code);
+      showView('gantt');
+    }
+    function toggleGanttHolidayDrop() { ganttHolidayDropOpen = !ganttHolidayDropOpen; showView('gantt'); }
+    function clearGanttHolidays() { ganttHolidayCountries.clear(); ganttHolidayDropOpen = false; showView('gantt'); }
 
     async function _fetchHolidayYear(cc, year) {
       const key = `${cc}-${year}`;
@@ -3802,6 +3821,27 @@ const renderers = {
       }
       function clamp(v, lo, hi) { return Math.max(lo, Math.min(hi, v)); }
 
+      // ── Holidays (computed before column headers so names go into header) ──
+      let windowHolidays = [];
+      if (ganttHolidayCountries.size) {
+        const years = new Set();
+        for (let y = winStart.getFullYear(); y <= winEnd.getFullYear(); y++) years.add(y);
+        ganttHolidayCountries.forEach(cc => {
+          years.forEach(year => {
+            const key = `${cc}-${year}`;
+            if (ganttHolidaysCache[key] !== undefined) {
+              windowHolidays = windowHolidays.concat(ganttHolidaysCache[key]);
+            } else {
+              _fetchHolidayYear(cc, year);
+            }
+          });
+        });
+        windowHolidays = windowHolidays.filter(h => h.date >= winS && h.date < winE);
+      }
+      // Map date → first holiday on that date (for header label)
+      const holidayByDate = {};
+      windowHolidays.forEach(h => { if (!holidayByDate[h.date]) holidayByDate[h.date] = h; });
+
       // ── Column headers ──
       let colHeaders = '';
 
@@ -3823,9 +3863,12 @@ const renderers = {
           const ds = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
           const isWknd = d.getDay()===0||d.getDay()===6;
           const showMo = d.getDate()===1||i===0;
-          colHeaders += `<div class="gantt-day-hdr ${ds===todStr?'is-today':''} ${isWknd?'is-weekend':''}" style="width:${colPx}px;min-width:${colPx}px">
+          const hol = holidayByDate[ds];
+          const holName = hol ? (hol.localName || hol.name || '') : '';
+          colHeaders += `<div class="gantt-day-hdr ${ds===todStr?'is-today':''} ${isWknd?'is-weekend':''} ${hol?'is-holiday':''}" style="width:${colPx}px;min-width:${colPx}px" ${hol?`title="🗓 ${esc(holName)}"`:''}>
             <div class="gd-mon">${showMo?MO[d.getMonth()]:''}</div>
             <div class="gd-num">${d.getDate()}</div>
+            ${hol?`<div class="gd-hol">${esc(holName)}</div>`:''}
           </div>`;
         }
 
@@ -3904,22 +3947,6 @@ const renderers = {
         return from && t.dueDate && t.dueDate >= winS && from <= winE;
       });
 
-      // ── Holidays ──
-      let windowHolidays = [];
-      if (ganttHolidayCountry) {
-        const years = new Set();
-        for (let y = winStart.getFullYear(); y <= winEnd.getFullYear(); y++) years.add(y);
-        years.forEach(year => {
-          const key = `${ganttHolidayCountry}-${year}`;
-          if (ganttHolidaysCache[key] !== undefined) {
-            windowHolidays = windowHolidays.concat(ganttHolidaysCache[key]);
-          } else {
-            _fetchHolidayYear(ganttHolidayCountry, year); // async; triggers re-render when done
-          }
-        });
-        windowHolidays = windowHolidays.filter(h => h.date >= winS && h.date < winE);
-      }
-
       // ── Backdrop (weekend bands + today line + timeoff overlays) ──
       function backdrop() {
         let html = '';
@@ -3940,17 +3967,15 @@ const renderers = {
           const x2 = clamp(xOf(t.dueDate) + (ganttScale==='days'?colPx:0), 0, totalW);
           html += `<div class="gantt-timeoff-overlay" style="left:${x1}px;width:${Math.max(2,x2-x1)}px" title="🌴 ${esc(t.title)}"></div>`;
         });
-        // Holiday bands (days and weeks scales)
-        if (ganttScale === 'days' || ganttScale === 'weeks') {
-          windowHolidays.forEach(h => {
-            const x1 = clamp(xOf(h.date), 0, totalW);
-            const bw = ganttScale === 'days' ? colPx : Math.round(colPx / 7);
-            const x2 = clamp(x1 + bw, 0, totalW);
-            const name = h.localName || h.name || '';
-            html += `<div class="gantt-holiday-band" style="left:${x1}px;width:${Math.max(2,x2-x1)}px" title="🗓 ${esc(name)}"></div>`;
-            if (ganttScale === 'days') html += `<div class="gantt-holiday-label" style="left:${x1+3}px">${esc(name)}</div>`;
-          });
-        }
+        // Holiday bands — band per row, label only in column header
+        windowHolidays.forEach(h => {
+          const x1 = clamp(xOf(h.date), 0, totalW);
+          const bw = ganttScale === 'days' ? colPx : (ganttScale === 'weeks' ? Math.round(colPx / 7) : 0);
+          if (!bw) return;
+          const x2 = clamp(x1 + bw, 0, totalW);
+          const name = h.localName || h.name || '';
+          html += `<div class="gantt-holiday-band" style="left:${x1}px;width:${Math.max(2,x2-x1)}px" title="🗓 ${esc(name)}"></div>`;
+        });
         return html;
       }
 
@@ -4266,24 +4291,22 @@ const renderers = {
               <button class="btn btn-sm ${ganttFilter==='meetings'?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttFilter('meetings')">💬 Meetings</button>
               <button class="btn btn-sm ${ganttFilter==='both'?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttFilter('both')">All</button>
             </div>
-            <select onchange="setGanttHolidayCountry(this.value)"
-              style="font-size:11px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;background:var(--bg);color:var(--text);cursor:pointer"
-              title="Show national holidays">
-              <option value="" ${!ganttHolidayCountry?'selected':''}>🗓 Holidays</option>
-              <option value="PT" ${'PT'===ganttHolidayCountry?'selected':''}>🇵🇹 Portugal</option>
-              <option value="US" ${'US'===ganttHolidayCountry?'selected':''}>🇺🇸 USA</option>
-              <option value="GB" ${'GB'===ganttHolidayCountry?'selected':''}>🇬🇧 UK</option>
-              <option value="DE" ${'DE'===ganttHolidayCountry?'selected':''}>🇩🇪 Germany</option>
-              <option value="FR" ${'FR'===ganttHolidayCountry?'selected':''}>🇫🇷 France</option>
-              <option value="ES" ${'ES'===ganttHolidayCountry?'selected':''}>🇪🇸 Spain</option>
-              <option value="IT" ${'IT'===ganttHolidayCountry?'selected':''}>🇮🇹 Italy</option>
-              <option value="NL" ${'NL'===ganttHolidayCountry?'selected':''}>🇳🇱 Netherlands</option>
-              <option value="BR" ${'BR'===ganttHolidayCountry?'selected':''}>🇧🇷 Brazil</option>
-              <option value="CA" ${'CA'===ganttHolidayCountry?'selected':''}>🇨🇦 Canada</option>
-              <option value="AU" ${'AU'===ganttHolidayCountry?'selected':''}>🇦🇺 Australia</option>
-              <option value="IN" ${'IN'===ganttHolidayCountry?'selected':''}>🇮🇳 India</option>
-              <option value="JP" ${'JP'===ganttHolidayCountry?'selected':''}>🇯🇵 Japan</option>
-            </select>
+            <div style="position:relative">
+              <button onclick="event.stopPropagation();toggleGanttHolidayDrop()"
+                style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:${ganttHolidayCountries.size?'var(--primary-light)':'var(--bg)'};color:${ganttHolidayCountries.size?'var(--primary)':'var(--text)'};cursor:pointer;white-space:nowrap"
+                title="Show national holidays">
+                🗓 ${ganttHolidayCountries.size ? Array.from(ganttHolidayCountries).map(c=>{const f=GANTT_HOL_COUNTRIES.find(x=>x.code===c);return f?f.flag:c;}).join(' ') : 'Holidays'} ▾
+              </button>
+              ${ganttHolidayDropOpen ? `<div onclick="event.stopPropagation()" style="position:absolute;top:calc(100% + 4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 4px;min-width:160px;box-shadow:0 4px 16px rgba(0,0,0,.15)">
+                ${GANTT_HOL_COUNTRIES.map(c=>`
+                  <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:5px;font-size:12px;white-space:nowrap;${ganttHolidayCountries.has(c.code)?'background:var(--primary-light);color:var(--primary);font-weight:600':''}">
+                    <input type="checkbox" ${ganttHolidayCountries.has(c.code)?'checked':''} onchange="toggleGanttHolidayCountry('${c.code}')"> ${c.flag} ${c.name}
+                  </label>`).join('')}
+                <div style="border-top:1px solid var(--border);margin:4px 6px 2px">
+                  <button onclick="clearGanttHolidays()" style="width:100%;margin-top:4px;font-size:10px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:3px 0;text-align:center">Clear all</button>
+                </div>
+              </div>` : ''}
+            </div>
             <button class="btn btn-primary btn-sm" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
@@ -4304,7 +4327,7 @@ const renderers = {
           <div class="gantt-legend-item"><div style="width:20px;height:8px;background:rgba(8,145,178,0.18);border-left:2px solid rgba(8,145,178,0.4)"></div> Time Off</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#10b98138;border:1.5px solid #10b981bb"></div> Current Sprint</div>
           <div class="gantt-legend-item"><div style="width:2px;height:14px;background:var(--danger)"></div> Today</div>
-          ${ganttHolidayCountry ? `<div class="gantt-legend-item"><div style="width:14px;height:14px;background:rgba(245,158,11,0.18);border-left:2px solid rgba(245,158,11,0.5)"></div> Holiday</div>` : ''}
+          ${ganttHolidayCountries.size ? `<div class="gantt-legend-item"><div style="width:14px;height:14px;background:rgba(245,158,11,0.18);border-left:2px solid rgba(245,158,11,0.5)"></div> Holiday</div>` : ''}
         </div>`;
     }
 
