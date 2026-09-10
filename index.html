@@ -1470,7 +1470,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.74</div>
+      <div class="sidebar-version">v1.5.75</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2704,6 +2704,19 @@
       return _commActualOccurrencesUpTo(c, today).includes(today);
     }
 
+    // True if a task is "active" on a given date:
+    // covers its due date, recurring occurrences, and multi-day spans (startDate ≤ ds ≤ dueDate).
+    function isTaskActiveOn(t, ds) {
+      if (!ds) return false;
+      const due = (t.dueDate || '').slice(0, 10);
+      if (due === ds) return true;
+      if (t.status === 'Done') return false; // done tasks only appear on their due date
+      if (isRecurDueToday(t, ds)) return true;
+      // Multi-day span: startDate starts on or before ds, dueDate is after ds
+      if (t.startDate && t.startDate <= ds && due > ds) return true;
+      return false;
+    }
+
     function isOverdue(t) {
       if (!t.dueDate || t.status === 'Done') return false;
       if (isRecurDueToday(t)) return false;
@@ -3386,14 +3399,14 @@ const renderers = {
 
       const open          = tasks.filter(t => t.status !== 'Done');
       const overdueList   = open.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId);
-      const todayList     = open.filter(t => (t.dueDate||'').slice(0,10) === today || isRecurDueToday(t));
+      const todayList     = open.filter(t => isTaskActiveOn(t, today));
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
       const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
       // Planned (all, incl. done) & done counts for today and this week
       // Use .slice(0,10) to guard against dates stored with time components or whitespace
       const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && (t.dueDate||'').slice(0,10) === today);
-      const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && ((t.dueDate||'').slice(0,10) === today || (t.status !== 'Done' && isRecurDueToday(t))));
+      const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && (isTaskActiveOn(t, today) || t.status === 'Done' && (t.dueDate||'').slice(0,10) === today));
       const weekDoneCount = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const weekPlanned   = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const focusNote     = localStorage.getItem('dp_focus') || '';
@@ -3406,8 +3419,8 @@ const renderers = {
       const weekDays = Array.from({length:7}, (_,i) => {
         const d   = new Date(mon); d.setDate(mon.getDate() + i);
         const ds  = `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
-        const cnt = open.filter(t => t.dueDate === ds).length;
-        const od  = open.filter(t => t.dueDate === ds && isOverdue({...t, dueDate:ds})).length;
+        const cnt = open.filter(t => isTaskActiveOn(t, ds)).length;
+        const od  = open.filter(t => isTaskActiveOn(t, ds) && isOverdue({...t, dueDate:ds})).length;
         const dayComms = comms.filter(c => c.date === ds || isRecurCommDueToday(c, ds))
           .sort((a,b) => (a.startTime||'').localeCompare(b.startTime||''));
         return { date: d, str: ds, count: cnt, overdue: ds < today && cnt > 0, isToday: ds === today, dayComms };
@@ -4613,7 +4626,7 @@ const renderers = {
       const overdueTasks  = isRealToday
         ? tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b))
         : [];
-      const allTodayTasks = tasks.filter(t => ((t.dueDate||'').slice(0,10) === today || isRecurDueToday(t, today)) && t.taskType !== 'timeoff' && !t.parentId);
+      const allTodayTasks = tasks.filter(t => isTaskActiveOn(t, today) && t.taskType !== 'timeoff' && !t.parentId);
       // Recurring-done-today: occurrence marked done, so also include them in "today done"
       const recurDoneToday = tasks.filter(t => t.recurrence && t.recurrence.freq && !!(t.completedOccurrences?.[today]) && t.taskType !== 'timeoff' && !t.parentId && !allTodayTasks.includes(t));
       const isEffectiveDone = t => t.recurrence ? !!(t.completedOccurrences?.[today]) : t.status === 'Done';
