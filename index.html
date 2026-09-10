@@ -1460,7 +1460,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.68</div>
+      <div class="sidebar-version">v1.5.69</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3938,6 +3938,37 @@ const renderers = {
       }
 
       function taskBar(t, projColor) {
+        // Recurring tasks: render one marker per occurrence (no solid bar spanning the whole range)
+        if (t.recurrence && t.recurrence.freq) {
+          const anchor = (t.startDate && t.startDate < (t.dueDate || '9999-99-99')) ? t.startDate : t.dueDate;
+          if (!anchor) return '';
+          const anchorObj = { ...t, dueDate: anchor };
+          const endCap = (t.recurrence.endDate && t.recurrence.endDate < winE) ? t.recurrence.endDate : winE;
+          const occs = getAllOccurrences(anchorObj, 'dueDate', endCap);
+          const comp = t.completedOccurrences || {};
+          const barW = Math.max(colPx - 2, 10);
+          let barsHtml = '';
+          occs.forEach(occ => {
+            if (occ < winS || occ > winE) return;
+            const isDone  = !!comp[occ];
+            const isOd    = occ < todStr && !isDone && t.status !== 'Done';
+            const color   = (isDone || t.status === 'Done') ? '#94a3b8' : projColor;
+            const x1      = clamp(xOf(occ), 0, totalW - 2);
+            barsHtml += `<div class="gantt-bar ${isDone?'g-done':''} ${isOd?'g-overdue':''}"
+              style="left:${x1}px;width:${barW}px;background:${color}${isDone?';opacity:0.4':''}"
+              onclick="openTaskModal('${t.id}')" title="🔁 ${esc(t.title)} · ${occ}"></div>`;
+          });
+          if (!barsHtml) return '';
+          return `
+            <div class="gantt-row">
+              <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">🔁 ${esc(t.title)}</div>
+              <div class="gantt-bars-cell" style="width:${totalW}px">
+                ${backdrop()}
+                ${barsHtml}
+              </div>
+            </div>`;
+        }
+        // Non-recurring: solid bar from startDate → dueDate
         const from = t.startDate || t.dueDate;
         const x1   = clamp(xOf(from), 0, totalW - 2);
         const xEnd = xOf(t.dueDate) + (ganttScale==='days'||ganttScale==='hours'?colPx:0);
@@ -3945,17 +3976,15 @@ const renderers = {
         const od   = isOverdue(t);
         const color = t.status === 'Done' ? '#94a3b8' : projColor;
         const label = rawW > 44 ? esc(t.title) : '';
-        const recurPrefix = t.recurrence ? '🔁 ' : '📋 ';
         return `
           <div class="gantt-row">
-            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${recurPrefix}${esc(t.title)}</div>
+            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">📋 ${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
               ${backdrop()}
               <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
                    style="left:${x1}px;width:${rawW}px;background:${color}"
                    onclick="openTaskModal('${t.id}')"
-                   title="${recurPrefix}${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
-              ${recurBars(t, color)}
+                   title="📋 ${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
             </div>
           </div>`;
       }
