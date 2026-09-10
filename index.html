@@ -1465,7 +1465,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.71</div>
+      <div class="sidebar-version">v1.5.72</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4292,6 +4292,7 @@ const renderers = {
               <button class="btn btn-sm ${ganttFilter==='both'?'btn-primary':'btn-secondary'}" style="padding:3px 8px;font-size:11px" onclick="setGanttFilter('both')">All</button>
             </div>
             <div style="position:relative">
+              ${ganttHolidayDropOpen ? `<div onclick="ganttHolidayDropOpen=false;showView('gantt')" style="position:fixed;inset:0;z-index:199"></div>` : ''}
               <button onclick="event.stopPropagation();toggleGanttHolidayDrop()"
                 style="font-size:11px;padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:${ganttHolidayCountries.size?'var(--primary-light)':'var(--bg)'};color:${ganttHolidayCountries.size?'var(--primary)':'var(--text)'};cursor:pointer;white-space:nowrap"
                 title="Show national holidays">
