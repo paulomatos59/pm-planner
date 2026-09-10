@@ -1471,7 +1471,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.78</div>
+      <div class="sidebar-version">v1.5.79</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2714,10 +2714,8 @@
       const due = (t.dueDate || '').slice(0, 10);
       if (due === ds) return true;
       if (t.status === 'Done') return false;
-      // In Progress = actively being worked on → always show in Today's Tasks
-      if (t.status === 'In Progress') return true;
       if (isRecurDueToday(t, ds)) return true;
-      // Multi-day span: only for non-recurring tasks
+      // Multi-day span: startDate ≤ ds ≤ dueDate — non-recurring only (recurring tasks use endDate as dueDate)
       if (!t.recurrence?.freq && t.startDate && t.startDate <= ds && due > ds) return true;
       return false;
     }
