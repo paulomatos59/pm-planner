@@ -1458,7 +1458,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.66</div>
+      <div class="sidebar-version">v1.5.67</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5635,9 +5635,23 @@ const renderers = {
       if (sorted.length === 0) {
         return html + `<div class="empty-state" style="padding:32px 0"><div class="icon">💬</div><h3>No communications yet</h3><p>Log meetings, calls, emails and messages linked to this ${linkField === 'project' ? 'project' : 'item'}.</p></div>`;
       }
-      // Group by date
+      // For recurring comms, use the most recent occurrence up to today as display date
+      const today = todayStr();
+      function commDisplayDate(c) {
+        if (!c.recurrence || !c.recurrence.freq) return c.date || 'No date';
+        const occs = _commActualOccurrencesUpTo(c, today);
+        if (!occs.length) return c.date || 'No date';
+        // Most recent occurrence on or before today
+        const past = occs.filter(d => d <= today);
+        return past.length ? past[past.length - 1] : occs[0];
+      }
+      // Group by display date
       const groups = {};
-      sorted.forEach(c => { const d = c.date || 'No date'; if (!groups[d]) groups[d] = []; groups[d].push(c); });
+      sorted.forEach(c => {
+        const d = commDisplayDate(c);
+        if (!groups[d]) groups[d] = [];
+        groups[d].push(c);
+      });
       Object.keys(groups).sort((a,b) => b.localeCompare(a)).forEach(d => {
         const label = d === 'No date' ? 'No Date' : formatCommDate(d);
         html += `<div class="section-header"><span class="section-title">${label}</span><span class="section-count">${groups[d].length}</span></div>
