@@ -272,7 +272,10 @@
     .gantt-day-hdr.is-weekend { background: #f8fafc; }
     .gantt-day-hdr.is-holiday { background: rgba(245,158,11,0.12); }
     .gantt-day-hdr.is-today.is-holiday { background: linear-gradient(135deg, var(--primary-light) 50%, rgba(245,158,11,0.15) 100%); }
-    .gd-hol { font-size: 6px; font-weight: 700; color: #92400e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28px; line-height: 1.2; margin-top: 1px; }
+    .gd-hol { font-size: 6px; font-weight: 700; color: #92400e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 28px; line-height: 1.2; margin-top: 1px; position: relative; cursor: default; }
+    .gd-hol::after { content: attr(data-tip); position: absolute; bottom: calc(100% + 6px); left: 50%; transform: translateX(-50%); background: #1e293b; color: #fff; font-size: 11px; font-weight: 600; white-space: nowrap; padding: 4px 8px; border-radius: 5px; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 999; box-shadow: 0 2px 8px rgba(0,0,0,.25); }
+    .gd-hol::before { content: ''; position: absolute; bottom: calc(100% + 2px); left: 50%; transform: translateX(-50%); border: 4px solid transparent; border-top-color: #1e293b; pointer-events: none; opacity: 0; transition: opacity 0.15s; z-index: 999; }
+    .gd-hol:hover::after, .gd-hol:hover::before { opacity: 1; }
     .gantt-day-hdr .gd-mon { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px; height: 11px; }
     .gantt-day-hdr .gd-num { font-size: 11px; font-weight: 700; }
     .gantt-day-hdr.is-today .gd-num { color: var(--primary); }
@@ -1465,7 +1468,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.72</div>
+      <div class="sidebar-version">v1.5.73</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3868,7 +3871,7 @@ const renderers = {
           colHeaders += `<div class="gantt-day-hdr ${ds===todStr?'is-today':''} ${isWknd?'is-weekend':''} ${hol?'is-holiday':''}" style="width:${colPx}px;min-width:${colPx}px" ${hol?`title="🗓 ${esc(holName)}"`:''}>
             <div class="gd-mon">${showMo?MO[d.getMonth()]:''}</div>
             <div class="gd-num">${d.getDate()}</div>
-            ${hol?`<div class="gd-hol">${esc(holName)}</div>`:''}
+            ${hol?`<div class="gd-hol" data-tip="🗓 ${esc(holName)}">${esc(holName)}</div>`:''}
           </div>`;
         }
 
