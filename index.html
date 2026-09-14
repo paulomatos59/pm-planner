@@ -1472,7 +1472,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.82</div>
+      <div class="sidebar-version">v1.5.83</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4934,7 +4934,24 @@ const renderers = {
         if (!_taskInRange(t, fromDate, toDate)) return false;
         if (taskHideDone && t.status === 'Done') return false;
         return true;
-      }).sort((a,b) => {
+      });
+
+      // Per-status counts ignoring the status filter (for dropdown labels)
+      const statusCounts = {};
+      tasks.filter(t => {
+        if (t.parentId) return false;
+        const tt = fs.taskType || 'task';
+        if (tt === 'task'    && t.taskType === 'timeoff') return false;
+        if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
+        if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
+                           !stripHtml(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
+        if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
+        if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
+        if (!_taskInRange(t, fromDate, toDate)) return false;
+        return true;
+      }).forEach(t => { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1; });
+
+      const filteredSorted = [...filtered].sort((a,b) => {
         if (isOverdue(a) && !isOverdue(b)) return -1;
         if (!isOverdue(a) && isOverdue(b)) return 1;
         const dir = taskSortDir === 'desc' ? -1 : 1;
@@ -4966,7 +4983,7 @@ const renderers = {
 
       return `
         <div class="view-header">
-          <div><div class="view-title">All Tasks</div><div class="view-subtitle">${filtered.length} shown</div></div>
+          <div><div class="view-title">All Tasks</div><div class="view-subtitle">${filteredSorted.length} shown</div></div>
           <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
         </div>
         <div class="comm-time-tabs">${timeTabs}</div>
@@ -5003,7 +5020,9 @@ const renderers = {
             ${statusFilterOpen ? `<div onclick="event.stopPropagation()" style="position:absolute;top:calc(100%+4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 4px;min-width:148px;box-shadow:0 4px 16px rgba(0,0,0,.15)">
               ${[['Todo','To Do'],['In Progress','In Progress'],['Done','Done'],['Delayed','Delayed'],['Blocked','Blocked']].map(([val,lbl])=>`
                 <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:5px;font-size:12px;${fs.statuses.has(val)?'background:var(--primary-light);color:var(--primary);font-weight:600':''}">
-                  <input type="checkbox" ${fs.statuses.has(val)?'checked':''} onchange="toggleStatusFilter('${val}')"> ${lbl}
+                  <input type="checkbox" ${fs.statuses.has(val)?'checked':''} onchange="toggleStatusFilter('${val}')">
+                  <span style="flex:1">${lbl}</span>
+                  <span style="font-size:10px;color:${fs.statuses.has(val)?'var(--primary)':'var(--text-muted)'};min-width:18px;text-align:right">${statusCounts[val]||0}</span>
                 </label>`).join('')}
               <div style="border-top:1px solid var(--border);margin:4px 6px 2px">
                 <button onclick="filterState.statuses=new Set();applyFilters()" style="width:100%;margin-top:4px;font-size:10px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:3px 0;text-align:center">Clear all</button>
@@ -5022,9 +5041,9 @@ const renderers = {
             ${thSort('status',   'Status')}
             ${thSort('hours',    'Hrs')}
           </div>
-          ${filtered.length === 0
+          ${filteredSorted.length === 0
             ? '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px">No tasks match your filters.</div>'
-            : sortTasks(filtered).map(tableRow).join('')}
+            : sortTasks(filteredSorted).map(tableRow).join('')}
         </div>`;
     }
 
