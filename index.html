@@ -1399,6 +1399,7 @@
         <div class="sidebar-section-body" id="section-activities">
           <button class="nav-item" id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
           <button class="nav-item" id="nav-all"        onclick="showView('all')">📋 All Tasks</button>
+          <button class="nav-item" id="nav-backlog"    onclick="showView('backlog')">📥 Backlog</button>
           <button class="nav-item" id="nav-overdue"    onclick="showView('overdue')">
             🚨 Overdue
             <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
@@ -1471,7 +1472,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.81</div>
+      <div class="sidebar-version">v1.5.82</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3338,6 +3339,7 @@ const renderers = {
         week:             renderWeek,
         month:            renderMonth,
         all:              renderAll,
+        backlog:          renderBacklog,
         overdue:          renderOverdue,
         projects:         renderProjects,
         'project-detail': () => renderProjectDetail(activeProjectId),
@@ -5108,6 +5110,65 @@ const renderers = {
           <div><span class="status-badge status-${statusClass(t.status)}">${t.status}</span></div>
           <div style="color:var(--text-muted)">${t.estimatedHours ? t.estimatedHours+'h' : '—'}</div>
         </div>`;
+    }
+
+    /* ==============================
+       BACKLOG VIEW
+    ============================== */
+    function renderBacklog() {
+      const today = todayStr();
+      const list = tasks
+        .filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId)
+        .sort((a, b) => {
+          // Overdue first, then by priority, then by due date
+          const aOd = isOverdue(a), bOd = isOverdue(b);
+          if (aOd && !bOd) return -1;
+          if (!aOd && bOd) return  1;
+          const pd = priorityOrder(a) - priorityOrder(b);
+          if (pd !== 0) return pd;
+          return (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99');
+        });
+
+      // Group: Overdue / Today / This Week / Upcoming / No Date
+      const groups = [
+        { key: 'overdue',  label: '🚨 Overdue',   items: [] },
+        { key: 'today',    label: '📅 Today',      items: [] },
+        { key: 'week',     label: '📆 This Week',  items: [] },
+        { key: 'upcoming', label: '🗓 Upcoming',   items: [] },
+        { key: 'nodate',   label: '📥 No Date',    items: [] },
+      ];
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dow = now.getDay();
+      const mon = new Date(now); mon.setDate(now.getDate() - (dow===0?6:dow-1));
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
+
+      list.forEach(t => {
+        if (isOverdue(t))                                          groups[0].items.push(t);
+        else if (isTaskActiveOn(t, today))                        groups[1].items.push(t);
+        else if (t.dueDate && t.dueDate <= sunStr)                groups[2].items.push(t);
+        else if (t.dueDate)                                       groups[3].items.push(t);
+        else                                                      groups[4].items.push(t);
+      });
+
+      let html = `
+        <div class="view-header">
+          <div>
+            <div class="view-title">📥 Backlog</div>
+            <div class="view-subtitle">${list.length} open task${list.length!==1?'s':''}</div>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openTaskModal()">＋ New Task</button>
+        </div>`;
+
+      const nonEmpty = groups.filter(g => g.items.length);
+      if (!nonEmpty.length) {
+        return html + `<div class="empty-state"><div class="icon">🎉</div><h3>Backlog is empty!</h3><p>All tasks are done.</p></div>`;
+      }
+      nonEmpty.forEach(g => {
+        html += `<div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}</span></div>
+                 <div class="task-list">${g.items.map(taskCardWithSubs).join('')}</div>`;
+      });
+      return html;
     }
 
     /* ==============================
