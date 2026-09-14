@@ -1471,7 +1471,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.79</div>
+      <div class="sidebar-version">v1.5.80</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7570,7 +7570,23 @@ const renderers = {
       document.getElementById('projectDesc').value   = p?.description || '';
       document.getElementById('projectStatus').value   = p?.status   || 'Active';
       document.getElementById('projectPriority').value = p?.priority || 'Medium';
-      document.getElementById('projectPriorityRank').value = p?.priorityRank || '';
+      // Build priority rank options dynamically — disable ranks already taken by other projects
+      (function() {
+        const rankSel = document.getElementById('projectPriorityRank');
+        const takenBy = {};
+        projects.forEach(proj => { if (proj.priorityRank && proj.id !== id) takenBy[proj.priorityRank] = proj.name; });
+        const maxRank = Math.max(20, projects.length + 5);
+        rankSel.innerHTML = '<option value="">— None —</option>';
+        for (let i = 1; i <= maxRank; i++) {
+          const owner = takenBy[i];
+          const opt = document.createElement('option');
+          opt.value = i;
+          opt.disabled = !!owner;
+          opt.textContent = owner ? `${i} — ${owner.length > 22 ? owner.slice(0,22)+'…' : owner}` : String(i);
+          rankSel.appendChild(opt);
+        }
+        rankSel.value = p?.priorityRank || '';
+      })();
       document.getElementById('projectColor').value    = p?.color    || PROJECT_COLORS[0];
 
       // Build color swatches
@@ -7604,13 +7620,22 @@ const renderers = {
       }
       const id       = document.getElementById('projectId').value || uid();
       const existing = projects.find(x => x.id === id);
+      const newRank  = document.getElementById('projectPriorityRank').value ? Number(document.getElementById('projectPriorityRank').value) : null;
+      if (newRank) {
+        const conflict = projects.find(x => x.id !== id && x.priorityRank === newRank);
+        if (conflict) {
+          alert(`Rank ${newRank} is already assigned to "${conflict.name}". Please choose a different rank.`);
+          document.getElementById('projectPriorityRank').focus();
+          return;
+        }
+      }
       const proj = {
         id, name,
         type:        document.getElementById('projectType').value || 'project',
         description: document.getElementById('projectDesc').value.trim(),
         status:      document.getElementById('projectStatus').value,
         priority:    document.getElementById('projectPriority').value,
-        priorityRank: document.getElementById('projectPriorityRank').value ? Number(document.getElementById('projectPriorityRank').value) : null,
+        priorityRank: newRank,
         color:       document.getElementById('projectColor').value,
         createdAt:   existing?.createdAt || new Date().toISOString(),
         updatedAt:   new Date().toISOString(),
