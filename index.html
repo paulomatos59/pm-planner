@@ -132,18 +132,6 @@
     }
     .nav-item:hover { background: var(--bg); }
     .nav-item.active { background: var(--primary-light); color: var(--primary); border-right: 3px solid var(--primary); }
-    /* Activity drag-and-drop */
-    .nav-item[draggable="true"] { cursor: grab; }
-    .nav-item[draggable="true"]:active { cursor: grabbing; }
-    .nav-item.drag-over { background: var(--primary-light); border-top: 2px solid var(--primary); }
-    .nav-item.dragging { opacity: 0.4; }
-    .act-rank {
-      font-size: 10px; font-weight: 700; color: var(--text-muted);
-      background: var(--bg); border: 1px solid var(--border);
-      border-radius: 3px; padding: 1px 4px; min-width: 18px;
-      text-align: center; flex-shrink: 0; margin-right: 2px;
-    }
-    .nav-item.active .act-rank { background: var(--primary-light); border-color: var(--primary); color: var(--primary); }
     .nav-badge {
       margin-left: auto; background: var(--danger); color: white;
       font-size: 10px; font-weight: 700; padding: 1px 6px;
@@ -1409,7 +1397,13 @@
           </div>
         </div>
         <div class="sidebar-section-body" id="section-activities">
-          <!-- rendered by renderActivityNav() -->
+          <button class="nav-item" id="nav-overdue"    onclick="showView('overdue')">
+            🚨 Overdue
+            <span class="nav-badge" id="overdueBadge" style="display:none">0</span>
+          </button>
+          <button class="nav-item" id="nav-backlog"    onclick="showView('backlog')">📥 Backlog</button>
+          <button class="nav-item" id="nav-priorities" onclick="showView('priorities')">🎯 Priorities</button>
+          <button class="nav-item" id="nav-all"        onclick="showView('all')">📋 All Tasks</button>
         </div>
       </div>
 
@@ -1478,7 +1472,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.85</div>
+      <div class="sidebar-version">v1.5.84</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2398,14 +2392,6 @@
     let editingNoteId    = null;
     let filterState        = { search: '', category: '', priority: '', statuses: new Set(), taskType: 'task' };
     let statusFilterOpen   = false;
-    const ACTIVITY_DEFAULTS = ['overdue','backlog','priorities','all'];
-    let activityOrder = (function(){
-      try {
-        const stored = JSON.parse(localStorage.getItem('dp_activity_order') || 'null');
-        if (Array.isArray(stored) && stored.length === ACTIVITY_DEFAULTS.length) return stored;
-      } catch(_) {}
-      return [...ACTIVITY_DEFAULTS];
-    })();
     let sortState          = { col: 'due', dir: 'asc' };
     let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let taskDateFrom       = '';
@@ -3306,83 +3292,8 @@
         `<div class="stat-chip stat-today">📋 ${todayOpen} today</div>` +
         `<div class="stat-chip stat-done">✓ ${doneTdy} done</div>`;
       const badge = document.getElementById('overdueBadge');
-      if (badge) {
-        if (overdue > 0) { badge.textContent = overdue; badge.style.display = 'inline'; }
-        else { badge.style.display = 'none'; }
-      }
-    }
-
-    /* ==============================
-       ACTIVITY NAV DRAG & DROP
-    ============================== */
-    const ACTIVITY_META = {
-      overdue:    { emoji: '🚨', label: 'Overdue',   view: 'overdue',    hasBadge: true },
-      backlog:    { emoji: '📥', label: 'Backlog',    view: 'backlog',    hasBadge: false },
-      priorities: { emoji: '🎯', label: 'Priorities', view: 'priorities', hasBadge: false },
-      all:        { emoji: '📋', label: 'All Tasks',  view: 'all',        hasBadge: false },
-    };
-
-    function renderActivityNav() {
-      const container = document.getElementById('section-activities');
-      if (!container) return;
-      container.innerHTML = '';
-      activityOrder.forEach((key, idx) => {
-        const meta = ACTIVITY_META[key];
-        if (!meta) return;
-        const btn = document.createElement('button');
-        btn.className = 'nav-item';
-        btn.id = `nav-${key}`;
-        btn.draggable = true;
-        btn.dataset.actKey = key;
-        btn.innerHTML =
-          `<span class="act-rank">#${idx + 1}</span>` +
-          `${meta.emoji} ${meta.label}` +
-          (meta.hasBadge ? `<span class="nav-badge" id="overdueBadge" style="display:none">0</span>` : '');
-        btn.addEventListener('click', () => showView(meta.view));
-        // Drag events
-        btn.addEventListener('dragstart', _actDragStart);
-        btn.addEventListener('dragover',  _actDragOver);
-        btn.addEventListener('dragleave', _actDragLeave);
-        btn.addEventListener('drop',      _actDrop);
-        btn.addEventListener('dragend',   _actDragEnd);
-        container.appendChild(btn);
-      });
-    }
-
-    let _actDragSrc = null;
-    function _actDragStart(e) {
-      _actDragSrc = this;
-      this.classList.add('dragging');
-      e.dataTransfer.effectAllowed = 'move';
-      e.dataTransfer.setData('text/plain', this.dataset.actKey);
-    }
-    function _actDragOver(e) {
-      e.preventDefault();
-      e.dataTransfer.dropEffect = 'move';
-      if (this !== _actDragSrc) this.classList.add('drag-over');
-    }
-    function _actDragLeave() { this.classList.remove('drag-over'); }
-    function _actDrop(e) {
-      e.stopPropagation();
-      this.classList.remove('drag-over');
-      if (this === _actDragSrc) return;
-      const fromKey = _actDragSrc.dataset.actKey;
-      const toKey   = this.dataset.actKey;
-      const fi = activityOrder.indexOf(fromKey);
-      const ti = activityOrder.indexOf(toKey);
-      if (fi < 0 || ti < 0) return;
-      activityOrder.splice(fi, 1);
-      activityOrder.splice(ti, 0, fromKey);
-      localStorage.setItem('dp_activity_order', JSON.stringify(activityOrder));
-      renderActivityNav();
-      // Re-apply active highlight after re-render
-      const navEl = document.getElementById('nav-' + currentView);
-      if (navEl) navEl.classList.add('active');
-    }
-    function _actDragEnd() {
-      document.querySelectorAll('#section-activities .nav-item').forEach(b => {
-        b.classList.remove('dragging', 'drag-over');
-      });
+      if (overdue > 0) { badge.textContent = overdue; badge.style.display = 'inline'; }
+      else { badge.style.display = 'none'; }
     }
 
     /* ==============================
@@ -8552,7 +8463,6 @@ const renderers = {
        BOOT
     ============================== */
     checkPopupMode();
-    renderActivityNav();
     applySectionStates();
     if (!isPopupMode()) {
       if (syncToken && syncGistId) {
