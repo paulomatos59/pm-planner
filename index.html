@@ -175,6 +175,23 @@
 
     /* ── Task cards ── */
     .task-list { display: flex; flex-direction: column; gap: 5px; }
+    /* Backlog drag-and-drop */
+    .bl-item {
+      display: flex; align-items: flex-start; gap: 6px;
+      border-top: 2px solid transparent; border-bottom: 2px solid transparent;
+      transition: border-color 0.1s;
+    }
+    .bl-item.dragging { opacity: 0.3; }
+    .bl-item.drag-above { border-top-color: var(--primary); }
+    .bl-item.drag-below { border-bottom-color: var(--primary); }
+    .bl-rank {
+      flex-shrink: 0; width: 26px; padding-top: 13px;
+      font-size: 10px; font-weight: 700; color: var(--text-muted);
+      text-align: center; user-select: none; cursor: grab;
+      line-height: 1;
+    }
+    .bl-rank:active { cursor: grabbing; }
+    .bl-card { flex: 1; min-width: 0; }
     .task-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 9px; padding: 11px 14px;
@@ -1472,7 +1489,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.84</div>
+      <div class="sidebar-version">v1.5.85</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2392,6 +2409,7 @@
     let editingNoteId    = null;
     let filterState        = { search: '', category: '', priority: '', statuses: new Set(), taskType: 'task' };
     let statusFilterOpen   = false;
+    let backlogOrder       = JSON.parse(localStorage.getItem('dp_backlog_order') || '[]');
     let sortState          = { col: 'due', dir: 'asc' };
     let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let taskDateFrom       = '';
@@ -3353,6 +3371,7 @@ const renderers = {
       if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
       document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
       if (view === 'summary') tzInit();
+      if (view === 'backlog') _setupBacklogDnd();
       updateHeader();
     }
 
@@ -5136,17 +5155,22 @@ const renderers = {
     ============================== */
     function renderBacklog() {
       const today = todayStr();
-      const list = tasks
-        .filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId)
-        .sort((a, b) => {
-          // Overdue first, then by priority, then by due date
-          const aOd = isOverdue(a), bOd = isOverdue(b);
-          if (aOd && !bOd) return -1;
-          if (!aOd && bOd) return  1;
-          const pd = priorityOrder(a) - priorityOrder(b);
-          if (pd !== 0) return pd;
-          return (a.dueDate || '9999-99-99').localeCompare(b.dueDate || '9999-99-99');
-        });
+
+      // All eligible tasks
+      const allItems = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId);
+
+      // Reconcile backlogOrder: drop deleted IDs, append new tasks
+      const validIds = new Set(allItems.map(t => t.id));
+      backlogOrder = backlogOrder.filter(id => validIds.has(id));
+      allItems.forEach(t => { if (!backlogOrder.includes(t.id)) backlogOrder.push(t.id); });
+      localStorage.setItem('dp_backlog_order', JSON.stringify(backlogOrder));
+
+      // Sort by backlogOrder
+      const list = [...allItems].sort((a, b) => backlogOrder.indexOf(a.id) - backlogOrder.indexOf(b.id));
+
+      // Global rank map (#1 … #N)
+      const rankMap = {};
+      list.forEach((t, i) => { rankMap[t.id] = i + 1; });
 
       // Group: Overdue / Today / This Week / Upcoming / No Date
       const groups = [
@@ -5163,11 +5187,11 @@ const renderers = {
       const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
 
       list.forEach(t => {
-        if (isOverdue(t))                                          groups[0].items.push(t);
-        else if (isTaskActiveOn(t, today))                        groups[1].items.push(t);
-        else if (t.dueDate && t.dueDate <= sunStr)                groups[2].items.push(t);
-        else if (t.dueDate)                                       groups[3].items.push(t);
-        else                                                      groups[4].items.push(t);
+        if (isOverdue(t))                         groups[0].items.push(t);
+        else if (isTaskActiveOn(t, today))        groups[1].items.push(t);
+        else if (t.dueDate && t.dueDate <= sunStr) groups[2].items.push(t);
+        else if (t.dueDate)                       groups[3].items.push(t);
+        else                                      groups[4].items.push(t);
       });
 
       let html = `
@@ -5183,11 +5207,78 @@ const renderers = {
       if (!nonEmpty.length) {
         return html + `<div class="empty-state"><div class="icon">🎉</div><h3>Backlog is empty!</h3><p>All tasks are done.</p></div>`;
       }
+
       nonEmpty.forEach(g => {
         html += `<div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}</span></div>
-                 <div class="task-list">${g.items.map(taskCardWithSubs).join('')}</div>`;
+                 <div class="bl-group task-list">` +
+          g.items.map(t =>
+            `<div class="bl-item" draggable="true" data-tid="${t.id}">
+               <div class="bl-rank" title="Drag to reorder">#${rankMap[t.id]}</div>
+               <div class="bl-card">${taskCardWithSubs(t)}</div>
+             </div>`
+          ).join('') +
+          `</div>`;
       });
       return html;
+    }
+
+    /* ── Backlog drag-and-drop setup (called after render) ── */
+    function _setupBacklogDnd() {
+      let _blDragSrc = null;
+
+      document.querySelectorAll('.bl-item').forEach(el => {
+        el.addEventListener('dragstart', function(e) {
+          _blDragSrc = this;
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', this.dataset.tid);
+        });
+
+        el.addEventListener('dragend', function() {
+          this.classList.remove('dragging');
+          document.querySelectorAll('.bl-item').forEach(x => x.classList.remove('drag-above','drag-below'));
+          _blDragSrc = null;
+        });
+
+        el.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (!_blDragSrc || this === _blDragSrc) return;
+          document.querySelectorAll('.bl-item').forEach(x => x.classList.remove('drag-above','drag-below'));
+          const rect = this.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
+          else this.classList.add('drag-below');
+        });
+
+        el.addEventListener('dragleave', function(e) {
+          // Only remove if leaving to outside this element
+          if (!this.contains(e.relatedTarget)) {
+            this.classList.remove('drag-above','drag-below');
+          }
+        });
+
+        el.addEventListener('drop', function(e) {
+          e.stopPropagation();
+          this.classList.remove('drag-above','drag-below');
+          if (!_blDragSrc || this === _blDragSrc) return;
+
+          const fromId = _blDragSrc.dataset.tid;
+          const toId   = this.dataset.tid;
+          const fi = backlogOrder.indexOf(fromId);
+          if (fi < 0) return;
+
+          // Determine above/below
+          const rect = this.getBoundingClientRect();
+          const before = e.clientY < rect.top + rect.height / 2;
+
+          backlogOrder.splice(fi, 1);
+          const ti = backlogOrder.indexOf(toId);
+          if (ti < 0) return;
+          backlogOrder.splice(before ? ti : ti + 1, 0, fromId);
+
+          localStorage.setItem('dp_backlog_order', JSON.stringify(backlogOrder));
+          showView('backlog');
+        });
+      });
     }
 
     /* ==============================
