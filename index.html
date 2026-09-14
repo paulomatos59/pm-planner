@@ -1471,7 +1471,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.80</div>
+      <div class="sidebar-version">v1.5.81</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2389,7 +2389,8 @@
     let editingProjId    = null;
     let editingFuId      = null;
     let editingNoteId    = null;
-    let filterState        = { search: '', category: '', priority: '', status: '', taskType: 'task' };
+    let filterState        = { search: '', category: '', priority: '', statuses: new Set(), taskType: 'task' };
+    let statusFilterOpen   = false;
     let sortState          = { col: 'due', dir: 'asc' };
     let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let taskDateFrom       = '';
@@ -3319,7 +3320,7 @@
     ============================== */
     function showView(view, resetFilters = false) {
       currentView = view;
-      if (resetFilters) filterState = { search:'', category:'', priority:'', status:'', taskType:'task' };
+      if (resetFilters) { filterState = { search:'', category:'', priority:'', statuses: new Set(), taskType:'task' }; statusFilterOpen = false; }
       closeSidebar(); // auto-close on mobile when navigating
 
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -3378,7 +3379,7 @@ const renderers = {
     }
 
     function filterByCategory(cat) {
-      filterState = { ...filterState, category: cat };
+      filterState = { ...filterState, category: cat, statuses: filterState.statuses || new Set() };
       showView('all');
       setTimeout(() => {
         const sel = document.getElementById('filterCategory');
@@ -4927,7 +4928,7 @@ const renderers = {
                            !stripHtml(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
         if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
         if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
-        if (fs.status   && t.status !== fs.status)   return false;
+        if (fs.statuses?.size && !fs.statuses.has(t.status)) return false;
         if (!_taskInRange(t, fromDate, toDate)) return false;
         if (taskHideDone && t.status === 'Done') return false;
         return true;
@@ -4989,14 +4990,24 @@ const renderers = {
             <option value="Medium" ${fs.priority==='Medium' ?'selected':''}>🟡 Medium</option>
             <option value="Low"    ${fs.priority==='Low'    ?'selected':''}>🟢 Low</option>
           </select>
-          <select class="filter-select" id="filterStatus" onchange="applyFilters()">
-            <option value="">All Statuses</option>
-            <option value="Todo"        ${fs.status==='Todo'        ?'selected':''}>To Do</option>
-            <option value="In Progress" ${fs.status==='In Progress' ?'selected':''}>In Progress</option>
-            <option value="Done"        ${fs.status==='Done'        ?'selected':''}>Done</option>
-            <option value="Delayed"     ${fs.status==='Delayed'     ?'selected':''}>Delayed</option>
-            <option value="Blocked"     ${fs.status==='Blocked'     ?'selected':''}>Blocked</option>
-          </select>
+          <div style="position:relative">
+            ${statusFilterOpen ? `<div onclick="statusFilterOpen=false;applyFilters()" style="position:fixed;inset:0;z-index:199"></div>` : ''}
+            <button onclick="event.stopPropagation();statusFilterOpen=!statusFilterOpen;applyFilters()"
+              class="filter-select" style="cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;background:${fs.statuses?.size?'var(--primary-light)':'var(--surface)'};color:${fs.statuses?.size?'var(--primary)':'var(--text)'}">
+              ${fs.statuses?.size
+                ? (fs.statuses.size === 1 ? [...fs.statuses][0].replace('Todo','To Do') : `${fs.statuses.size} Statuses`)
+                : 'All Statuses'} ▾
+            </button>
+            ${statusFilterOpen ? `<div onclick="event.stopPropagation()" style="position:absolute;top:calc(100%+4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 4px;min-width:148px;box-shadow:0 4px 16px rgba(0,0,0,.15)">
+              ${[['Todo','To Do'],['In Progress','In Progress'],['Done','Done'],['Delayed','Delayed'],['Blocked','Blocked']].map(([val,lbl])=>`
+                <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:5px;font-size:12px;${fs.statuses.has(val)?'background:var(--primary-light);color:var(--primary);font-weight:600':''}">
+                  <input type="checkbox" ${fs.statuses.has(val)?'checked':''} onchange="toggleStatusFilter('${val}')"> ${lbl}
+                </label>`).join('')}
+              <div style="border-top:1px solid var(--border);margin:4px 6px 2px">
+                <button onclick="filterState.statuses=new Set();applyFilters()" style="width:100%;margin-top:4px;font-size:10px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:3px 0;text-align:center">Clear all</button>
+              </div>
+            </div>` : ''}
+          </div>
           <span style="margin-left:auto;display:flex;gap:6px">${taskSortBtn}${taskHideDoneBtn}</span>
         </div>
         <div class="tasks-table">
@@ -5050,13 +5061,20 @@ const renderers = {
       });
     }
 
+    function toggleStatusFilter(val) {
+      if (!filterState.statuses) filterState.statuses = new Set();
+      if (filterState.statuses.has(val)) filterState.statuses.delete(val);
+      else filterState.statuses.add(val);
+      applyFilters();
+    }
     function applyFilters() {
       filterState = {
+        ...filterState,
         search:   document.getElementById('filterSearch')?.value   || '',
         taskType: document.getElementById('filterTaskType')?.value || 'task',
         category: document.getElementById('filterCategory')?.value || '',
         priority: document.getElementById('filterPriority')?.value || '',
-        status:   document.getElementById('filterStatus')?.value   || ''
+        // statuses Set is managed separately via toggleStatusFilter
       };
       document.getElementById('mainContent').innerHTML = renderAll();
     }
