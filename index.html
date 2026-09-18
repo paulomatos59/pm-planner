@@ -371,6 +371,13 @@
     .okr-kr-group { margin-bottom:8px; }
     .okr-kr-group-label { font-size:11px; font-weight:700; color:var(--primary); padding:4px 10px 2px; opacity:.8; }
     .okr-item-row--active { background:#f5f3ff; border-radius:6px; }
+    /* ── Initiative/Milestone subtype toggle ── */
+    .subtype-toggle { display:flex; gap:0; background:var(--surface); border:1px solid var(--border); border-radius:8px; padding:3px; width:fit-content; }
+    .subtype-btn { padding:6px 18px; border-radius:6px; font-size:13px; font-weight:600; border:none; cursor:pointer; background:transparent; color:var(--text-muted); transition:all .15s; }
+    .subtype-btn.active { background:var(--primary); color:#fff; box-shadow:0 1px 4px rgba(37,99,235,.25); }
+    .im-badge { font-size:10px; font-weight:700; padding:1px 7px; border-radius:10px; white-space:nowrap; }
+    .im-badge--initiative { background:#dbeafe; color:#1d4ed8; }
+    .im-badge--milestone  { background:#fef3c7; color:#92400e; }
     /* ── OKR Hierarchy tree ── */
     .okr-view-toggle { display:flex; gap:2px; padding:3px; background:var(--surface); border:1px solid var(--border); border-radius:8px; }
     .okr-view-btn { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600; border:none; cursor:pointer; background:transparent; color:var(--text-muted); transition:all .15s; }
@@ -1555,7 +1562,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.97</div>
+      <div class="sidebar-version">v1.5.99</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2047,6 +2054,14 @@
         <div class="form-group">
           <label class="form-label" id="projectNameLabel">Initiative Name *</label>
           <input type="text" class="form-input" id="projectName" placeholder="e.g. Cloud Migration, Q3 Planning…" autocomplete="off">
+        </div>
+        <div class="form-group hidden" id="projectSubtypeGroup">
+          <label class="form-label">Type</label>
+          <input type="hidden" id="projectSubtype" value="initiative">
+          <div class="subtype-toggle">
+            <button type="button" class="subtype-btn active" id="subtypeBtnInitiative" onclick="selectSubtype('initiative')">🚀 Initiative</button>
+            <button type="button" class="subtype-btn" id="subtypeBtnMilestone" onclick="selectSubtype('milestone')">🏁 Milestone</button>
+          </div>
         </div>
         <div class="form-group hidden" id="projectObjectiveGroup">
           <label class="form-label">Objective</label>
@@ -5591,8 +5606,9 @@ const renderers = {
                                         ${betIMs.map(im => `
                                           <div class="okr-tree-im-row" onclick="event.stopPropagation();openProject('${im.id}')">
                                             <div class="okr-tree-im-dot" style="background:${esc(im.color||'#2563eb')}"></div>
-                                            <span class="okr-tree-im-name">🗂 ${esc(im.name)}</span>
+                                            <span class="okr-tree-im-name">${im.subtype==='milestone'?'🏁':'🚀'} ${esc(im.name)}</span>
                                             <div class="okr-tree-bet-badges">
+                                              <span class="im-badge im-badge--${im.subtype||'initiative'}">${im.subtype==='milestone'?'Milestone':'Initiative'}</span>
                                               <span class="project-status-badge ps-${projectStatusClass(im.status)}">${im.status}</span>
                                               ${projectPriorityBadge(im)}
                                             </div>
@@ -5639,8 +5655,9 @@ const renderers = {
                         ${betIMs.map(im => `
                           <div class="okr-tree-im-row" onclick="event.stopPropagation();openProject('${im.id}')">
                             <div class="okr-tree-im-dot" style="background:${esc(im.color||'#2563eb')}"></div>
-                            <span class="okr-tree-im-name">🗂 ${esc(im.name)}</span>
+                            <span class="okr-tree-im-name">${im.subtype==='milestone'?'🏁':'🚀'} ${esc(im.name)}</span>
                             <div class="okr-tree-bet-badges">
+                              <span class="im-badge im-badge--${im.subtype||'initiative'}">${im.subtype==='milestone'?'Milestone':'Initiative'}</span>
                               <span class="project-status-badge ps-${projectStatusClass(im.status)}">${im.status}</span>
                               ${projectPriorityBadge(im)}
                             </div>
@@ -5696,7 +5713,10 @@ const renderers = {
           <div class="project-card-body">
             <div class="project-card-header">
               <div class="project-card-name">${esc(p.name)}</div>
-              <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
+              <div style="display:flex;gap:5px;align-items:center;flex-wrap:wrap">
+                <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
+                ${p.type !== 'okr' && p.type !== 'personal' ? `<span class="im-badge im-badge--${p.subtype||'initiative'}">${p.subtype==='milestone'?'🏁 Milestone':'🚀 Initiative'}</span>` : ''}
+              </div>
             </div>
             ${bet ? `<div style="font-size:11px;color:#7c3aed;margin-bottom:3px">🎯 ${esc(bet.name)}</div>` : ''}
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
@@ -6110,7 +6130,7 @@ const renderers = {
                 ${available.map(x => `<button class="add-dropdown-item" onclick="linkInitiativeToBet('${x.id}','${pid}')">${esc(x.name)}</button>`).join('')}
               </div>
             </div>` : ''}
-            <button class="btn btn-primary btn-sm" onclick="openInitiativeModalForBet('${pid}')">＋ New Initiative</button>
+            <button class="btn btn-primary btn-sm" onclick="openInitiativeModalForBet('${pid}')">＋ New Milestone</button>
           </div>
         </div>`;
       if (linked.length === 0) {
@@ -6127,6 +6147,7 @@ const renderers = {
                   <div class="project-card-name">${esc(x.name)}</div>
                   <span class="project-status-badge ps-${projectStatusClass(x.status)}">${x.status}</span>
                   ${projectPriorityBadge(x)}
+                  <span class="im-badge im-badge--${x.subtype||'initiative'}">${x.subtype==='milestone'?'🏁 Milestone':'🚀 Initiative'}</span>
                   <button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();unlinkInitiativeFromBet('${x.id}')">Unlink</button>
                 </div>
                 ${x.description ? `<div class="project-card-desc">${esc(x.description)}</div>` : ''}
@@ -8329,6 +8350,13 @@ const renderers = {
           krSel.appendChild(opt);
         });
       }
+      // Subtype toggle (Initiative / Milestone) — non-okr, non-personal only
+      const subtypeGroup = document.getElementById('projectSubtypeGroup');
+      if (subtypeGroup) {
+        const isInitiative = itemType !== 'okr' && itemType !== 'personal';
+        subtypeGroup.classList.toggle('hidden', !isInitiative);
+        if (isInitiative) selectSubtype(p?.subtype || 'initiative');
+      }
       // Bet selector — Initiatives only (not okr, not personal)
       const betGroup = document.getElementById('projectBetGroup');
       if (betGroup) {
@@ -8392,6 +8420,12 @@ const renderers = {
       editingProjId = null;
     }
 
+    function selectSubtype(value) {
+      document.getElementById('projectSubtype').value = value;
+      document.getElementById('subtypeBtnInitiative').classList.toggle('active', value === 'initiative');
+      document.getElementById('subtypeBtnMilestone').classList.toggle('active',  value === 'milestone');
+    }
+
     function saveProject() {
       const name = document.getElementById('projectName').value.trim();
       if (!name) {
@@ -8417,6 +8451,7 @@ const renderers = {
         objective:   savedType === 'okr' ? (document.getElementById('projectObjective').value.trim()) : (existing?.objective || undefined),
         krId:        savedType === 'okr' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
         betId:       (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectBetId').value || null) : (existing?.betId || undefined),
+        subtype:     (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectSubtype').value || 'initiative') : undefined,
         status:      document.getElementById('projectStatus').value,
         priority:    document.getElementById('projectPriority').value,
         priorityRank: newRank,
