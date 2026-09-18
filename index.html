@@ -1505,7 +1505,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.86</div>
+      <div class="sidebar-version">v1.5.87</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1995,7 +1995,7 @@
         <input type="hidden" id="projectId">
         <input type="hidden" id="projectType" value="project">
         <div class="form-group">
-          <label class="form-label">Project Name *</label>
+          <label class="form-label" id="projectNameLabel">Project Name *</label>
           <input type="text" class="form-input" id="projectName" placeholder="e.g. Cloud Migration, Q3 Planning…" autocomplete="off">
         </div>
         <div class="form-group">
@@ -7830,9 +7830,18 @@ const renderers = {
       const isNew = !id;
       const p     = id ? projects.find(x => x.id === id) : null;
       const itemType = p?.type || type || 'project';
-      const label = itemType === 'personal' ? 'Personal Item' : 'Project';
+      const label = itemType === 'personal' ? 'Personal Item' : itemType === 'okr' ? 'OKR' : 'Project';
 
       document.getElementById('projectModalTitle').textContent      = isNew ? `New ${label}` : `Edit ${label}`;
+      // Update field label and placeholder to match item type
+      const nameLbl = document.getElementById('projectNameLabel');
+      if (nameLbl) nameLbl.textContent = `${label} Name *`;
+      const nameInp = document.getElementById('projectName');
+      if (nameInp) nameInp.placeholder = itemType === 'okr'
+        ? 'e.g. FY26 Q3 OKRs, Platform Reliability…'
+        : itemType === 'personal'
+          ? 'e.g. Learning, Health, Side Project…'
+          : 'e.g. Cloud Migration, Q3 Planning…';
       document.getElementById('btnDeleteProject').style.display     = isNew ? 'none' : 'block';
       document.getElementById('projectId').value     = p?.id          || '';
       document.getElementById('projectType').value   = itemType;
