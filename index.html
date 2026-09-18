@@ -1562,7 +1562,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.0</div>
+      <div class="sidebar-version">v1.6.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5711,8 +5711,12 @@ const renderers = {
       // OKR (Bet) card extras: Objective → KR chain + linked I&M
       let okrMeta = '';
       if (p.type === 'okr') {
-        const kr  = p.krId ? okrKeyResults.find(k => k.id === p.krId) : null;
-        const obj = kr?.objectiveId ? okrObjectives.find(o => o.id === kr.objectiveId) : null;
+        // Resolve KR: use explicitly linked krId, else fall back to single global KR
+        const kr  = p.krId ? okrKeyResults.find(k => k.id === p.krId)
+                           : (okrKeyResults.length === 1 ? okrKeyResults[0] : null);
+        // Resolve Objective: from KR link, else fall back to single global Objective
+        const obj = kr?.objectiveId ? okrObjectives.find(o => o.id === kr.objectiveId)
+                                    : (okrObjectives.length === 1 ? okrObjectives[0] : null);
         const ims = projects.filter(x => x.betId === p.id);
         const milestones  = ims.filter(x => x.subtype === 'milestone');
         const initiatives = ims.filter(x => x.subtype !== 'milestone');
