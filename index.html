@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.8</div>
+      <div class="sidebar-version">v1.6.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3479,12 +3479,23 @@
     function closeAddMenu() {
       document.getElementById('addDropdown')?.classList.add('hidden');
     }
+    function toggleOkrAddMenu(e) {
+      e.stopPropagation();
+      document.getElementById('okrPageAddDrop')?.classList.toggle('hidden');
+    }
+    function closeOkrAddMenu() {
+      document.getElementById('okrPageAddDrop')?.classList.add('hidden');
+    }
     // Close dropdown when clicking anywhere outside it
     document.addEventListener('click', function(e) {
       const dd  = document.getElementById('addDropdown');
       const btn = document.getElementById('sidebarAddBtn');
       if (dd && !dd.classList.contains('hidden') && !dd.contains(e.target) && !btn.contains(e.target)) {
         dd.classList.add('hidden');
+      }
+      const okrDd = document.getElementById('okrPageAddDrop');
+      if (okrDd && !okrDd.classList.contains('hidden') && !okrDd.contains(e.target)) {
+        okrDd.classList.add('hidden');
       }
     });
 
@@ -5562,10 +5573,14 @@ const renderers = {
               <button class="okr-view-btn${activeView==='list'?' active':''}" onclick="showView('okrs-list')">List</button>
               <button class="okr-view-btn${activeView==='hierarchy'?' active':''}" onclick="showView('okrs-hierarchy')">Hierarchy</button>
             </div>
-            ${activeView==='hierarchy' ? `
-            <button class="btn btn-secondary" onclick="openOkrObjectiveModal()">＋ Objective</button>
-            <button class="btn btn-secondary" onclick="openOkrKrModal()">＋ Key Result</button>` : ''}
-            <button class="btn btn-primary" onclick="openProjectModal(null,'okr')">＋ New Bet</button>
+            <div style="position:relative">
+              <button class="btn btn-primary" onclick="toggleOkrAddMenu(event)">＋ Add ▾</button>
+              <div class="okr-add-dropdown hidden" id="okrPageAddDrop" style="right:0;min-width:170px">
+                <button class="add-dropdown-item" onclick="closeOkrAddMenu();openProjectModal(null,'okr')">🎯 New BET</button>
+                <button class="add-dropdown-item" onclick="closeOkrAddMenu();openOkrObjectiveModal()">📌 New Objective</button>
+                <button class="add-dropdown-item" onclick="closeOkrAddMenu();openOkrKrModal()">📊 New Key Result</button>
+              </div>
+            </div>
           </div>
         </div>`;
     }
