@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.9</div>
+      <div class="sidebar-version">v1.7.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8562,7 +8562,7 @@ const renderers = {
           const obj = okrObjectives.find(o => o.id === kr.objectiveId);
           const opt = document.createElement('option');
           opt.value = kr.id;
-          opt.textContent = obj ? `${obj.name} → ${kr.name}` : kr.name;
+          opt.textContent = obj ? `${kr.name} — ${obj.name}` : kr.name;
           if (p?.krId === kr.id) opt.selected = true;
           krSel.appendChild(opt);
         });
