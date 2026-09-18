@@ -1549,7 +1549,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.92</div>
+      <div class="sidebar-version">v1.5.93</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5709,11 +5709,11 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='timeline'?'active':''}" onclick="switchTab('timeline')">
             📅 Timeline
           </button>
+          ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='okrinfo'?'active':''}" onclick="switchTab('okrinfo')">🎯 OKRs</button>` : ''}
           ${activeProjectTab==='overview' ? `
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
-              ${p.type==='okr' ? `<button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrObjectiveModal()">📌 Objective</button><button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrKrModal()">📊 Key Result</button><div style="border-top:1px solid var(--border);margin:3px 0"></div>` : ''}
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
@@ -5724,6 +5724,8 @@ const renderers = {
 
       if (activeProjectTab === 'overview') {
         html += renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms);
+      } else if (activeProjectTab === 'okrinfo') {
+        html += renderProjectOkrTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
         const done = ptasks.filter(t => t.status === 'Done');
@@ -5895,11 +5897,11 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='timeline'?'active':''}" onclick="switchTab('timeline')">
             📅 Timeline
           </button>
+          ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='okrinfo'?'active':''}" onclick="switchTab('okrinfo')">🎯 OKRs</button>` : ''}
           ${activeProjectTab==='overview' ? `
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
-              ${p.type==='okr' ? `<button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrObjectiveModal()">📌 Objective</button><button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrKrModal()">📊 Key Result</button><div style="border-top:1px solid var(--border);margin:3px 0"></div>` : ''}
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
@@ -5910,6 +5912,8 @@ const renderers = {
 
       if (activeProjectTab === 'overview') {
         html += renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms);
+      } else if (activeProjectTab === 'okrinfo') {
+        html += renderProjectOkrTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
         const done = ptasks.filter(t => t.status === 'Done');
@@ -6036,106 +6040,107 @@ const renderers = {
       }
     });
 
-    function renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms) {
-      const openTasks    = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a)-priorityOrder(b));
-      const openFu       = pfu.filter(f => f.status !== 'Resolved').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
-      const plannedComms = pcomms.filter(c => c.status !== 'Done').sort((a,b) => (b.date||'').localeCompare(a.date||''));
-      const sortedNotes  = [...pnotes].sort((a,b) => new Date(b.updatedAt)-new Date(a.updatedAt));
-
-      // ── OKR: Context + global Objectives & KRs ──
+    function renderProjectOkrTab(pid, p) {
+      const linkedKr  = p.krId ? okrKeyResults.find(k => k.id === p.krId) : null;
+      const linkedObj = linkedKr?.objectiveId ? okrObjectives.find(o => o.id === linkedKr.objectiveId) : null;
       let html = '';
-      if (p.type === 'okr') {
-        const linkedKr  = p.krId ? okrKeyResults.find(k => k.id === p.krId) : null;
-        const linkedObj = linkedKr?.objectiveId ? okrObjectives.find(o => o.id === linkedKr.objectiveId) : null;
 
-        // Context: which KR this Bet belongs to
-        html += `
-          <div class="okr-obj-section">
-            <div class="okr-obj-hdr">
-              <span>🔗</span>
-              <span class="okr-obj-hdr-title">Position in Hierarchy</span>
-              <button class="btn btn-sm" style="margin-left:auto;font-size:11px" onclick="openProjectModal('${pid}')">✏️ Change</button>
-            </div>
-            <div class="okr-item-list" style="padding:10px 14px">
-              ${linkedKr
-                ? `<div style="font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
-                     ${linkedObj ? `<span style="font-weight:600;color:var(--primary)">📌 ${esc(linkedObj.name)}</span><span style="color:var(--text-muted)">→</span>` : ''}
-                     <span style="font-weight:600">📊 ${esc(linkedKr.name)}</span>
-                     <span style="color:var(--text-muted)">→</span>
-                     <span style="font-weight:600;color:#8b5cf6">🎯 ${esc(p.name)}</span>
-                   </div>`
-                : `<div style="font-size:12px;color:var(--text-muted)">Not linked to a Key Result yet — <a href="#" style="color:var(--primary)" onclick="event.preventDefault();openProjectModal('${pid}')">Link now</a></div>`
-              }
-            </div>
-          </div>`;
+      // Position in hierarchy
+      html += `
+        <div class="okr-obj-section">
+          <div class="okr-obj-hdr">
+            <span>🔗</span>
+            <span class="okr-obj-hdr-title">Position in Hierarchy</span>
+            <button class="btn btn-sm" style="margin-left:auto;font-size:11px" onclick="openProjectModal('${pid}')">✏️ Change</button>
+          </div>
+          <div class="okr-item-list" style="padding:10px 14px">
+            ${linkedKr
+              ? `<div style="font-size:13px;display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+                   ${linkedObj ? `<span style="font-weight:600;color:var(--primary)">📌 ${esc(linkedObj.name)}</span><span style="color:var(--text-muted)">→</span>` : ''}
+                   <span style="font-weight:600">📊 ${esc(linkedKr.name)}</span>
+                   <span style="color:var(--text-muted)">→</span>
+                   <span style="font-weight:600;color:#8b5cf6">🎯 ${esc(p.name)}</span>
+                 </div>`
+              : `<div style="font-size:12px;color:var(--text-muted)">Not linked to a Key Result yet — <a href="#" style="color:var(--primary)" onclick="event.preventDefault();openProjectModal('${pid}')">Link now</a></div>`
+            }
+          </div>
+        </div>`;
 
-        // Global Objectives list
-        html += `
-          <div class="okr-obj-section">
-            <div class="okr-obj-hdr">
-              <span>📌</span>
-              <span class="okr-obj-hdr-title">Objectives</span>
-              <span class="tab-count">${okrObjectives.length}</span>
-              <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openOkrObjectiveModal()">＋ Add</button>
-            </div>
-            <div class="okr-item-list">
-              ${okrObjectives.length === 0
-                ? `<div class="proj-ov-empty">No objectives yet — create the first one</div>`
-                : okrObjectives.map(o => {
-                    const krCount = okrKeyResults.filter(k => k.objectiveId === o.id).length;
-                    return `<div class="okr-item-row">
-                      <span class="okr-item-name">${esc(o.name)}</span>
-                      ${krCount > 0 ? `<span class="okr-item-badge">${krCount} KR${krCount!==1?'s':''}</span>` : ''}
-                      <button class="okr-item-del" onclick="openOkrObjectiveModal('${o.id}')" title="Edit">✏️</button>
-                    </div>`;
-                  }).join('')
-              }
-            </div>
-          </div>`;
+      // Global Objectives list
+      html += `
+        <div class="okr-obj-section">
+          <div class="okr-obj-hdr">
+            <span>📌</span>
+            <span class="okr-obj-hdr-title">Objectives</span>
+            <span class="tab-count">${okrObjectives.length}</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openOkrObjectiveModal()">＋ Add</button>
+          </div>
+          <div class="okr-item-list">
+            ${okrObjectives.length === 0
+              ? `<div class="proj-ov-empty">No objectives yet — create the first one</div>`
+              : okrObjectives.map(o => {
+                  const krCount = okrKeyResults.filter(k => k.objectiveId === o.id).length;
+                  return `<div class="okr-item-row">
+                    <span class="okr-item-name">${esc(o.name)}</span>
+                    ${krCount > 0 ? `<span class="okr-item-badge">${krCount} KR${krCount!==1?'s':''}</span>` : ''}
+                    <button class="okr-item-del" onclick="openOkrObjectiveModal('${o.id}')" title="Edit">✏️</button>
+                  </div>`;
+                }).join('')
+            }
+          </div>
+        </div>`;
 
-        // Global Key Results list (grouped by Objective)
-        html += `
-          <div class="okr-obj-section">
-            <div class="okr-obj-hdr">
-              <span>📊</span>
-              <span class="okr-obj-hdr-title">Key Results</span>
-              <span class="tab-count">${okrKeyResults.length}</span>
-              <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openOkrKrModal()">＋ Add</button>
-            </div>
-            <div class="okr-item-list">
-              ${okrKeyResults.length === 0
-                ? `<div class="proj-ov-empty">No key results yet</div>`
-                : (() => {
-                    let khtml = '';
-                    okrObjectives.forEach(o => {
-                      const krs = okrKeyResults.filter(k => k.objectiveId === o.id);
-                      if (!krs.length) return;
-                      khtml += `<div class="okr-kr-group-label">↳ ${esc(o.name)}</div>`;
-                      krs.forEach(kr => {
-                        khtml += `<div class="okr-item-row${p.krId===kr.id?' okr-item-row--active':''}">
-                          <span class="okr-item-name">${esc(kr.name)}</span>
-                          ${p.krId===kr.id ? `<span class="okr-item-badge" style="background:#ede9fe;color:#7c3aed">This Bet</span>` : ''}
-                          <button class="okr-item-del" onclick="openOkrKrModal('${kr.id}')" title="Edit">✏️</button>
-                        </div>`;
-                      });
-                    });
-                    const noObj = okrKeyResults.filter(k => !k.objectiveId);
-                    noObj.forEach(kr => {
+      // Global Key Results (grouped by Objective)
+      html += `
+        <div class="okr-obj-section">
+          <div class="okr-obj-hdr">
+            <span>📊</span>
+            <span class="okr-obj-hdr-title">Key Results</span>
+            <span class="tab-count">${okrKeyResults.length}</span>
+            <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openOkrKrModal()">＋ Add</button>
+          </div>
+          <div class="okr-item-list">
+            ${okrKeyResults.length === 0
+              ? `<div class="proj-ov-empty">No key results yet</div>`
+              : (() => {
+                  let khtml = '';
+                  okrObjectives.forEach(o => {
+                    const krs = okrKeyResults.filter(k => k.objectiveId === o.id);
+                    if (!krs.length) return;
+                    khtml += `<div class="okr-kr-group-label">↳ ${esc(o.name)}</div>`;
+                    krs.forEach(kr => {
                       khtml += `<div class="okr-item-row${p.krId===kr.id?' okr-item-row--active':''}">
                         <span class="okr-item-name">${esc(kr.name)}</span>
                         ${p.krId===kr.id ? `<span class="okr-item-badge" style="background:#ede9fe;color:#7c3aed">This Bet</span>` : ''}
                         <button class="okr-item-del" onclick="openOkrKrModal('${kr.id}')" title="Edit">✏️</button>
                       </div>`;
                     });
-                    return khtml;
-                  })()
-              }
-            </div>
-          </div>`;
-      }
+                  });
+                  const noObj = okrKeyResults.filter(k => !k.objectiveId);
+                  noObj.forEach(kr => {
+                    khtml += `<div class="okr-item-row${p.krId===kr.id?' okr-item-row--active':''}">
+                      <span class="okr-item-name">${esc(kr.name)}</span>
+                      ${p.krId===kr.id ? `<span class="okr-item-badge" style="background:#ede9fe;color:#7c3aed">This Bet</span>` : ''}
+                      <button class="okr-item-del" onclick="openOkrKrModal('${kr.id}')" title="Edit">✏️</button>
+                    </div>`;
+                  });
+                  return khtml;
+                })()
+            }
+          </div>
+        </div>`;
+
+      return html;
+    }
+
+    function renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms) {
+      const openTasks    = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a)-priorityOrder(b));
+      const openFu       = pfu.filter(f => f.status !== 'Resolved').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
+      const plannedComms = pcomms.filter(c => c.status !== 'Done').sort((a,b) => (b.date||'').localeCompare(a.date||''));
+      const sortedNotes  = [...pnotes].sort((a,b) => new Date(b.updatedAt)-new Date(a.updatedAt));
 
       // ── Summary RTE ──
-      html += `
+      let html = `
         <div class="proj-summary-wrap">
           <div class="proj-summary-toolbar">
             <span class="proj-summary-label">Summary</span>
