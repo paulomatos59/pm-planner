@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.1</div>
+      <div class="sidebar-version">v1.7.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5568,11 +5568,6 @@ const renderers = {
         <div class="view-header">
           <div><div class="view-title">🎯 OKRs</div><div class="view-subtitle">${bets.length} Bet${bets.length!==1?'s':''} · ${okrObjectives.length} Objective${okrObjectives.length!==1?'s':''} · ${okrKeyResults.length} KR${okrKeyResults.length!==1?'s':''}${activeView==='list'?' · '+taskCount+' open task'+(taskCount!==1?'s':''):''}</div></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
-            <div class="okr-view-toggle">
-              <button class="okr-view-btn${activeView==='cards'?' active':''}" onclick="showView('okrs')">Cards</button>
-              <button class="okr-view-btn${activeView==='list'?' active':''}" onclick="showView('okrs-list')">List</button>
-              <button class="okr-view-btn${activeView==='hierarchy'?' active':''}" onclick="showView('okrs-hierarchy')">Hierarchy</button>
-            </div>
             <div style="position:relative">
               <button class="btn btn-primary" onclick="toggleOkrAddMenu(event)">＋ Add ▾</button>
               <div class="okr-add-dropdown hidden" id="okrPageAddDrop" style="right:0;min-width:170px">
@@ -5586,6 +5581,10 @@ const renderers = {
     }
 
     function renderOkrs() {
+      // Cards view removed — redirect to Hierarchy
+      return renderOkrsHierarchy();
+    }
+    function _renderOkrsCards() {
       const okrList    = projects.filter(p => p.type === 'okr');
       const activeOkrs = okrList.filter(p => p.status === 'Active');
       const otherOkrs  = okrList.filter(p => p.status !== 'Active');
@@ -5961,7 +5960,7 @@ const renderers = {
       const openFu = pfu.filter(f => f.status !== 'Resolved').length;
 
       let html = `
-        <button class="back-btn" onclick="showView(${p.type==='okr'?`'okrs'`:`'projects'`})">← Back to ${p.type==='okr'?'OKRs':'Initiatives & Milestones'}</button>
+        <button class="back-btn" onclick="showView(${p.type==='okr'?`'okrs-hierarchy'`:`'projects'`})">← Back to ${p.type==='okr'?'OKRs':'Initiatives & Milestones'}</button>
         <div class="project-detail-header">
           <div class="project-detail-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
           <div class="project-detail-body">
@@ -8697,7 +8696,7 @@ const renderers = {
       projects     = projects.filter(p => p.id !== editingProjId);
       persistProjects(); persistFollowups(); persistNotes();
       closeProjectModal();
-      showView(isPersonal ? 'personal' : isOkr ? 'okrs' : 'projects');
+      showView(isPersonal ? 'personal' : isOkr ? 'okrs-hierarchy' : 'projects');
     }
 
     /* ==============================
@@ -9075,7 +9074,7 @@ const renderers = {
           </button>`).join('');
       }
 
-      html += `<button class="sidebar-view-all" id="nav-okrs" onclick="showView('okrs')">→ All OKRs</button>`;
+      html += `<button class="sidebar-view-all" id="nav-okrs" onclick="showView('okrs-hierarchy')">→ All OKRs</button>`;
       container.innerHTML = html;
       applySectionStates();
     }
