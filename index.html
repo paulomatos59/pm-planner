@@ -1562,7 +1562,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.6</div>
+      <div class="sidebar-version">v1.6.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5622,22 +5622,6 @@ const renderers = {
       bets.forEach(bet => {
         const betTasks = [...tasks.filter(t => t.projectId === bet.id && t.status !== 'Done' && !t.parentId)]
                           .sort((a,b) => okrListOrder.indexOf(a.id) - okrListOrder.indexOf(b.id));
-
-        // Group by date bucket
-        const groups = [
-          { key: 'overdue',  label: '🚨 Overdue',   items: [] },
-          { key: 'today',    label: '📅 Today',      items: [] },
-          { key: 'week',     label: '📆 This Week',  items: [] },
-          { key: 'upcoming', label: '🗓 Upcoming',   items: [] },
-          { key: 'nodate',   label: '📥 No Date',    items: [] },
-        ];
-        betTasks.forEach(t => {
-          if (isOverdue(t))                          groups[0].items.push(t);
-          else if (isTaskActiveOn(t, today))         groups[1].items.push(t);
-          else if (t.dueDate && t.dueDate <= sunStr) groups[2].items.push(t);
-          else if (t.dueDate)                        groups[3].items.push(t);
-          else                                       groups[4].items.push(t);
-        });
 
         const kr  = bet.krId ? okrKeyResults.find(k => k.id === bet.krId)
                              : (okrKeyResults.length === 1 ? okrKeyResults[0] : null);
