@@ -1549,7 +1549,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.94</div>
+      <div class="sidebar-version">v1.5.95</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2049,6 +2049,12 @@
         <div class="form-group hidden" id="projectKrGroup">
           <label class="form-label">Linked Key Result</label>
           <select class="form-select" id="projectKrId">
+            <option value="">— None —</option>
+          </select>
+        </div>
+        <div class="form-group hidden" id="projectBetGroup">
+          <label class="form-label">Linked Bet (OKR)</label>
+          <select class="form-select" id="projectBetId">
             <option value="">— None —</option>
           </select>
         </div>
@@ -5641,6 +5647,7 @@ const renderers = {
       const ptasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
       const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
       const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
+      const bet    = p.betId ? projects.find(x => x.id === p.betId) : null;
       return `
         <div class="project-card" onclick="openProject('${p.id}')">
           <div class="project-card-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
@@ -5649,6 +5656,7 @@ const renderers = {
               <div class="project-card-name">${esc(p.name)}</div>
               <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>${projectPriorityBadge(p)}
             </div>
+            ${bet ? `<div style="font-size:11px;color:#7c3aed;margin-bottom:3px">🎯 ${esc(bet.name)}</div>` : ''}
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
               <span class="project-stat">📋 ${ptasks} task${ptasks!==1?'s':''}</span>
@@ -5710,6 +5718,7 @@ const renderers = {
             📅 Timeline
           </button>
           ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='okrinfo'?'active':''}" onclick="switchTab('okrinfo')">🎯 OKRs</button>` : ''}
+          ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='initiatives'?'active':''}" onclick="switchTab('initiatives')">🗂 Initiatives <span class="tab-count">${projects.filter(x=>x.betId===pid).length}</span></button>` : ''}
           ${activeProjectTab==='overview' ? `
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
@@ -5726,6 +5735,8 @@ const renderers = {
         html += renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms);
       } else if (activeProjectTab === 'okrinfo') {
         html += renderProjectOkrTab(pid, p);
+      } else if (activeProjectTab === 'initiatives') {
+        html += renderBetInitiativesTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
         const done = ptasks.filter(t => t.status === 'Done');
@@ -5898,6 +5909,7 @@ const renderers = {
             📅 Timeline
           </button>
           ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='okrinfo'?'active':''}" onclick="switchTab('okrinfo')">🎯 OKRs</button>` : ''}
+          ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='initiatives'?'active':''}" onclick="switchTab('initiatives')">🗂 Initiatives <span class="tab-count">${projects.filter(x=>x.betId===pid).length}</span></button>` : ''}
           ${activeProjectTab==='overview' ? `
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
@@ -5914,6 +5926,8 @@ const renderers = {
         html += renderProjectOverview(pid, p, ptasks, pfu, pnotes, pcomms);
       } else if (activeProjectTab === 'okrinfo') {
         html += renderProjectOkrTab(pid, p);
+      } else if (activeProjectTab === 'initiatives') {
+        html += renderBetInitiativesTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
         const done = ptasks.filter(t => t.status === 'Done');
@@ -6037,6 +6051,83 @@ const renderers = {
     document.addEventListener('click', e => {
       if (!e.target.closest('.ov-add-wrap')) {
         document.querySelectorAll('.ov-add-dropdown').forEach(d => d.classList.add('hidden'));
+      }
+    });
+
+    function renderBetInitiativesTab(pid, p) {
+      const linked    = projects.filter(x => x.type !== 'okr' && x.type !== 'personal' && x.betId === pid);
+      const available = projects.filter(x => x.type !== 'okr' && x.type !== 'personal' && !x.betId);
+      let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:8px">
+          <span style="font-size:13px;color:var(--text-muted)">${linked.length} initiative${linked.length!==1?'s':''} linked to this Bet</span>
+          <div style="display:flex;gap:8px">
+            ${available.length > 0 ? `
+            <div style="position:relative">
+              <button class="btn btn-secondary btn-sm" onclick="event.stopPropagation();toggleBetInitDrop('${pid}')">🔗 Link Existing</button>
+              <div class="okr-add-dropdown hidden" id="betInitDrop_${pid}" style="right:0;min-width:230px;max-height:220px;overflow-y:auto">
+                ${available.map(x => `<button class="add-dropdown-item" onclick="linkInitiativeToBet('${x.id}','${pid}')">${esc(x.name)}</button>`).join('')}
+              </div>
+            </div>` : ''}
+            <button class="btn btn-primary btn-sm" onclick="openInitiativeModalForBet('${pid}')">＋ New Initiative</button>
+          </div>
+        </div>`;
+      if (linked.length === 0) {
+        html += `<div class="empty-state" style="padding:32px 0"><div class="icon">🗂</div><h3>No initiatives linked</h3><p>Link existing initiatives or create a new one for this Bet.</p></div>`;
+      } else {
+        html += linked.map(x => {
+          const xTasks = tasks.filter(t => t.projectId === x.id && t.status !== 'Done').length;
+          const xFu    = followups.filter(f => f.projectId === x.id && f.status === 'Open').length;
+          return `
+            <div class="project-card" style="margin-bottom:10px;cursor:pointer" onclick="openProject('${x.id}')">
+              <div class="project-card-stripe" style="background:${esc(x.color||'#2563eb')}"></div>
+              <div class="project-card-body">
+                <div class="project-card-header">
+                  <div class="project-card-name">${esc(x.name)}</div>
+                  <span class="project-status-badge ps-${projectStatusClass(x.status)}">${x.status}</span>
+                  ${projectPriorityBadge(x)}
+                  <button class="btn btn-sm" style="margin-left:auto;font-size:11px;color:var(--danger);border-color:var(--danger)" onclick="event.stopPropagation();unlinkInitiativeFromBet('${x.id}')">Unlink</button>
+                </div>
+                ${x.description ? `<div class="project-card-desc">${esc(x.description)}</div>` : ''}
+                <div class="project-card-stats">
+                  <span class="project-stat">📋 ${xTasks} task${xTasks!==1?'s':''}</span>
+                  <span class="project-stat">📌 ${xFu} follow-up${xFu!==1?'s':''}</span>
+                </div>
+              </div>
+            </div>`;
+        }).join('');
+      }
+      return html;
+    }
+
+    function linkInitiativeToBet(initiativeId, betId) {
+      const x = projects.find(p => p.id === initiativeId);
+      if (!x) return;
+      x.betId = betId;
+      persistProjects();
+      document.getElementById('betInitDrop_' + betId)?.classList.add('hidden');
+      showView('okr-detail');
+    }
+    function unlinkInitiativeFromBet(initiativeId) {
+      const x = projects.find(p => p.id === initiativeId);
+      if (!x || !confirm(`Unlink "${x.name}" from this Bet?`)) return;
+      x.betId = null;
+      persistProjects();
+      showView('okr-detail');
+    }
+    function openInitiativeModalForBet(betId) {
+      openProjectModal(null, 'project');
+      setTimeout(() => {
+        const sel = document.getElementById('projectBetId');
+        if (sel) sel.value = betId;
+      }, 100);
+    }
+    function toggleBetInitDrop(betId) {
+      const dd = document.getElementById('betInitDrop_' + betId);
+      if (dd) dd.classList.toggle('hidden');
+    }
+    document.addEventListener('click', e => {
+      if (!e.target.closest('[id^="betInitDrop_"]') && !e.target.closest('button')) {
+        document.querySelectorAll('[id^="betInitDrop_"]').forEach(d => d.classList.add('hidden'));
       }
     });
 
@@ -8196,6 +8287,21 @@ const renderers = {
           krSel.appendChild(opt);
         });
       }
+      // Bet selector — Initiatives only (not okr, not personal)
+      const betGroup = document.getElementById('projectBetGroup');
+      if (betGroup) {
+        const isInitiative = itemType !== 'okr' && itemType !== 'personal';
+        betGroup.classList.toggle('hidden', !isInitiative);
+        const betSel = document.getElementById('projectBetId');
+        betSel.innerHTML = '<option value="">— None —</option>';
+        projects.filter(x => x.type === 'okr').forEach(bet => {
+          const opt = document.createElement('option');
+          opt.value = bet.id;
+          opt.textContent = bet.name;
+          if (p?.betId === bet.id) opt.selected = true;
+          betSel.appendChild(opt);
+        });
+      }
       document.getElementById('projectStatus').value   = p?.status   || 'Active';
       document.getElementById('projectPriority').value = p?.priority || 'Medium';
       // Build priority rank options dynamically — disable ranks already taken by other projects
@@ -8268,6 +8374,7 @@ const renderers = {
         description: document.getElementById('projectDesc').value.trim(),
         objective:   savedType === 'okr' ? (document.getElementById('projectObjective').value.trim()) : (existing?.objective || undefined),
         krId:        savedType === 'okr' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
+        betId:       (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectBetId').value || null) : (existing?.betId || undefined),
         status:      document.getElementById('projectStatus').value,
         priority:    document.getElementById('projectPriority').value,
         priorityRank: newRank,
