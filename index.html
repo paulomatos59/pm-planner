@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.0</div>
+      <div class="sidebar-version">v1.7.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8552,10 +8552,11 @@ const renderers = {
       const objGroup = document.getElementById('projectObjectiveGroup');
       if (objGroup) objGroup.classList.toggle('hidden', itemType !== 'okr');
       document.getElementById('projectObjective').value = p?.objective || '';
-      // KR selector — OKRs only
+      // KR selector — OKRs (Bets) AND Initiatives/Milestones
       const krGroup = document.getElementById('projectKrGroup');
       if (krGroup) {
-        krGroup.classList.toggle('hidden', itemType !== 'okr');
+        const showKr = itemType !== 'personal';
+        krGroup.classList.toggle('hidden', !showKr);
         const krSel = document.getElementById('projectKrId');
         krSel.innerHTML = '<option value="">— None —</option>';
         okrKeyResults.forEach(kr => {
@@ -8666,7 +8667,7 @@ const renderers = {
         type:        savedType,
         description: document.getElementById('projectDesc').value.trim(),
         objective:   savedType === 'okr' ? (document.getElementById('projectObjective').value.trim()) : (existing?.objective || undefined),
-        krId:        savedType === 'okr' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
+        krId:        savedType !== 'personal' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
         betId:       (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectBetId').value || null) : (existing?.betId || undefined),
         subtype:     (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectSubtype').value || 'initiative') : undefined,
         status:      document.getElementById('projectStatus').value,
