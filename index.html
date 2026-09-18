@@ -370,6 +370,25 @@
     .okr-item-row .okr-item-del:hover { opacity:1; color:var(--danger); }
     .okr-kr-group { margin-bottom:8px; }
     .okr-kr-group-label { font-size:11px; font-weight:700; color:var(--primary); padding:4px 10px 2px; opacity:.8; }
+    /* ── OKR Hierarchy tree ── */
+    .okr-view-toggle { display:flex; gap:2px; padding:3px; background:var(--surface); border:1px solid var(--border); border-radius:8px; }
+    .okr-view-btn { padding:5px 14px; border-radius:6px; font-size:12px; font-weight:600; border:none; cursor:pointer; background:transparent; color:var(--text-muted); transition:all .15s; }
+    .okr-view-btn.active { background:var(--primary); color:#fff; }
+    .okr-tree { display:flex; flex-direction:column; gap:12px; }
+    .okr-tree-obj { background:var(--surface); border:1px solid var(--border); border-radius:10px; overflow:hidden; }
+    .okr-tree-obj-hdr { display:flex; align-items:center; gap:10px; padding:12px 16px; background:var(--bg); }
+    .okr-tree-obj-name { flex:1; font-weight:700; font-size:14px; }
+    .okr-tree-obj-actions { display:flex; gap:6px; align-items:center; flex-shrink:0; }
+    .okr-tree-krs { padding:4px 10px 8px; display:flex; flex-direction:column; gap:6px; }
+    .okr-tree-kr { border:1px solid var(--border); border-radius:8px; background:var(--bg); overflow:hidden; }
+    .okr-tree-kr-hdr { display:flex; align-items:center; gap:8px; padding:9px 12px; }
+    .okr-tree-kr-name { flex:1; font-weight:600; font-size:13px; }
+    .okr-tree-bets { padding:2px 8px 8px; display:flex; flex-direction:column; gap:4px; }
+    .okr-tree-bet { display:flex; align-items:center; gap:10px; padding:8px 10px; border-radius:7px; background:var(--surface); cursor:pointer; transition:background .15s; }
+    .okr-tree-bet:hover { background:var(--hover,#f1f5f9); }
+    .okr-tree-bet-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
+    .okr-tree-bet-name { flex:1; font-size:13px; font-weight:500; }
+    .okr-tree-bet-badges { display:flex; gap:6px; align-items:center; }
     /* Sidebar OKR add dropdown */
     .okr-add-dropdown { position:absolute; top:calc(100% + 2px); right:0; min-width:170px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.14); z-index:400; overflow:hidden; }
     .okr-add-dropdown.hidden { display:none; }
@@ -1454,8 +1473,8 @@
             <button class="section-add-btn" onclick="toggleOkrSidebarMenu(event)" title="Add OKR item">＋</button>
             <div class="okr-add-dropdown hidden" id="okrSidebarAddDrop">
               <button class="add-dropdown-item" onclick="document.getElementById('okrSidebarAddDrop').classList.add('hidden');openProjectModal(null,'okr')">🎯 New Bet</button>
-              <button class="add-dropdown-item" onclick="document.getElementById('okrSidebarAddDrop').classList.add('hidden');openOkrObjectiveModal(currentView==='okr-detail'?activeProjectId:null)">📌 New Objective</button>
-              <button class="add-dropdown-item" onclick="document.getElementById('okrSidebarAddDrop').classList.add('hidden');openOkrKrModal(currentView==='okr-detail'?activeProjectId:null)">📊 New Key Result</button>
+              <button class="add-dropdown-item" onclick="document.getElementById('okrSidebarAddDrop').classList.add('hidden');openOkrObjectiveModal()">📌 New Objective</button>
+              <button class="add-dropdown-item" onclick="document.getElementById('okrSidebarAddDrop').classList.add('hidden');openOkrKrModal()">📊 New Key Result</button>
             </div>
           </div>
         </div>
@@ -1529,7 +1548,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.90</div>
+      <div class="sidebar-version">v1.5.91</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2026,6 +2045,12 @@
           <label class="form-label">Objective</label>
           <textarea class="form-textarea" id="projectObjective" placeholder="What are we trying to achieve?…" rows="3"></textarea>
         </div>
+        <div class="form-group hidden" id="projectKrGroup">
+          <label class="form-label">Linked Key Result</label>
+          <select class="form-select" id="projectKrId">
+            <option value="">— None —</option>
+          </select>
+        </div>
         <div class="form-group">
           <label class="form-label">Description</label>
           <textarea class="form-textarea" id="projectDesc" placeholder="Goals, scope, context…"></textarea>
@@ -2098,7 +2123,6 @@
         <button class="btn-close" onclick="closeOkrObjectiveModal()">×</button>
       </div>
       <div class="modal-body">
-        <input type="hidden" id="okrObjectiveOkrId">
         <input type="hidden" id="okrObjectiveId">
         <div class="form-group">
           <label class="form-label">Objective Name *</label>
@@ -2121,7 +2145,6 @@
         <button class="btn-close" onclick="closeOkrKrModal()">×</button>
       </div>
       <div class="modal-body">
-        <input type="hidden" id="okrKrOkrId">
         <input type="hidden" id="okrKrId">
         <div class="form-group">
           <label class="form-label">Key Result Name *</label>
@@ -2419,6 +2442,10 @@
     let activePersonalId = null;
     let activeProjectTab = 'overview';
     let activeOkrId      = null;
+    let okrObjectives    = JSON.parse(localStorage.getItem('dp_okr_objectives') || '[]');
+    let okrKeyResults    = JSON.parse(localStorage.getItem('dp_okr_keyresults')  || '[]');
+    function persistOkrObjectives() { localStorage.setItem('dp_okr_objectives', JSON.stringify(okrObjectives)); }
+    function persistOkrKeyResults()  { localStorage.setItem('dp_okr_keyresults',  JSON.stringify(okrKeyResults));  }
 
     /* ── Sprint calendar (2026) ── */
     const SPRINTS = [
@@ -3458,6 +3485,7 @@ const renderers = {
         backlog:          renderBacklog,
         overdue:          renderOverdue,
         okrs:             renderOkrs,
+        'okrs-hierarchy': renderOkrsHierarchy,
         'okr-detail':     () => renderProjectDetail(activeProjectId),
         projects:         renderProjects,
         'project-detail': () => renderProjectDetail(activeProjectId),
@@ -5432,19 +5460,30 @@ const renderers = {
     /* ==============================
        OKRs VIEW
     ============================== */
+    function _okrViewHeader(activeView) {
+      const bets = projects.filter(p => p.type === 'okr');
+      return `
+        <div class="view-header">
+          <div><div class="view-title">🎯 OKRs</div><div class="view-subtitle">${bets.length} Bet${bets.length!==1?'s':''} · ${okrObjectives.length} Objective${okrObjectives.length!==1?'s':''}</div></div>
+          <div style="display:flex;gap:8px;align-items:center">
+            <div class="okr-view-toggle">
+              <button class="okr-view-btn${activeView==='cards'?' active':''}" onclick="showView('okrs')">Cards</button>
+              <button class="okr-view-btn${activeView==='hierarchy'?' active':''}" onclick="showView('okrs-hierarchy')">Hierarchy</button>
+            </div>
+            <button class="btn btn-primary" onclick="openProjectModal(null,'okr')">＋ New Bet</button>
+          </div>
+        </div>`;
+    }
+
     function renderOkrs() {
       const okrList    = projects.filter(p => p.type === 'okr');
       const activeOkrs = okrList.filter(p => p.status === 'Active');
       const otherOkrs  = okrList.filter(p => p.status !== 'Active');
 
-      let html = `
-        <div class="view-header">
-          <div><div class="view-title">🎯 OKRs</div><div class="view-subtitle">${okrList.length} OKR${okrList.length!==1?'s':''}</div></div>
-          <button class="btn btn-primary" onclick="openProjectModal(null,'okr')">＋ New OKR</button>
-        </div>`;
+      let html = _okrViewHeader('cards');
 
       if (okrList.length === 0) {
-        return html + `<div class="empty-state"><div class="icon">🎯</div><h3>No OKRs yet</h3><p>Create an OKR to track objectives, key results, tasks and notes in one place.</p></div>`;
+        return html + `<div class="empty-state"><div class="icon">🎯</div><h3>No Bets yet</h3><p>Create a Bet or switch to Hierarchy view to define Objectives and Key Results.</p></div>`;
       }
 
       if (activeOkrs.length > 0) {
@@ -5455,6 +5494,93 @@ const renderers = {
         html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${otherOkrs.length}</span></div>
                  <div class="projects-grid">${otherOkrs.map(okrCard).join('')}</div>`;
       }
+      return html;
+    }
+
+    function renderOkrsHierarchy() {
+      const bets = projects.filter(p => p.type === 'okr');
+      let html = _okrViewHeader('hierarchy');
+
+      if (okrObjectives.length === 0 && bets.length === 0) {
+        return html + `<div class="empty-state"><div class="icon">🎯</div><h3>No OKRs yet</h3><p>Use the + menu to create an Objective, then add Key Results and Bets.</p></div>`;
+      }
+
+      html += `<div class="okr-tree">`;
+
+      okrObjectives.forEach(obj => {
+        const krs = okrKeyResults.filter(k => k.objectiveId === obj.id);
+        html += `
+          <div class="okr-tree-obj">
+            <div class="okr-tree-obj-hdr">
+              <span>📌</span>
+              <span class="okr-tree-obj-name">${esc(obj.name)}</span>
+              <div class="okr-tree-obj-actions">
+                <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" onclick="openOkrObjectiveModal('${obj.id}')">✏️ Edit</button>
+                <button class="btn btn-primary btn-sm" style="font-size:11px;padding:3px 8px" onclick="openOkrKrModal(null,'${obj.id}')">＋ KR</button>
+              </div>
+            </div>
+            <div class="okr-tree-krs">
+              ${krs.length === 0
+                ? `<div style="padding:10px 16px 6px;font-size:12px;color:var(--text-muted)">No Key Results yet — click ＋ KR to add one</div>`
+                : krs.map(kr => {
+                    const betList = bets.filter(b => b.krId === kr.id);
+                    return `
+                      <div class="okr-tree-kr">
+                        <div class="okr-tree-kr-hdr">
+                          <span style="font-size:13px;color:var(--primary)">📊</span>
+                          <span class="okr-tree-kr-name">${esc(kr.name)}</span>
+                          <div class="okr-tree-obj-actions">
+                            <button class="btn btn-sm" style="font-size:11px;padding:3px 8px" onclick="openOkrKrModal('${kr.id}')">✏️ Edit</button>
+                            <button class="btn btn-primary btn-sm" style="font-size:11px;padding:3px 8px" onclick="openProjectModalForKr('${kr.id}')">＋ Bet</button>
+                          </div>
+                        </div>
+                        <div class="okr-tree-bets">
+                          ${betList.length === 0
+                            ? `<div style="font-size:11px;color:var(--text-muted);padding:2px 4px 4px">No Bets linked</div>`
+                            : betList.map(bet => `
+                              <div class="okr-tree-bet" onclick="openOkr('${bet.id}')">
+                                <div class="okr-tree-bet-dot" style="background:${esc(bet.color||'#8b5cf6')}"></div>
+                                <span class="okr-tree-bet-name">${esc(bet.name)}</span>
+                                <div class="okr-tree-bet-badges">
+                                  <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
+                                  ${projectPriorityBadge(bet)}
+                                </div>
+                              </div>`).join('')
+                          }
+                        </div>
+                      </div>`;
+                  }).join('')
+              }
+            </div>
+          </div>`;
+      });
+
+      // Unlinked Bets
+      const linkedBetIds = new Set(bets.filter(b => b.krId && okrKeyResults.find(k=>k.id===b.krId)).map(b=>b.id));
+      const unlinked = bets.filter(b => !linkedBetIds.has(b.id));
+      if (unlinked.length > 0) {
+        html += `
+          <div class="okr-tree-obj">
+            <div class="okr-tree-obj-hdr">
+              <span>🎯</span>
+              <span class="okr-tree-obj-name" style="color:var(--text-muted)">Unlinked Bets</span>
+              <span class="tab-count" style="margin-left:6px">${unlinked.length}</span>
+            </div>
+            <div class="okr-tree-bets" style="padding:4px 10px 10px">
+              ${unlinked.map(bet => `
+                <div class="okr-tree-bet" onclick="openOkr('${bet.id}')">
+                  <div class="okr-tree-bet-dot" style="background:${esc(bet.color||'#8b5cf6')}"></div>
+                  <span class="okr-tree-bet-name">${esc(bet.name)}</span>
+                  <div class="okr-tree-bet-badges">
+                    <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
+                    ${projectPriorityBadge(bet)}
+                  </div>
+                </div>`).join('')}
+            </div>
+          </div>`;
+      }
+
+      html += `</div>`;
       return html;
     }
 
@@ -5563,7 +5689,7 @@ const renderers = {
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
-              ${p.type==='okr' ? `<button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrObjectiveModal('${pid}')">🎯 Objective</button><button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrKrModal('${pid}')">📊 Key Result</button><div style="border-top:1px solid var(--border);margin:3px 0"></div>` : ''}
+              ${p.type==='okr' ? `<button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrObjectiveModal()">📌 Objective</button><button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrKrModal()">📊 Key Result</button><div style="border-top:1px solid var(--border);margin:3px 0"></div>` : ''}
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
@@ -5749,7 +5875,7 @@ const renderers = {
           <div class="ov-add-wrap" id="ovAddWrap_${pid}">
             <button class="btn btn-primary btn-sm" onclick="event.stopPropagation();toggleOvAdd('${pid}')">＋ Add</button>
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
-              ${p.type==='okr' ? `<button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrObjectiveModal('${pid}')">🎯 Objective</button><button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrKrModal('${pid}')">📊 Key Result</button><div style="border-top:1px solid var(--border);margin:3px 0"></div>` : ''}
+              ${p.type==='okr' ? `<button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrObjectiveModal()">📌 Objective</button><button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openOkrKrModal()">📊 Key Result</button><div style="border-top:1px solid var(--border);margin:3px 0"></div>` : ''}
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
@@ -5892,78 +6018,25 @@ const renderers = {
       const plannedComms = pcomms.filter(c => c.status !== 'Done').sort((a,b) => (b.date||'').localeCompare(a.date||''));
       const sortedNotes  = [...pnotes].sort((a,b) => new Date(b.updatedAt)-new Date(a.updatedAt));
 
-      // ── OKR: Objectives & Key Results ──
+      // ── OKR: Hierarchy context ──
       let html = '';
       if (p.type === 'okr') {
-        const objectives  = p.objectives  || [];
-        const keyResults  = p.keyResults  || [];
-
-        // Objectives section
+        const linkedKr  = p.krId ? okrKeyResults.find(k => k.id === p.krId) : null;
+        const linkedObj = linkedKr?.objectiveId ? okrObjectives.find(o => o.id === linkedKr.objectiveId) : null;
         html += `
           <div class="okr-obj-section">
             <div class="okr-obj-hdr">
-              <span>🎯</span>
-              <span class="okr-obj-hdr-title">Objectives</span>
-              <span class="tab-count">${objectives.length}</span>
-              <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openOkrObjectiveModal('${pid}')">＋ Add</button>
+              <span>🔗</span>
+              <span class="okr-obj-hdr-title">OKR Context</span>
+              <button class="btn btn-sm" style="margin-left:auto;font-size:11px" onclick="openProjectModal('${pid}')">Edit</button>
             </div>
-            <div class="okr-item-list">
-              ${objectives.length === 0
-                ? `<div class="proj-ov-empty">No objectives yet — add one to get started</div>`
-                : objectives.map(o => {
-                    const krCount = keyResults.filter(k => k.objectiveId === o.id).length;
-                    return `<div class="okr-item-row">
-                      <span class="okr-item-name">${esc(o.name)}</span>
-                      ${krCount > 0 ? `<span class="okr-item-badge">${krCount} KR${krCount!==1?'s':''}</span>` : ''}
-                      <button class="okr-item-del" onclick="openOkrObjectiveModal('${pid}','${o.id}')" title="Edit">✏️</button>
-                    </div>`;
-                  }).join('')
-              }
-            </div>
-          </div>`;
-
-        // Key Results section (grouped by Objective)
-        html += `
-          <div class="okr-obj-section">
-            <div class="okr-obj-hdr">
-              <span>📊</span>
-              <span class="okr-obj-hdr-title">Key Results</span>
-              <span class="tab-count">${keyResults.length}</span>
-              <button class="btn btn-primary btn-sm" style="margin-left:8px" onclick="openOkrKrModal('${pid}')">＋ Add</button>
-            </div>
-            <div class="okr-item-list">
-              ${keyResults.length === 0
-                ? `<div class="proj-ov-empty">No key results yet</div>`
-                : (() => {
-                    // Group by Objective
-                    const grouped = {};
-                    const noObj   = [];
-                    keyResults.forEach(kr => {
-                      if (kr.objectiveId) {
-                        if (!grouped[kr.objectiveId]) grouped[kr.objectiveId] = [];
-                        grouped[kr.objectiveId].push(kr);
-                      } else { noObj.push(kr); }
-                    });
-                    let khtml = '';
-                    objectives.forEach(o => {
-                      const krs = grouped[o.id] || [];
-                      if (!krs.length) return;
-                      khtml += `<div class="okr-kr-group-label">↳ ${esc(o.name)}</div>`;
-                      krs.forEach(kr => {
-                        khtml += `<div class="okr-item-row">
-                          <span class="okr-item-name">${esc(kr.name)}</span>
-                          <button class="okr-item-del" onclick="openOkrKrModal('${pid}','${kr.id}')" title="Edit">✏️</button>
-                        </div>`;
-                      });
-                    });
-                    noObj.forEach(kr => {
-                      khtml += `<div class="okr-item-row">
-                        <span class="okr-item-name">${esc(kr.name)}</span>
-                        <button class="okr-item-del" onclick="openOkrKrModal('${pid}','${kr.id}')" title="Edit">✏️</button>
-                      </div>`;
-                    });
-                    return khtml;
-                  })()
+            <div class="okr-item-list" style="padding:10px 14px">
+              ${linkedKr
+                ? `<div style="font-size:13px">
+                     ${linkedObj ? `<span style="font-weight:600">📌 ${esc(linkedObj.name)}</span><span style="color:var(--text-muted)"> → </span>` : ''}
+                     <span style="font-weight:600">📊 ${esc(linkedKr.name)}</span>
+                   </div>`
+                : `<div style="font-size:12px;color:var(--text-muted)">Not linked to a Key Result — <a href="#" style="color:var(--primary)" onclick="event.preventDefault();openProjectModal('${pid}')">Link now</a></div>`
               }
             </div>
           </div>`;
@@ -8011,6 +8084,21 @@ const renderers = {
       const objGroup = document.getElementById('projectObjectiveGroup');
       if (objGroup) objGroup.classList.toggle('hidden', itemType !== 'okr');
       document.getElementById('projectObjective').value = p?.objective || '';
+      // KR selector — OKRs only
+      const krGroup = document.getElementById('projectKrGroup');
+      if (krGroup) {
+        krGroup.classList.toggle('hidden', itemType !== 'okr');
+        const krSel = document.getElementById('projectKrId');
+        krSel.innerHTML = '<option value="">— None —</option>';
+        okrKeyResults.forEach(kr => {
+          const obj = okrObjectives.find(o => o.id === kr.objectiveId);
+          const opt = document.createElement('option');
+          opt.value = kr.id;
+          opt.textContent = obj ? `${obj.name} → ${kr.name}` : kr.name;
+          if (p?.krId === kr.id) opt.selected = true;
+          krSel.appendChild(opt);
+        });
+      }
       document.getElementById('projectStatus').value   = p?.status   || 'Active';
       document.getElementById('projectPriority').value = p?.priority || 'Medium';
       // Build priority rank options dynamically — disable ranks already taken by other projects
@@ -8082,6 +8170,7 @@ const renderers = {
         type:        savedType,
         description: document.getElementById('projectDesc').value.trim(),
         objective:   savedType === 'okr' ? (document.getElementById('projectObjective').value.trim()) : (existing?.objective || undefined),
+        krId:        savedType === 'okr' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
         status:      document.getElementById('projectStatus').value,
         priority:    document.getElementById('projectPriority').value,
         priorityRank: newRank,
@@ -8118,14 +8207,11 @@ const renderers = {
     let _editOkrObjId = null;
     let _editOkrKrId  = null;
 
-    function openOkrObjectiveModal(okrId, objId = null) {
-      if (!okrId) { alert('Please open an OKR first, then add an Objective from its Overview tab.'); return; }
-      const p   = projects.find(x => x.id === okrId);
-      const obj = objId ? (p?.objectives||[]).find(o => o.id === objId) : null;
+    function openOkrObjectiveModal(objId = null) {
+      const obj = objId ? okrObjectives.find(o => o.id === objId) : null;
       document.getElementById('okrObjectiveModalTitle').textContent = obj ? 'Edit Objective' : 'New Objective';
-      document.getElementById('okrObjectiveOkrId').value  = okrId;
-      document.getElementById('okrObjectiveId').value     = obj?.id || '';
-      document.getElementById('okrObjectiveName').value   = obj?.name || '';
+      document.getElementById('okrObjectiveId').value   = obj?.id   || '';
+      document.getElementById('okrObjectiveName').value = obj?.name || '';
       document.getElementById('btnDeleteOkrObjective').style.display = obj ? 'block' : 'none';
       _editOkrObjId = objId;
       document.getElementById('okrObjectiveModal').classList.remove('hidden');
@@ -8136,52 +8222,41 @@ const renderers = {
       _editOkrObjId = null;
     }
     function saveOkrObjective() {
-      const name  = document.getElementById('okrObjectiveName').value.trim();
+      const name = document.getElementById('okrObjectiveName').value.trim();
       if (!name) { document.getElementById('okrObjectiveName').style.borderColor='var(--danger)'; return; }
-      const okrId = document.getElementById('okrObjectiveOkrId').value;
-      const p     = projects.find(x => x.id === okrId);
-      if (!p) return;
-      if (!p.objectives) p.objectives = [];
       const existId = document.getElementById('okrObjectiveId').value;
       if (existId) {
-        const obj = p.objectives.find(o => o.id === existId);
+        const obj = okrObjectives.find(o => o.id === existId);
         if (obj) obj.name = name;
       } else {
-        p.objectives.push({ id: uid(), name });
+        okrObjectives.push({ id: uid(), name });
       }
-      persistProjects();
+      persistOkrObjectives();
       closeOkrObjectiveModal();
-      showView('okr-detail');
+      showView(currentView.startsWith('okr') ? currentView : 'okrs-hierarchy');
     }
     function deleteOkrObjective() {
-      const okrId = document.getElementById('okrObjectiveOkrId').value;
       const objId = document.getElementById('okrObjectiveId').value;
-      const p     = projects.find(x => x.id === okrId);
-      if (!p || !objId) return;
-      if (!confirm('Delete this Objective? Linked Key Results will be unlinked.')) return;
-      p.objectives  = (p.objectives  || []).filter(o => o.id !== objId);
-      // Unlink KRs that referenced this objective
-      (p.keyResults || []).forEach(kr => { if (kr.objectiveId === objId) kr.objectiveId = null; });
-      persistProjects();
+      if (!objId || !confirm('Delete this Objective? Linked Key Results will lose their Objective link.')) return;
+      okrObjectives = okrObjectives.filter(o => o.id !== objId);
+      okrKeyResults.forEach(kr => { if (kr.objectiveId === objId) kr.objectiveId = null; });
+      persistOkrObjectives(); persistOkrKeyResults();
       closeOkrObjectiveModal();
-      showView('okr-detail');
+      showView(currentView.startsWith('okr') ? currentView : 'okrs-hierarchy');
     }
 
-    function openOkrKrModal(okrId, krId = null) {
-      if (!okrId) { alert('Please open an OKR first, then add a Key Result from its Overview tab.'); return; }
-      const p  = projects.find(x => x.id === okrId);
-      const kr = krId ? (p?.keyResults||[]).find(k => k.id === krId) : null;
+    function openOkrKrModal(krId = null, defaultObjId = null) {
+      const kr = krId ? okrKeyResults.find(k => k.id === krId) : null;
       document.getElementById('okrKrModalTitle').textContent = kr ? 'Edit Key Result' : 'New Key Result';
-      document.getElementById('okrKrOkrId').value = okrId;
-      document.getElementById('okrKrId').value    = kr?.id || '';
-      document.getElementById('okrKrName').value  = kr?.name || '';
-      // Populate objective selector
+      document.getElementById('okrKrId').value   = kr?.id   || '';
+      document.getElementById('okrKrName').value = kr?.name || '';
+      // Populate objective selector from global list
       const sel = document.getElementById('okrKrObjectiveId');
       sel.innerHTML = '<option value="">— None —</option>';
-      (p?.objectives || []).forEach(o => {
+      okrObjectives.forEach(o => {
         const opt = document.createElement('option');
         opt.value = o.id; opt.textContent = o.name;
-        if (kr?.objectiveId === o.id) opt.selected = true;
+        if ((kr?.objectiveId || defaultObjId) === o.id) opt.selected = true;
         sel.appendChild(opt);
       });
       document.getElementById('btnDeleteOkrKr').style.display = kr ? 'block' : 'none';
@@ -8194,33 +8269,37 @@ const renderers = {
       _editOkrKrId = null;
     }
     function saveOkrKr() {
-      const name  = document.getElementById('okrKrName').value.trim();
+      const name = document.getElementById('okrKrName').value.trim();
       if (!name) { document.getElementById('okrKrName').style.borderColor='var(--danger)'; return; }
-      const okrId = document.getElementById('okrKrOkrId').value;
-      const p     = projects.find(x => x.id === okrId);
-      if (!p) return;
-      if (!p.keyResults) p.keyResults = [];
-      const existId = document.getElementById('okrKrId').value;
+      const existId     = document.getElementById('okrKrId').value;
       const objectiveId = document.getElementById('okrKrObjectiveId').value || null;
       if (existId) {
-        const kr = p.keyResults.find(k => k.id === existId);
+        const kr = okrKeyResults.find(k => k.id === existId);
         if (kr) { kr.name = name; kr.objectiveId = objectiveId; }
       } else {
-        p.keyResults.push({ id: uid(), name, objectiveId });
+        okrKeyResults.push({ id: uid(), name, objectiveId });
       }
-      persistProjects();
+      persistOkrKeyResults();
       closeOkrKrModal();
-      showView('okr-detail');
+      showView(currentView.startsWith('okr') ? currentView : 'okrs-hierarchy');
     }
     function deleteOkrKr() {
-      const okrId = document.getElementById('okrKrOkrId').value;
-      const krId  = document.getElementById('okrKrId').value;
-      const p     = projects.find(x => x.id === okrId);
-      if (!p || !krId || !confirm('Delete this Key Result?')) return;
-      p.keyResults = (p.keyResults || []).filter(k => k.id !== krId);
-      persistProjects();
+      const krId = document.getElementById('okrKrId').value;
+      if (!krId || !confirm('Delete this Key Result? Bets linked to it will be unlinked.')) return;
+      // Unlink Bets that referenced this KR
+      projects.forEach(p => { if (p.krId === krId) p.krId = null; });
+      okrKeyResults = okrKeyResults.filter(k => k.id !== krId);
+      persistProjects(); persistOkrKeyResults();
       closeOkrKrModal();
-      showView('okr-detail');
+      showView(currentView.startsWith('okr') ? currentView : 'okrs-hierarchy');
+    }
+    function openProjectModalForKr(krId) {
+      openProjectModal(null, 'okr');
+      // Pre-select the KR after modal opens
+      setTimeout(() => {
+        const sel = document.getElementById('projectKrId');
+        if (sel) sel.value = krId;
+      }, 100);
     }
 
     /* Sidebar OKR add-menu toggle */
