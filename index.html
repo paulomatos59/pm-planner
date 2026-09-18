@@ -1489,7 +1489,7 @@
         <div class="sidebar-section-header" onclick="toggleSection('projects')">
           <div class="sidebar-section-left">
             <span class="section-arrow open" id="arrow-projects">▶</span>
-            <span>Projects</span>
+            <span>Initiatives</span>
           </div>
           <div class="sidebar-section-right">
             <button class="section-add-btn" onclick="event.stopPropagation();openProjectModal()" title="New project">＋</button>
@@ -1542,14 +1542,14 @@
         </div>
         <div class="sidebar-section-body" id="section-categories">
           <button class="nav-item" onclick="filterByCategory('Meeting')">🤝 Meetings</button>
-          <button class="nav-item" onclick="filterByCategory('Project')">🚀 Projects</button>
+          <button class="nav-item" onclick="filterByCategory('Project')">🚀 Initiatives</button>
           <button class="nav-item" onclick="filterByCategory('Admin')">⚙️ Admin</button>
           <button class="nav-item" onclick="filterByCategory('Follow-up')">📌 Follow-ups</button>
           <button class="nav-item" onclick="filterByCategory('Personal')">👤 Personal</button>
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.93</div>
+      <div class="sidebar-version">v1.5.94</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2039,7 +2039,7 @@
         <input type="hidden" id="projectId">
         <input type="hidden" id="projectType" value="project">
         <div class="form-group">
-          <label class="form-label" id="projectNameLabel">Project Name *</label>
+          <label class="form-label" id="projectNameLabel">Initiative Name *</label>
           <input type="text" class="form-input" id="projectName" placeholder="e.g. Cloud Migration, Q3 Planning…" autocomplete="off">
         </div>
         <div class="form-group hidden" id="projectObjectiveGroup">
@@ -3812,7 +3812,7 @@ const renderers = {
 
           <div class="summary-card">
             <div class="summary-card-header">
-              <span class="summary-card-title">Active Projects</span>
+              <span class="summary-card-title">Active Initiatives</span>
               <button class="summary-card-link" onclick="showView('projects')">View all →</button>
             </div>
             ${activeProjs.length === 0
@@ -4669,7 +4669,7 @@ const renderers = {
           </button>
         </div>
         <div class="kb2-board">
-          ${section('Projects', '#2563eb', '🗂', workProjects)}
+          ${section('Initiatives', '#2563eb', '🗂', workProjects)}
           ${section('Personal', '#8b5cf6', '🏠', personalProjects)}
         </div>`;
     }
@@ -4707,7 +4707,7 @@ const renderers = {
       if (allProjects.length > 0) {
         html += `
           <div class="section-header">
-            <span class="section-title">🗂 Projects</span>
+            <span class="section-title">🗂 Initiatives</span>
             <span class="section-count">${allProjects.length}</span>
           </div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
@@ -5439,12 +5439,12 @@ const renderers = {
 
       let html = `
         <div class="view-header">
-          <div><div class="view-title">Projects</div><div class="view-subtitle">${workProjects.length} project${workProjects.length!==1?'s':''}</div></div>
-          <button class="btn btn-primary" onclick="openProjectModal()">＋ New Project</button>
+          <div><div class="view-title">Initiatives</div><div class="view-subtitle">${workProjects.length} initiative${workProjects.length!==1?'s':''}</div></div>
+          <button class="btn btn-primary" onclick="openProjectModal()">＋ New Initiative</button>
         </div>`;
 
       if (workProjects.length === 0) {
-        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No projects yet</h3><p>Create a project to organise tasks, follow-ups, and notes in one place.</p></div>`;
+        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No initiatives yet</h3><p>Create an initiative to organise tasks, follow-ups, and notes in one place.</p></div>`;
       }
 
       if (activeProj.length > 0) {
@@ -5674,7 +5674,7 @@ const renderers = {
       const openFu = pfu.filter(f => f.status !== 'Resolved').length;
 
       let html = `
-        <button class="back-btn" onclick="showView(${p.type==='okr'?`'okrs'`:`'projects'`})">← Back to ${p.type==='okr'?'OKRs':'Projects'}</button>
+        <button class="back-btn" onclick="showView(${p.type==='okr'?`'okrs'`:`'projects'`})">← Back to ${p.type==='okr'?'OKRs':'Initiatives'}</button>
         <div class="project-detail-header">
           <div class="project-detail-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
           <div class="project-detail-body">
@@ -7082,7 +7082,7 @@ const renderers = {
       const workProjs = projects.filter(p => p.type !== 'personal');
       const personalProjs = projects.filter(p => p.type === 'personal');
       let projOpts = `<option value="">— None —</option>`;
-      if (workProjs.length)    projOpts += `<optgroup label="Projects">`    + workProjs.map(p    => `<option value="${p.id}"${t.projectId===p.id?' selected':''}>${esc(p.name)}</option>`).join('') + `</optgroup>`;
+      if (workProjs.length)    projOpts += `<optgroup label="Initiatives">` + workProjs.map(p    => `<option value="${p.id}"${t.projectId===p.id?' selected':''}>${esc(p.name)}</option>`).join('') + `</optgroup>`;
       if (personalProjs.length) projOpts += `<optgroup label="Personal">`   + personalProjs.map(p => `<option value="${p.id}"${t.projectId===p.id?' selected':''}>${esc(p.name)}</option>`).join('') + `</optgroup>`;
       const panel = document.createElement('div');
       panel.className = 'comm-task-expand';
@@ -8160,7 +8160,7 @@ const renderers = {
       const isNew = !id;
       const p     = id ? projects.find(x => x.id === id) : null;
       const itemType = p?.type || type || 'project';
-      const label = itemType === 'personal' ? 'Personal Item' : itemType === 'okr' ? 'OKR' : 'Project';
+      const label = itemType === 'personal' ? 'Personal Item' : itemType === 'okr' ? 'OKR' : 'Initiative';
 
       document.getElementById('projectModalTitle').textContent      = isNew ? `New ${label}` : `Edit ${label}`;
       // Update field label and placeholder to match item type
@@ -8286,7 +8286,7 @@ const renderers = {
       const p = projects.find(x => x.id === editingProjId);
       const isPersonal = p?.type === 'personal';
       const isOkr      = p?.type === 'okr';
-      const typeLabel  = isPersonal ? 'personal item' : isOkr ? 'OKR' : 'project';
+      const typeLabel  = isPersonal ? 'personal item' : isOkr ? 'OKR' : 'initiative';
       if (!editingProjId || !confirm(`Delete this ${typeLabel}? Tasks, follow-ups and notes linked to it will NOT be deleted — just unlinked.`)) return;
       tasks.forEach(t => { if (t.projectId === editingProjId) t.projectId = null; });
       persistTasks();
@@ -8421,7 +8421,7 @@ const renderers = {
       const personal  = projects.filter(p => p.type === 'personal');
       let html = `<option value="">— None —</option>`;
       if (workProjs.length > 0) {
-        html += `<optgroup label="Projects">` +
+        html += `<optgroup label="Initiatives">` +
           workProjs.map(p => `<option value="${p.id}" ${p.id === selectedId ? 'selected' : ''}>${esc(p.name)}</option>`).join('') +
           `</optgroup>`;
       }
@@ -8650,7 +8650,7 @@ const renderers = {
           </button>`).join('');
       }
 
-      html += `<button class="sidebar-view-all" id="nav-projects" onclick="showView('projects')">→ All projects</button>`;
+      html += `<button class="sidebar-view-all" id="nav-projects" onclick="showView('projects')">→ All initiatives</button>`;
       container.innerHTML = html;
       applySectionStates();
     }
