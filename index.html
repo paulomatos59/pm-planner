@@ -1562,7 +1562,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.1</div>
+      <div class="sidebar-version">v1.6.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3513,6 +3513,7 @@ const renderers = {
         backlog:          renderBacklog,
         overdue:          renderOverdue,
         okrs:             renderOkrs,
+        'okrs-list':      renderOkrsList,
         'okrs-hierarchy': renderOkrsHierarchy,
         'okr-detail':     () => renderProjectDetail(activeProjectId),
         projects:         renderProjects,
@@ -5489,13 +5490,16 @@ const renderers = {
        OKRs VIEW
     ============================== */
     function _okrViewHeader(activeView) {
-      const bets = projects.filter(p => p.type === 'okr');
+      const bets     = projects.filter(p => p.type === 'okr');
+      const betIds   = new Set(bets.map(b => b.id));
+      const taskCount = tasks.filter(t => betIds.has(t.projectId) && t.status !== 'Done' && !t.parentId).length;
       return `
         <div class="view-header">
-          <div><div class="view-title">🎯 OKRs</div><div class="view-subtitle">${bets.length} Bet${bets.length!==1?'s':''} · ${okrObjectives.length} Objective${okrObjectives.length!==1?'s':''} · ${okrKeyResults.length} KR${okrKeyResults.length!==1?'s':''}</div></div>
+          <div><div class="view-title">🎯 OKRs</div><div class="view-subtitle">${bets.length} Bet${bets.length!==1?'s':''} · ${okrObjectives.length} Objective${okrObjectives.length!==1?'s':''} · ${okrKeyResults.length} KR${okrKeyResults.length!==1?'s':''}${activeView==='list'?' · '+taskCount+' open task'+(taskCount!==1?'s':''):''}</div></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
             <div class="okr-view-toggle">
               <button class="okr-view-btn${activeView==='cards'?' active':''}" onclick="showView('okrs')">Cards</button>
+              <button class="okr-view-btn${activeView==='list'?' active':''}" onclick="showView('okrs-list')">List</button>
               <button class="okr-view-btn${activeView==='hierarchy'?' active':''}" onclick="showView('okrs-hierarchy')">Hierarchy</button>
             </div>
             ${activeView==='hierarchy' ? `
@@ -5525,6 +5529,87 @@ const renderers = {
         html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${otherOkrs.length}</span></div>
                  <div class="projects-grid">${otherOkrs.map(okrCard).join('')}</div>`;
       }
+      return html;
+    }
+
+    function renderOkrsList() {
+      const bets   = projects.filter(p => p.type === 'okr');
+      let html     = _okrViewHeader('list');
+
+      if (bets.length === 0) {
+        return html + `<div class="empty-state"><div class="icon">🎯</div><h3>No Bets yet</h3><p>Create a Bet to start tracking tasks.</p></div>`;
+      }
+
+      const today = todayStr();
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dow = now.getDay();
+      const mon = new Date(now); mon.setDate(now.getDate() - (dow===0?6:dow-1));
+      const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
+      const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
+
+      let anyTask = false;
+
+      bets.forEach(bet => {
+        const betTasks = tasks.filter(t => t.projectId === bet.id && t.status !== 'Done' && !t.parentId);
+        if (betTasks.length === 0) return;
+        anyTask = true;
+
+        // Build a local rank map for this bet
+        const rankMap = {};
+        betTasks.forEach((t, i) => { rankMap[t.id] = i + 1; });
+
+        // Group by date bucket
+        const groups = [
+          { key: 'overdue',  label: '🚨 Overdue',   items: [] },
+          { key: 'today',    label: '📅 Today',      items: [] },
+          { key: 'week',     label: '📆 This Week',  items: [] },
+          { key: 'upcoming', label: '🗓 Upcoming',   items: [] },
+          { key: 'nodate',   label: '📥 No Date',    items: [] },
+        ];
+        betTasks.forEach(t => {
+          if (isOverdue(t))                          groups[0].items.push(t);
+          else if (isTaskActiveOn(t, today))         groups[1].items.push(t);
+          else if (t.dueDate && t.dueDate <= sunStr) groups[2].items.push(t);
+          else if (t.dueDate)                        groups[3].items.push(t);
+          else                                       groups[4].items.push(t);
+        });
+
+        const kr  = bet.krId ? okrKeyResults.find(k => k.id === bet.krId)
+                             : (okrKeyResults.length === 1 ? okrKeyResults[0] : null);
+        const obj = kr?.objectiveId ? okrObjectives.find(o => o.id === kr.objectiveId)
+                                    : (okrObjectives.length === 1 ? okrObjectives[0] : null);
+
+        html += `
+          <div style="margin-bottom:32px">
+            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="openOkr('${bet.id}')">
+              <div style="width:12px;height:12px;border-radius:50%;background:${esc(bet.color||'#8b5cf6')};flex-shrink:0"></div>
+              <span style="font-size:15px;font-weight:700;color:var(--text)">${esc(bet.name)}</span>
+              <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
+              ${obj ? `<span style="font-size:11px;color:#7c3aed">🎯 ${esc(obj.name)}</span>` : ''}
+              ${kr  ? `<span style="font-size:11px;color:#0369a1">📊 ${esc(kr.name)}</span>` : ''}
+              <span style="font-size:11px;color:var(--text-muted);margin-left:auto">${betTasks.length} task${betTasks.length!==1?'s':''}</span>
+            </div>`;
+
+        const nonEmpty = groups.filter(g => g.items.length);
+        nonEmpty.forEach(g => {
+          html += `<div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}</span></div>
+                   <div class="bl-group task-list">` +
+            g.items.map(t =>
+              `<div class="bl-item" data-tid="${t.id}">
+                 <div class="bl-rank">#${rankMap[t.id]}</div>
+                 <div class="bl-card">${taskCardWithSubs(t)}</div>
+               </div>`
+            ).join('') +
+            `</div>`;
+        });
+
+        html += `</div>`;
+      });
+
+      if (!anyTask) {
+        html += `<div class="empty-state"><div class="icon">🎉</div><h3>No open tasks across Bets</h3><p>All tasks are done or no tasks have been added yet.</p></div>`;
+      }
+
       return html;
     }
 
