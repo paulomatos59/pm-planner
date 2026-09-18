@@ -1505,7 +1505,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.87</div>
+      <div class="sidebar-version">v1.5.88</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7835,7 +7835,7 @@ const renderers = {
       document.getElementById('projectModalTitle').textContent      = isNew ? `New ${label}` : `Edit ${label}`;
       // Update field label and placeholder to match item type
       const nameLbl = document.getElementById('projectNameLabel');
-      if (nameLbl) nameLbl.textContent = `${label} Name *`;
+      if (nameLbl) nameLbl.textContent = itemType === 'okr' ? 'BET Name' : `${label} Name *`;
       const nameInp = document.getElementById('projectName');
       if (nameInp) nameInp.placeholder = itemType === 'okr'
         ? 'e.g. FY26 Q3 OKRs, Platform Reliability…'
