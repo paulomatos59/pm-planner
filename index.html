@@ -390,6 +390,12 @@
     .okr-tree-bet-dot { width:10px; height:10px; border-radius:50%; flex-shrink:0; }
     .okr-tree-bet-name { flex:1; font-size:13px; font-weight:500; }
     .okr-tree-bet-badges { display:flex; gap:6px; align-items:center; }
+    .okr-tree-bet-wrap { display:flex; flex-direction:column; }
+    .okr-tree-im-list { padding:2px 4px 4px 28px; display:flex; flex-direction:column; gap:3px; }
+    .okr-tree-im-row { display:flex; align-items:center; gap:8px; padding:5px 10px; border-radius:6px; background:var(--bg); cursor:pointer; font-size:12px; transition:background .15s; }
+    .okr-tree-im-row:hover { background:var(--hover,#f1f5f9); }
+    .okr-tree-im-dot { width:8px; height:8px; border-radius:2px; flex-shrink:0; }
+    .okr-tree-im-name { flex:1; color:var(--text); }
     /* Sidebar OKR add dropdown */
     .okr-add-dropdown { position:absolute; top:calc(100% + 2px); right:0; min-width:170px; background:var(--surface); border:1px solid var(--border); border-radius:8px; box-shadow:0 4px 16px rgba(0,0,0,.14); z-index:400; overflow:hidden; }
     .okr-add-dropdown.hidden { display:none; }
@@ -1549,7 +1555,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.5.96</div>
+      <div class="sidebar-version">v1.5.97</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5567,15 +5573,33 @@ const renderers = {
                         <div class="okr-tree-bets">
                           ${betList.length === 0
                             ? `<div style="font-size:11px;color:var(--text-muted);padding:2px 4px 4px">No Bets linked</div>`
-                            : betList.map(bet => `
-                              <div class="okr-tree-bet" onclick="openOkr('${bet.id}')">
-                                <div class="okr-tree-bet-dot" style="background:${esc(bet.color||'#8b5cf6')}"></div>
-                                <span class="okr-tree-bet-name">${esc(bet.name)}</span>
-                                <div class="okr-tree-bet-badges">
-                                  <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
-                                  ${projectPriorityBadge(bet)}
-                                </div>
-                              </div>`).join('')
+                            : betList.map(bet => {
+                                const betIMs = projects.filter(x => x.betId === bet.id);
+                                return `
+                                  <div class="okr-tree-bet-wrap">
+                                    <div class="okr-tree-bet" onclick="openOkr('${bet.id}')">
+                                      <div class="okr-tree-bet-dot" style="background:${esc(bet.color||'#8b5cf6')}"></div>
+                                      <span class="okr-tree-bet-name">${esc(bet.name)}</span>
+                                      <div class="okr-tree-bet-badges">
+                                        <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
+                                        ${projectPriorityBadge(bet)}
+                                        ${betIMs.length > 0 ? `<span class="tab-count" title="${betIMs.length} initiative${betIMs.length!==1?'s':''}">🗂 ${betIMs.length}</span>` : ''}
+                                      </div>
+                                    </div>
+                                    ${betIMs.length > 0 ? `
+                                      <div class="okr-tree-im-list">
+                                        ${betIMs.map(im => `
+                                          <div class="okr-tree-im-row" onclick="event.stopPropagation();openProject('${im.id}')">
+                                            <div class="okr-tree-im-dot" style="background:${esc(im.color||'#2563eb')}"></div>
+                                            <span class="okr-tree-im-name">🗂 ${esc(im.name)}</span>
+                                            <div class="okr-tree-bet-badges">
+                                              <span class="project-status-badge ps-${projectStatusClass(im.status)}">${im.status}</span>
+                                              ${projectPriorityBadge(im)}
+                                            </div>
+                                          </div>`).join('')}
+                                      </div>` : ''}
+                                  </div>`;
+                              }).join('')
                           }
                         </div>
                       </div>`;
@@ -5597,15 +5621,33 @@ const renderers = {
               <span class="tab-count" style="margin-left:6px">${unlinked.length}</span>
             </div>
             <div class="okr-tree-bets" style="padding:4px 10px 10px">
-              ${unlinked.map(bet => `
-                <div class="okr-tree-bet" onclick="openOkr('${bet.id}')">
-                  <div class="okr-tree-bet-dot" style="background:${esc(bet.color||'#8b5cf6')}"></div>
-                  <span class="okr-tree-bet-name">${esc(bet.name)}</span>
-                  <div class="okr-tree-bet-badges">
-                    <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
-                    ${projectPriorityBadge(bet)}
-                  </div>
-                </div>`).join('')}
+              ${unlinked.map(bet => {
+                const betIMs = projects.filter(x => x.betId === bet.id);
+                return `
+                  <div class="okr-tree-bet-wrap">
+                    <div class="okr-tree-bet" onclick="openOkr('${bet.id}')">
+                      <div class="okr-tree-bet-dot" style="background:${esc(bet.color||'#8b5cf6')}"></div>
+                      <span class="okr-tree-bet-name">${esc(bet.name)}</span>
+                      <div class="okr-tree-bet-badges">
+                        <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
+                        ${projectPriorityBadge(bet)}
+                        ${betIMs.length > 0 ? `<span class="tab-count" title="${betIMs.length} initiative${betIMs.length!==1?'s':''}">🗂 ${betIMs.length}</span>` : ''}
+                      </div>
+                    </div>
+                    ${betIMs.length > 0 ? `
+                      <div class="okr-tree-im-list">
+                        ${betIMs.map(im => `
+                          <div class="okr-tree-im-row" onclick="event.stopPropagation();openProject('${im.id}')">
+                            <div class="okr-tree-im-dot" style="background:${esc(im.color||'#2563eb')}"></div>
+                            <span class="okr-tree-im-name">🗂 ${esc(im.name)}</span>
+                            <div class="okr-tree-bet-badges">
+                              <span class="project-status-badge ps-${projectStatusClass(im.status)}">${im.status}</span>
+                              ${projectPriorityBadge(im)}
+                            </div>
+                          </div>`).join('')}
+                      </div>` : ''}
+                  </div>`;
+              }).join('')}
             </div>
           </div>`;
       }
