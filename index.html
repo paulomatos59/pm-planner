@@ -1562,7 +1562,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.4</div>
+      <div class="sidebar-version">v1.6.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2562,6 +2562,7 @@
     let filterState        = { search: '', category: '', priority: '', statuses: new Set(), taskType: 'task' };
     let statusFilterOpen   = false;
     let backlogOrder       = JSON.parse(localStorage.getItem('dp_backlog_order') || '[]');
+    let okrListOrder       = JSON.parse(localStorage.getItem('dp_okrlist_order') || '[]');
     let sortState          = { col: 'due', dir: 'asc' };
     let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let taskDateFrom       = '';
@@ -3528,7 +3529,8 @@ const renderers = {
       if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
       document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
       if (view === 'summary') tzInit();
-      if (view === 'backlog') _setupBacklogDnd();
+      if (view === 'backlog')    _setupBacklogDnd();
+      if (view === 'okrs-list') _setupOkrListDnd();
       updateHeader();
     }
 
@@ -5441,6 +5443,63 @@ const renderers = {
       });
     }
 
+    /* ── OKRs List drag-and-drop setup (called after render) ── */
+    function _setupOkrListDnd() {
+      let _olDragSrc = null;
+
+      document.querySelectorAll('.bl-item').forEach(el => {
+        el.addEventListener('dragstart', function(e) {
+          _olDragSrc = this;
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', this.dataset.tid);
+        });
+
+        el.addEventListener('dragend', function() {
+          this.classList.remove('dragging');
+          document.querySelectorAll('.bl-item').forEach(x => x.classList.remove('drag-above','drag-below'));
+          _olDragSrc = null;
+        });
+
+        el.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (!_olDragSrc || this === _olDragSrc) return;
+          document.querySelectorAll('.bl-item').forEach(x => x.classList.remove('drag-above','drag-below'));
+          const rect = this.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
+          else this.classList.add('drag-below');
+        });
+
+        el.addEventListener('dragleave', function(e) {
+          if (!this.contains(e.relatedTarget)) {
+            this.classList.remove('drag-above','drag-below');
+          }
+        });
+
+        el.addEventListener('drop', function(e) {
+          e.stopPropagation();
+          this.classList.remove('drag-above','drag-below');
+          if (!_olDragSrc || this === _olDragSrc) return;
+
+          const fromId = _olDragSrc.dataset.tid;
+          const toId   = this.dataset.tid;
+          const fi = okrListOrder.indexOf(fromId);
+          if (fi < 0) return;
+
+          const rect = this.getBoundingClientRect();
+          const before = e.clientY < rect.top + rect.height / 2;
+
+          okrListOrder.splice(fi, 1);
+          const ti = okrListOrder.indexOf(toId);
+          if (ti < 0) return;
+          okrListOrder.splice(before ? ti : ti + 1, 0, fromId);
+
+          localStorage.setItem('dp_okrlist_order', JSON.stringify(okrListOrder));
+          showView('okrs-list');
+        });
+      });
+    }
+
     /* ==============================
        OVERDUE VIEW
     ============================== */
@@ -5540,6 +5599,14 @@ const renderers = {
         return html + `<div class="empty-state"><div class="icon">🎯</div><h3>No Bets yet</h3><p>Create a Bet to start tracking tasks.</p></div>`;
       }
 
+      // Reconcile okrListOrder across all OKR bet tasks
+      const allOkrBetIds  = new Set(bets.map(b => b.id));
+      const allOkrTasks   = tasks.filter(t => allOkrBetIds.has(t.projectId) && t.status !== 'Done' && !t.parentId);
+      const validIds      = new Set(allOkrTasks.map(t => t.id));
+      okrListOrder        = okrListOrder.filter(id => validIds.has(id));
+      allOkrTasks.forEach(t => { if (!okrListOrder.includes(t.id)) okrListOrder.push(t.id); });
+      localStorage.setItem('dp_okrlist_order', JSON.stringify(okrListOrder));
+
       const today = todayStr();
       const now = new Date(); now.setHours(0,0,0,0);
       const dow = now.getDay();
@@ -5547,15 +5614,14 @@ const renderers = {
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
       const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
 
-      let anyTask = false;
+      // Global rank map across all OKR tasks (sorted by okrListOrder)
+      const globalRankMap = {};
+      [...allOkrTasks].sort((a,b) => okrListOrder.indexOf(a.id) - okrListOrder.indexOf(b.id))
+                      .forEach((t, i) => { globalRankMap[t.id] = i + 1; });
 
       bets.forEach(bet => {
-        const betTasks = tasks.filter(t => t.projectId === bet.id && t.status !== 'Done' && !t.parentId);
-        if (betTasks.length > 0) anyTask = true;
-
-        // Build a local rank map for this bet
-        const rankMap = {};
-        betTasks.forEach((t, i) => { rankMap[t.id] = i + 1; });
+        const betTasks = [...tasks.filter(t => t.projectId === bet.id && t.status !== 'Done' && !t.parentId)]
+                          .sort((a,b) => okrListOrder.indexOf(a.id) - okrListOrder.indexOf(b.id));
 
         // Group by date bucket
         const groups = [
@@ -5578,27 +5644,45 @@ const renderers = {
         const obj = kr?.objectiveId ? okrObjectives.find(o => o.id === kr.objectiveId)
                                     : (okrObjectives.length === 1 ? okrObjectives[0] : null);
 
+        // Date grouping
+        const groups = [
+          { key: 'overdue',  label: '🚨 Overdue',   items: [] },
+          { key: 'today',    label: '📅 Today',      items: [] },
+          { key: 'week',     label: '📆 This Week',  items: [] },
+          { key: 'upcoming', label: '🗓 Upcoming',   items: [] },
+          { key: 'nodate',   label: '📥 No Date',    items: [] },
+        ];
+        betTasks.forEach(t => {
+          if (isOverdue(t))                          groups[0].items.push(t);
+          else if (isTaskActiveOn(t, today))         groups[1].items.push(t);
+          else if (t.dueDate && t.dueDate <= sunStr) groups[2].items.push(t);
+          else if (t.dueDate)                        groups[3].items.push(t);
+          else                                       groups[4].items.push(t);
+        });
+
         html += `
           <div style="margin-bottom:32px">
-            <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;cursor:pointer" onclick="openOkr('${bet.id}')">
-              <div style="width:12px;height:12px;border-radius:50%;background:${esc(bet.color||'#8b5cf6')};flex-shrink:0"></div>
-              <span style="font-size:15px;font-weight:700;color:var(--text)">${esc(bet.name)}</span>
-              <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
-              ${obj ? `<span style="font-size:11px;color:#7c3aed">🎯 ${esc(obj.name)}</span>` : ''}
-              ${kr  ? `<span style="font-size:11px;color:#0369a1">📊 ${esc(kr.name)}</span>` : ''}
-              <span style="font-size:11px;color:var(--text-muted);margin-left:auto">${betTasks.length} task${betTasks.length!==1?'s':''}</span>
+            <div class="section-header" style="cursor:pointer" onclick="openOkr('${bet.id}')">
+              <div style="display:flex;align-items:center;gap:8px;flex:1;min-width:0">
+                <div style="width:10px;height:10px;border-radius:50%;background:${esc(bet.color||'#8b5cf6')};flex-shrink:0"></div>
+                <span class="section-title">${esc(bet.name)}</span>
+                <span class="project-status-badge ps-${projectStatusClass(bet.status)}">${bet.status}</span>
+                ${obj ? `<span style="font-size:11px;color:#7c3aed">🎯 ${esc(obj.name)}</span>` : ''}
+                ${kr  ? `<span style="font-size:11px;color:#0369a1">📊 ${esc(kr.name)}</span>` : ''}
+              </div>
+              <span class="section-count">${betTasks.length} task${betTasks.length!==1?'s':''}</span>
             </div>`;
 
         const nonEmpty = groups.filter(g => g.items.length);
         if (nonEmpty.length === 0) {
-          html += `<div style="padding:10px 0 4px;color:var(--text-muted);font-size:12px">No open tasks yet — <a href="#" onclick="event.preventDefault();openTaskModal(null,'${bet.id}')" style="color:var(--primary)">＋ Add task</a></div>`;
+          html += `<div style="padding:8px 0 4px 16px;color:var(--text-muted);font-size:12px">No open tasks yet — <a href="#" onclick="event.preventDefault();openTaskModal(null,'${bet.id}')" style="color:var(--primary)">＋ Add task</a></div>`;
         } else {
           nonEmpty.forEach(g => {
-            html += `<div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}</span></div>
+            html += `<div class="section-header" style="padding-left:16px"><span class="section-title" style="font-size:11px">${g.label}</span><span class="section-count">${g.items.length}</span></div>
                      <div class="bl-group task-list">` +
               g.items.map(t =>
-                `<div class="bl-item" data-tid="${t.id}">
-                   <div class="bl-rank">#${rankMap[t.id]}</div>
+                `<div class="bl-item" draggable="true" data-tid="${t.id}">
+                   <div class="bl-rank" title="Drag to reorder">#${globalRankMap[t.id]}</div>
                    <div class="bl-card">${taskCardWithSubs(t)}</div>
                  </div>`
               ).join('') +
