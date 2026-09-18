@@ -1562,7 +1562,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.6.3</div>
+      <div class="sidebar-version">v1.6.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5522,7 +5522,7 @@ const renderers = {
       }
 
       if (activeOkrs.length > 0) {
-        html += `<div class="section-header"><span class="section-title">Active</span><span class="section-count">${activeOkrs.length}</span></div>
+        html += `<div class="section-header"><span class="section-title">Active BETS</span><span class="section-count">${activeOkrs.length}</span></div>
                  <div class="projects-grid">${activeOkrs.map(okrCard).join('')}</div>`;
       }
       if (otherOkrs.length > 0) {
@@ -5788,8 +5788,7 @@ const renderers = {
             </div>` : ''}
             ${ims.length > 0 ? `
             <div style="display:flex;gap:5px;flex-wrap:wrap;margin-bottom:6px">
-              ${initiatives.length ? `<span class="im-badge im-badge--initiative">🚀 ${initiatives.length} Initiative${initiatives.length!==1?'s':''}</span>` : ''}
-              ${milestones.length  ? `<span class="im-badge im-badge--milestone">🏁 ${milestones.length} Milestone${milestones.length!==1?'s':''}</span>` : ''}
+              <span class="im-badge im-badge--milestone">🏁 ${ims.length} Milestone${ims.length!==1?'s':''}</span>
             </div>` : ''}
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
