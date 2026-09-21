@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.4</div>
+      <div class="sidebar-version">v1.7.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1785,6 +1785,18 @@
             <div class="form-group">
               <label class="form-label">Est. Hours</label>
               <input type="number" class="form-input" id="taskHours" placeholder="e.g. 1.5" min="0.25" step="0.25">
+            </div>
+          </div>
+
+          <!-- Follow-up Action -->
+          <div class="form-group" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
+            <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text)">
+              <input type="checkbox" id="taskAddFollowup" onchange="toggleTaskFollowupDate()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary)">
+              📋 Add Follow-up Action
+            </label>
+            <div id="taskFollowupDateRow" class="hidden" style="margin-top:8px">
+              <label class="form-label">Follow-up Date</label>
+              <input type="date" class="form-input" id="taskFollowupDate">
             </div>
           </div>
 
@@ -8344,11 +8356,26 @@ const renderers = {
         occSec.style.display = 'none';
       }
 
+      // ── Follow-up Action section ──
+      const linkedFu = id ? followups.find(f => f.taskId === id) : null;
+      const addFuChk = document.getElementById('taskAddFollowup');
+      addFuChk.checked = !!linkedFu;
+      document.getElementById('taskFollowupDate').value = linkedFu?.dueDate || '';
+      document.getElementById('taskFollowupDateRow').classList.toggle('hidden', !linkedFu);
+
       document.getElementById('taskModal').classList.remove('hidden');
       setTimeout(() => {
         _checkAndRestoreDraft('task', id);
         document.getElementById('taskTitle').focus();
       }, 80);
+    }
+
+    function toggleTaskFollowupDate() {
+      const checked = document.getElementById('taskAddFollowup').checked;
+      document.getElementById('taskFollowupDateRow').classList.toggle('hidden', !checked);
+      if (checked && !document.getElementById('taskFollowupDate').value) {
+        document.getElementById('taskFollowupDate').value = document.getElementById('taskDueDate').value || todayStr();
+      }
     }
 
     function openTaskModalWithDate(date) {
@@ -8434,6 +8461,40 @@ const renderers = {
         spawnNextRecurrence(task);
       }
       if (existing) { Object.assign(existing, task); } else { tasks.push(task); }
+
+      // ── Follow-up Action: create / update / remove ──
+      const addFu = document.getElementById('taskAddFollowup').checked;
+      const fuDate = document.getElementById('taskFollowupDate').value || null;
+      const existingFu = followups.find(f => f.taskId === id);
+      if (addFu) {
+        if (existingFu) {
+          // Update existing linked follow-up
+          existingFu.topic     = task.title;
+          existingFu.dueDate   = fuDate;
+          existingFu.projectId = task.projectId || existingFu.projectId;
+          existingFu.taskId    = id;
+          existingFu.updatedAt = new Date().toISOString();
+        } else {
+          // Create new follow-up
+          followups.push({
+            id:        uid(),
+            topic:     task.title,
+            projectId: task.projectId || null,
+            taskId:    id,
+            dueDate:   fuDate,
+            notes:     '',
+            status:    'Open',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          });
+        }
+        persistFollowups();
+      } else if (!addFu && existingFu) {
+        // Remove follow-up if checkbox was unchecked
+        followups = followups.filter(f => f.taskId !== id);
+        persistFollowups();
+      }
+
       if (_pendingCommTaskId) {
         task.commId = _pendingCommTaskId;
         const savedCommId = _pendingCommTaskId;
