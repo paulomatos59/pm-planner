@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.6</div>
+      <div class="sidebar-version">v1.7.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5599,6 +5599,7 @@ const renderers = {
         <div class="view-header">
           <div><div class="view-title">🎯 OKRs</div><div class="view-subtitle">${bets.length} Bet${bets.length!==1?'s':''} · ${okrObjectives.length} Objective${okrObjectives.length!==1?'s':''} · ${okrKeyResults.length} KR${okrKeyResults.length!==1?'s':''}${activeView==='list'?' · '+taskCount+' open task'+(taskCount!==1?'s':''):''}</div></div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+            <button class="btn btn-secondary btn-sm" id="okrCopyBtn" onclick="copyOkrTree()" title="Copy OKR tree as text" style="font-size:11px;padding:4px 9px">📋 Copy</button>
             <div style="position:relative">
               <button class="btn btn-primary" onclick="toggleOkrAddMenu(event)">＋ Add ▾</button>
               <div class="okr-add-dropdown hidden" id="okrPageAddDrop" style="right:0;min-width:170px">
@@ -5869,6 +5870,56 @@ const renderers = {
 
       html += `</div>`;
       return html;
+    }
+
+    function copyOkrTree() {
+      const bets = projects.filter(p => p.type === 'okr');
+      const lines = [];
+
+      okrObjectives.forEach(obj => {
+        lines.push('📌 ' + obj.name);
+        const krs = okrKeyResults.filter(k => k.objectiveId === obj.id);
+        krs.forEach(kr => {
+          lines.push('  📊 ' + kr.name);
+          const betList = bets.filter(b => b.krId === kr.id);
+          betList.forEach(bet => {
+            lines.push('    🎯 ' + bet.name);
+            const ims = projects.filter(x => x.betId === bet.id);
+            ims.forEach(im => {
+              lines.push('      ' + (im.subtype === 'milestone' ? '🏁' : '🚀') + ' ' + im.name);
+            });
+          });
+        });
+      });
+
+      // Unlinked bets
+      const linkedBetIds = new Set(bets.filter(b => b.krId).map(b => b.id));
+      const unlinked = bets.filter(b => !linkedBetIds.has(b.id));
+      if (unlinked.length > 0) {
+        lines.push('');
+        lines.push('🎯 Unlinked Bets');
+        unlinked.forEach(bet => {
+          lines.push('  🎯 ' + bet.name);
+          const ims = projects.filter(x => x.betId === bet.id);
+          ims.forEach(im => {
+            lines.push('    ' + (im.subtype === 'milestone' ? '🏁' : '🚀') + ' ' + im.name);
+          });
+        });
+      }
+
+      const text = lines.join('\n');
+      navigator.clipboard.writeText(text).then(() => {
+        const btn = document.getElementById('okrCopyBtn');
+        if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 1800); }
+      }).catch(() => {
+        // fallback
+        const ta = document.createElement('textarea');
+        ta.value = text; ta.style.position = 'fixed'; ta.style.opacity = '0';
+        document.body.appendChild(ta); ta.select(); document.execCommand('copy');
+        document.body.removeChild(ta);
+        const btn = document.getElementById('okrCopyBtn');
+        if (btn) { btn.textContent = '✅ Copied!'; setTimeout(() => { btn.textContent = '📋 Copy'; }, 1800); }
+      });
     }
 
     function okrCard(p) {
