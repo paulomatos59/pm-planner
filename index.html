@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.5</div>
+      <div class="sidebar-version">v1.7.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3882,38 +3882,6 @@ const renderers = {
             }
           </div>
 
-          <div class="summary-card">
-            <div class="summary-card-header">
-              <span class="summary-card-title">Active Initiatives & Milestones</span>
-              <button class="summary-card-link" onclick="showView('projects')">View all →</button>
-            </div>
-            ${activeProjs.length === 0
-              ? `<div class="summary-empty">No active projects</div>`
-              : activeProjs.map(p => {
-                  const ptasks  = tasks.filter(t => t.projectId === p.id);
-                  const pdone   = ptasks.filter(t => t.status === 'Done').length;
-                  const ptotal  = ptasks.length;
-                  const pct     = ptotal > 0 ? Math.round((pdone/ptotal)*100) : 0;
-                  const pfu     = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
-                  const pod     = tasks.filter(t => t.projectId === p.id && isOverdue(t)).length;
-                  return `
-                    <div class="summary-proj-row" onclick="openProject('${p.id}')">
-                      <div class="summary-proj-dot" style="background:${esc(p.color||'#2563eb')}"></div>
-                      <div class="summary-proj-info">
-                        <div class="summary-proj-name">${esc(p.name)}</div>
-                        <div class="summary-proj-bar">
-                          <div class="summary-proj-bar-fill" style="width:${pct}%;background:${esc(p.color||'#2563eb')}"></div>
-                        </div>
-                      </div>
-                      <div class="summary-proj-meta">
-                        <span class="summary-proj-pct">${pct}%</span>
-                        ${pfu > 0 ? `<span class="s-fu-badge">📌 ${pfu}</span>` : ''}
-                        ${pod > 0 ? `<span class="s-od-badge">🚨 ${pod}</span>` : ''}
-                      </div>
-                    </div>`;
-                }).join('')
-            }
-          </div>
 
           <div class="summary-card">
             <div class="summary-card-header">
@@ -4004,6 +3972,39 @@ const renderers = {
               })()}`).join('')}
           </div>
         </div>
+
+        ${activeProjs.length > 0 ? `
+        <div class="summary-card" style="margin-top:14px">
+          <div class="summary-card-header">
+            <span class="summary-card-title">Active Initiatives & Milestones</span>
+            <button class="summary-card-link" onclick="showView('projects')">View all →</button>
+          </div>
+          <div class="summary-task-list">
+            ${activeProjs.map(p => {
+              const ptasks = tasks.filter(t => t.projectId === p.id);
+              const pdone  = ptasks.filter(t => t.status === 'Done').length;
+              const ptotal = ptasks.length;
+              const pct    = ptotal > 0 ? Math.round((pdone / ptotal) * 100) : 0;
+              const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+              const pod    = ptasks.filter(t => isOverdue(t)).length;
+              const color  = p.color || '#2563eb';
+              return '<div class="summary-task-item" onclick="openProject(\''+p.id+'\')">'
+                + '<div class="summary-proj-dot" style="background:'+esc(color)+';flex-shrink:0"></div>'
+                + '<div style="flex:1;min-width:0">'
+                +   '<div class="summary-task-title">'+esc(p.name)+'</div>'
+                +   '<div style="margin-top:4px;height:4px;border-radius:2px;background:var(--border);overflow:hidden;max-width:320px">'
+                +     '<div style="height:100%;width:'+pct+'%;background:'+esc(color)+';border-radius:2px;transition:width .3s"></div>'
+                +   '</div>'
+                + '</div>'
+                + '<div style="display:flex;align-items:center;gap:8px;flex-shrink:0">'
+                +   '<span style="font-size:12px;font-weight:600;color:var(--text-muted);min-width:32px;text-align:right">'+pct+'%</span>'
+                +   (pfu > 0 ? '<span class="s-fu-badge">📌 '+pfu+'</span>' : '')
+                +   (pod > 0 ? '<span class="s-od-badge">🚨 '+pod+'</span>' : '')
+                + '</div>'
+                + '</div>';
+            }).join('')}
+          </div>
+        </div>` : ''}
 
         ${upcoming.length > 0 ? `
         <div class="summary-card" style="margin-top:14px">
