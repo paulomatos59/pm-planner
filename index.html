@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.2</div>
+      <div class="sidebar-version">v1.7.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1714,9 +1714,12 @@
             <div class="subtask-section-divider"></div>
             <div class="subtask-section-label">
               <span>🔁 Occurrences &nbsp;<span id="taskOccCount" style="font-weight:500;color:var(--text-muted)"></span></span>
-              <button class="btn btn-secondary btn-sm" id="taskOccHideBtn" onclick="toggleOccHideDone('task')">Hide Done</button>
+              <div class="okr-view-toggle">
+                <button class="okr-view-btn active" id="taskOccTabUpcoming" onclick="switchOccTab('task','upcoming')">📅 Upcoming</button>
+                <button class="okr-view-btn"        id="taskOccTabPast"     onclick="switchOccTab('task','past')">🕐 Past</button>
+              </div>
             </div>
-            <div id="taskOccList" style="max-height:230px;overflow-y:auto;margin-top:2px"></div>
+            <div id="taskOccList" style="max-height:260px;overflow-y:auto;margin-top:2px"></div>
           </div>
         </div>
 
@@ -1960,12 +1963,15 @@
                 <span class="section-arrow open" id="comm-arrow-occurrences">▶</span>
                 <span>🔁 Occurrences &nbsp;<span id="commOccCount" style="font-weight:500;color:var(--text-muted)"></span></span>
               </div>
-              <div class="sidebar-section-right">
-                <button class="btn btn-secondary btn-sm" id="commOccHideBtn" onclick="event.stopPropagation();toggleOccHideDone('comm')">Hide Done</button>
+              <div class="sidebar-section-right" onclick="event.stopPropagation()">
+                <div class="okr-view-toggle">
+                  <button class="okr-view-btn active" id="commOccTabUpcoming" onclick="switchOccTab('comm','upcoming')">📅 Upcoming</button>
+                  <button class="okr-view-btn"        id="commOccTabPast"     onclick="switchOccTab('comm','past')">🕐 Past</button>
+                </div>
               </div>
             </div>
             <div class="sidebar-section-body" id="comm-section-occurrences">
-              <div id="commOccList" style="max-height:230px;overflow-y:auto;margin-top:2px"></div>
+              <div id="commOccList" style="max-height:260px;overflow-y:auto;margin-top:2px"></div>
             </div>
           </div>
 
@@ -2276,8 +2282,20 @@
           </div>
 
           <div class="form-group">
+            <label class="form-label">Due Date</label>
+            <input type="date" class="form-input" id="followupDueDate" oninput="scheduleDraftSave('followup')">
+          </div>
+
+          <div class="form-group">
             <label class="form-label">Assign to</label>
-            <select class="form-select" id="followupProjectId">
+            <select class="form-select" id="followupProjectId" onchange="refreshFollowupTaskOptions()">
+              <option value="">— None —</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="followupTaskGroup">
+            <label class="form-label">Linked Task</label>
+            <select class="form-select" id="followupTaskId">
               <option value="">— None —</option>
             </select>
           </div>
@@ -7273,6 +7291,7 @@ const renderers = {
       if (c && c.recurrence && c.recurrence.freq) {
         commOccSec.style.display = '';
         _occHideDone.comm = false;
+        _occTab.comm = 'upcoming';
         setTimeout(() => renderCommOccurrences(c.id), 0);
       } else {
         commOccSec.style.display = 'none';
@@ -7637,12 +7656,22 @@ const renderers = {
     ============================== */
     function followupCard(f) {
       const dotClass = { Open:'fd-open', Discussed:'fd-discussed', Resolved:'fd-resolved' }[f.status] || 'fd-open';
+      const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
+      const today = todayStr();
+      const isOverdue = f.dueDate && f.dueDate < today && f.status !== 'Resolved';
+      const dueMeta = f.dueDate
+        ? `<span style="font-size:11px;${isOverdue ? 'color:var(--danger);font-weight:600' : 'color:var(--text-muted)'}">📅 ${formatDate(f.dueDate)}${isOverdue ? ' — Overdue' : ''}</span>`
+        : '';
+      const taskMeta = linkedTask
+        ? `<span style="font-size:11px;color:var(--text-muted)">🔗 ${esc(linkedTask.title)}</span>`
+        : '';
       return `
         <div class="followup-card ${f.status==='Resolved'?'resolved':''}" onclick="openFollowupModal('${f.id}')">
           <div class="followup-dot ${dotClass}"></div>
           <div class="followup-content">
             <div class="followup-topic">${esc(f.topic)}</div>
             ${f.notes ? `<div class="followup-notes-text">${esc(stripHtml(f.notes))}</div>` : ''}
+            ${(dueMeta || taskMeta) ? `<div style="display:flex;gap:10px;margin-top:3px;flex-wrap:wrap">${dueMeta}${taskMeta}</div>` : ''}
           </div>
           <span class="fu-status-badge fu-${fuStatusClass(f.status)}">${f.status}</span>
         </div>`;
@@ -7785,6 +7814,7 @@ const renderers = {
        OCCURRENCES (recurring tasks & comms)
     ============================== */
     let _occHideDone = { task: false, comm: false };
+    let _occTab      = { task: 'upcoming', comm: 'upcoming' };
 
     // Returns sorted list of occurrence dates (YYYY-MM-DD) for a recurring obj.
     // firstDateKey: 'dueDate' for tasks, 'date' for comms.
@@ -7862,59 +7892,72 @@ const renderers = {
           </div>`;
       }
 
-      // Split into upcoming (planned/future) vs history (past + non-planned)
-      let upcomingHtml = '';
+      // Split into upcoming vs past
+      let upcomingRows = [];
       let historyRows  = [];
       for (const origDate of allOccs) {
         const actualDate    = overrides[origDate] || origDate;
         const isDone        = !!comp[actualDate];
         const isNotDone     = !!notDone[actualDate];
         const isNotAttended = !!notAttended[actualDate];
-        const isHistory = actualDate < today && (isDone || isNotDone || isNotAttended);
-        if (isHistory) {
+        const isPast = actualDate < today && (isDone || isNotDone || isNotAttended);
+        if (isPast) {
           historyRows.push(origDate);
         } else {
-          if (!(hide && isDone)) upcomingHtml += occRowHtml(origDate);
+          if (!(hide && isDone)) upcomingRows.push(origDate);
         }
       }
 
-      let html = upcomingHtml;
-      if (!html) html = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No upcoming occurrences.</div>`;
+      let upcomingHtml = upcomingRows.map(d => occRowHtml(d)).join('');
+      if (!upcomingHtml) upcomingHtml = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No upcoming occurrences.</div>`;
 
-      // History section (collapsed by default)
-      if (historyRows.length) {
-        const histId = 'occ-hist-' + obj.id;
-        const histContent = historyRows.map(d => occRowHtml(d)).join('');
-        html += `
-          <div style="margin-top:8px;border-top:1px solid var(--border);padding-top:6px">
-            <div style="display:flex;align-items:center;gap:5px;cursor:pointer;user-select:none;font-size:11px;font-weight:600;color:var(--text-muted)"
-                 onclick="event.stopPropagation();(function(el){const b=document.getElementById('${histId}');const open=b.style.display!=='none';b.style.display=open?'none':'block';el.querySelector('.occ-hist-arrow').textContent=open?'▶':'▼';})(this)">
-              <span class="occ-hist-arrow">▶</span>
-              <span>History (${historyRows.length})</span>
-            </div>
-            <div id="${histId}" style="display:none">${histContent}</div>
-          </div>`;
-      }
+      let historyHtml = historyRows.map(d => occRowHtml(d)).join('');
+      if (!historyHtml) historyHtml = `<div style="padding:12px 6px;font-size:13px;color:var(--text-muted)">No past occurrences.</div>`;
 
-      return { html, total: allOccs.length };
+      return { upcomingHtml, historyHtml, upcomingCount: upcomingRows.length, historyCount: historyRows.length, total: allOccs.length };
     }
 
     function renderTaskOccurrences(taskId) {
       const t = tasks.find(x => x.id === taskId);
       if (!t || !t.recurrence) return;
-      const { html, total } = buildOccurrencesHtml(t, 'task');
-      document.getElementById('taskOccList').innerHTML  = html;
-      document.getElementById('taskOccCount').textContent = total;
-      document.getElementById('taskOccHideBtn').textContent = _occHideDone.task ? 'Show Done' : 'Hide Done';
+      const { upcomingHtml, historyHtml, upcomingCount, historyCount, total } = buildOccurrencesHtml(t, 'task');
+      const tab = _occTab.task;
+      document.getElementById('taskOccList').innerHTML = tab === 'upcoming' ? upcomingHtml : historyHtml;
+      document.getElementById('taskOccCount').textContent = tab === 'upcoming' ? upcomingCount : historyCount;
+      const upBtn = document.getElementById('taskOccTabUpcoming');
+      const paBtn = document.getElementById('taskOccTabPast');
+      if (upBtn) upBtn.classList.toggle('active', tab === 'upcoming');
+      if (paBtn) paBtn.classList.toggle('active', tab === 'past');
     }
 
     function renderCommOccurrences(commId) {
       const c = comms.find(x => x.id === commId);
       if (!c || !c.recurrence) return;
-      const { html, total } = buildOccurrencesHtml(c, 'comm');
-      document.getElementById('commOccList').innerHTML  = html;
-      document.getElementById('commOccCount').textContent = total;
-      document.getElementById('commOccHideBtn').textContent = _occHideDone.comm ? 'Show Done' : 'Hide Done';
+      const { upcomingHtml, historyHtml, upcomingCount, historyCount, total } = buildOccurrencesHtml(c, 'comm');
+      const tab = _occTab.comm;
+      document.getElementById('commOccList').innerHTML = tab === 'upcoming' ? upcomingHtml : historyHtml;
+      document.getElementById('commOccCount').textContent = tab === 'upcoming' ? upcomingCount : historyCount;
+      const upBtn = document.getElementById('commOccTabUpcoming');
+      const paBtn = document.getElementById('commOccTabPast');
+      if (upBtn) upBtn.classList.toggle('active', tab === 'upcoming');
+      if (paBtn) paBtn.classList.toggle('active', tab === 'past');
+    }
+
+    function switchOccTab(type, tab) {
+      _occTab[type] = tab;
+      if (type === 'task') {
+        const sec = document.getElementById('taskOccurrencesSection');
+        if (sec && sec.style.display !== 'none') {
+          const taskId = document.getElementById('taskId')?.value;
+          if (taskId) renderTaskOccurrences(taskId);
+        }
+      } else {
+        const sec = document.getElementById('commOccurrencesSection');
+        if (sec && sec.style.display !== 'none') {
+          const commId = document.getElementById('commId')?.value;
+          if (commId) renderCommOccurrences(commId);
+        }
+      }
     }
 
     function toggleOccurrence(taskId, dateStr) {
@@ -8295,6 +8338,7 @@ const renderers = {
       if (!isNew && t && t.recurrence && t.recurrence.freq && t.taskType !== 'timeoff') {
         occSec.style.display = '';
         _occHideDone.task = false;
+        _occTab.task = 'upcoming';
         renderTaskOccurrences(t.id);
       } else {
         occSec.style.display = 'none';
@@ -8834,6 +8878,35 @@ const renderers = {
       selectEl.innerHTML = html;
     }
 
+    function refreshFollowupTaskOptions(selectedTaskId = null) {
+      const projectId = document.getElementById('followupProjectId').value;
+      const sel = document.getElementById('followupTaskId');
+      // preserve current selection if no override passed
+      const current = selectedTaskId !== null ? selectedTaskId : sel.value;
+      let html = `<option value="">— None —</option>`;
+      if (projectId) {
+        const projectTasks = tasks.filter(t => t.projectId === projectId && t.taskType !== 'timeoff');
+        if (projectTasks.length) {
+          projectTasks.forEach(t => {
+            const sel_ = t.id === current ? 'selected' : '';
+            html += `<option value="${t.id}" ${sel_}>${esc(t.title)}</option>`;
+          });
+        }
+      } else {
+        // No project selected — show all non-done tasks
+        const allTasks = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff');
+        if (allTasks.length) {
+          allTasks.forEach(t => {
+            const proj = projects.find(p => p.id === t.projectId);
+            const label = proj ? `${esc(t.title)} (${esc(proj.name)})` : esc(t.title);
+            const sel_ = t.id === current ? 'selected' : '';
+            html += `<option value="${t.id}" ${sel_}>${label}</option>`;
+          });
+        }
+      }
+      sel.innerHTML = html;
+    }
+
     function openFollowupModal(id = null, projectId = null) {
       editingFuId = id;
       const isNew = !id;
@@ -8846,8 +8919,10 @@ const renderers = {
       document.getElementById('followupTopic').value               = f?.topic  || '';
       document.getElementById('followupNotes').innerHTML             = f?.notes  || '';
       document.getElementById('followupStatus').value               = f?.status || 'Open';
+      document.getElementById('followupDueDate').value              = f?.dueDate || '';
       document.getElementById('followupTopic').style.borderColor    = '';
       buildAssignOptions(document.getElementById('followupProjectId'), preId);
+      refreshFollowupTaskOptions(f?.taskId || null);
 
       document.getElementById('followupModal').classList.remove('hidden');
       setTimeout(() => {
@@ -8874,6 +8949,8 @@ const renderers = {
       const fu = {
         id, topic,
         projectId: document.getElementById('followupProjectId').value,
+        taskId:    document.getElementById('followupTaskId').value || null,
+        dueDate:   document.getElementById('followupDueDate').value || null,
         notes:     document.getElementById('followupNotes').innerHTML.trim(),
         status:    document.getElementById('followupStatus').value,
         createdAt: existing?.createdAt || new Date().toISOString(),
