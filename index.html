@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.3</div>
+      <div class="sidebar-version">v1.7.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7660,7 +7660,7 @@ const renderers = {
       const today = todayStr();
       const isOverdue = f.dueDate && f.dueDate < today && f.status !== 'Resolved';
       const dueMeta = f.dueDate
-        ? `<span style="font-size:11px;${isOverdue ? 'color:var(--danger);font-weight:600' : 'color:var(--text-muted)'}">📅 ${formatDate(f.dueDate)}${isOverdue ? ' — Overdue' : ''}</span>`
+        ? `<span style="font-size:11px;${isOverdue ? 'color:var(--danger);font-weight:600' : 'color:var(--text-muted)'}">📅 ${formatDue(f.dueDate)}${isOverdue ? ' — Overdue' : ''}</span>`
         : '';
       const taskMeta = linkedTask
         ? `<span style="font-size:11px;color:var(--text-muted)">🔗 ${esc(linkedTask.title)}</span>`
