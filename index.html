@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.5</div>
+      <div class="sidebar-version">v1.8.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3808,23 +3808,29 @@ const renderers = {
               <span class="summary-card-title">Today's Tasks</span>
               <button class="summary-card-link" onclick="showView('today')">View all →</button>
             </div>
-            ${topTasks.length === 0
-              ? `<div class="summary-empty">🎉 No tasks for today</div>`
-              : `<div class="summary-task-list">${topTasks.map(t => {
-                  const od   = isOverdue(t);
-                  const proj = t.projectId ? projects.find(p => p.id === t.projectId) : null;
-                  const pers = t.personalId ? projects.find(p => p.id === t.personalId) : null;
-                  const linked = proj || pers;
-                  return `<div class="summary-task-item" onclick="openTaskModal('${t.id}')">
-                    <div class="s-task-dot s-dot-${t.priority.toLowerCase()}" style="${t.status==='Done'?'opacity:.4':''}"></div>
-                    <div style="flex:1;min-width:0">
-                      <div class="summary-task-title ${t.status==='Done'?'done-title':''}">${esc(t.title)}</div>
-                      ${linked ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${esc(linked.name)}</div>` : ''}
-                    </div>
-                    <span class="status-badge status-${statusClass(t.status)}">${t.status}</span>
-                  </div>`;
-                }).join('')}</div>`
-            }
+            ${(() => {
+              if (topTasks.length === 0) return `<div class="summary-empty">🎉 No tasks for today</div>`;
+              const activeTasks = topTasks.filter(t => t.status !== 'Done');
+              const doneTasks   = topTasks.filter(t => t.status === 'Done');
+              function taskRow(t) {
+                const proj   = t.projectId  ? projects.find(p => p.id === t.projectId)  : null;
+                const pers   = t.personalId ? projects.find(p => p.id === t.personalId) : null;
+                const linked = proj || pers;
+                return '<div class="summary-task-item" onclick="openTaskModal(\''+t.id+'\')">'
+                  + '<div class="s-task-dot s-dot-'+t.priority.toLowerCase()+'" style="'+(t.status==='Done'?'opacity:.4':'')+'"></div>'
+                  + '<div style="flex:1;min-width:0">'
+                  +   '<div class="summary-task-title '+(t.status==='Done'?'done-title':'')+'">'+esc(t.title)+'</div>'
+                  +   (linked ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(linked.name)+'</div>' : '')
+                  + '</div>'
+                  + '<span class="status-badge status-'+statusClass(t.status)+'">'+t.status+'</span>'
+                  + '</div>';
+              }
+              return (activeTasks.length ? '<div class="summary-task-list">'+activeTasks.map(taskRow).join('')+'</div>' : '')
+                + (doneTasks.length ? '<div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-16px;background:var(--bg);padding:6px 18px 12px;border-radius:0 0 10px 10px">'
+                  + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done</div>'
+                  + '<div class="summary-task-list">'+doneTasks.map(taskRow).join('')+'</div>'
+                  + '</div>' : '');
+            })()}
           </div>
 
           <div class="summary-card">
