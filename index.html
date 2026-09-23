@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.9</div>
+      <div class="sidebar-version">v1.8.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3702,7 +3702,10 @@ const renderers = {
           if (c.notAttendedOccurrences && c.notAttendedOccurrences[today]) return 'not_attended';
           return 'planned';
         }
-        return c.status === 'Done' ? 'done' : 'planned';
+        return c.status === 'Done' ? 'done'
+             : c.status === 'Canceled' ? 'not_done'
+             : c.status === 'Not Attended' ? 'not_attended'
+             : 'planned';
       };
       const todayComms = comms.filter(c =>
         (c.date || '') === today ||
@@ -8178,7 +8181,10 @@ const renderers = {
         if (status === 'not_done')     c.notDoneOccurrences[today]     = new Date().toISOString();
         if (status === 'not_attended') c.notAttendedOccurrences[today] = new Date().toISOString();
       } else {
-        c.status = status === 'done' ? 'Done' : 'Planned';
+        c.status = status === 'done' ? 'Done'
+                 : status === 'not_done' ? 'Canceled'
+                 : status === 'not_attended' ? 'Not Attended'
+                 : 'Planned';
       }
       c.updatedAt = new Date().toISOString();
       persistComms();
