@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.0</div>
+      <div class="sidebar-version">v1.8.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2015,7 +2015,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Start time</label>
-              <select class="form-select" id="commStartTime" style="min-width:0"></select>
+              <select class="form-select" id="commStartTime" style="min-width:0" onchange="autoSetCommEndTime()"></select>
             </div>
             <div class="form-group">
               <label class="form-label">End time</label>
@@ -7291,6 +7291,17 @@ const renderers = {
       }
       return o;
     }
+    function autoSetCommEndTime() {
+      const start = document.getElementById('commStartTime').value;
+      if (!start) return;
+      const [h, m] = start.split(':').map(Number);
+      const totalMin = h * 60 + m + 30;
+      const nh = Math.floor(totalMin / 60) % 24;
+      const nm = totalMin % 60;
+      const endVal = pad(nh) + ':' + pad(nm);
+      document.getElementById('commEndTime').innerHTML = buildTimeOptions(endVal);
+    }
+
     function commTimeDuration(start, end) {
       if (!start || !end) return '';
       const [sh,sm] = start.split(':').map(Number);
