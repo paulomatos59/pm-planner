@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.1</div>
+      <div class="sidebar-version">v1.8.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3832,39 +3832,46 @@ const renderers = {
               <span class="summary-card-title">💬 Today's Comms</span>
               <button class="summary-card-link" onclick="showView('comms')">View all →</button>
             </div>
-            ${todayComms.length === 0
-              ? `<div class="summary-empty">No comms scheduled for today</div>`
-              : `<div class="summary-task-list">${todayComms.map(c => {
-                  const icon    = COMM_ICONS[c.type] || '💬';
-                  const isDone  = c._occDone !== undefined ? c._occDone : c.status === 'Done';
-                  const timeStr = c.startTime
-                    ? fmt12(c.startTime) + (c.endTime ? ' – ' + fmt12(c.endTime) : '')
-                    : (c.duration ? c.duration + ' min' : '');
-                  const linked  = (c.projectId  ? projects.find(p => p.id === c.projectId)  : null)
-                                || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
-                  const st = c._occStatus || 'planned';
-                  const stIcon  = st==='done' ? '✅' : st==='not_done' ? '✕' : st==='not_attended' ? '✕' : icon;
-                  const stLabel = st==='done' ? 'Done' : st==='not_done' ? 'Canceled' : st==='not_attended' ? 'Not Attended' : 'Planned';
-                  const stColor = st==='done' ? '#16a34a' : st==='not_done' ? '#6b7280' : st==='not_attended' ? '#d97706' : '#2563eb';
-                  const stBg    = st==='done' ? '#f0fdf4' : st==='not_done' ? '#f3f4f6' : st==='not_attended' ? '#fffbeb' : '#eff6ff';
-                  const stBorder= st==='done' ? '#bbf7d0' : st==='not_done' ? '#d1d5db' : st==='not_attended' ? '#fde68a' : '#bfdbfe';
-                  return `<div class="summary-task-item" onclick="openCommModal('${c.id}')">
-                    <span style="font-size:15px;line-height:1;flex-shrink:0">${stIcon}</span>
-                    <div style="flex:1;min-width:0">
-                      <div class="summary-task-title ${isDone?'done-title':''}">${esc(c.title)}</div>
-                      ${timeStr || linked ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${timeStr ? '⏱ '+timeStr : ''}${timeStr && linked ? ' · ' : ''}${linked ? esc(linked.name) : ''}</div>` : ''}
-                    </div>
-                    <select onclick="event.stopPropagation()"
-                            onchange="event.stopPropagation();dashSetCommStatus('${c.id}',this.value)"
-                            style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid ${stBorder};color:${stColor};background:${stBg}">
-                      <option value="planned"      ${st==='planned'     ?'selected':''}>📅 Planned</option>
-                      <option value="done"         ${st==='done'        ?'selected':''}>✅ Done</option>
-                      <option value="not_done"     ${st==='not_done'    ?'selected':''}>✕ Canceled</option>
-                      <option value="not_attended" ${st==='not_attended'?'selected':''}>✕ Not Attended</option>
-                    </select>
-                  </div>`;
-                }).join('')}</div>`
-            }
+            ${(() => {
+              if (todayComms.length === 0) return `<div class="summary-empty">No comms scheduled for today</div>`;
+              const active    = todayComms.filter(c => { const st = c._occStatus||'planned'; return st === 'planned'; });
+              const completed = todayComms.filter(c => { const st = c._occStatus||'planned'; return st !== 'planned'; });
+              function commRow(c) {
+                const icon    = COMM_ICONS[c.type] || '💬';
+                const isDone  = c._occDone !== undefined ? c._occDone : c.status === 'Done';
+                const timeStr = c.startTime
+                  ? fmt12(c.startTime) + (c.endTime ? ' – ' + fmt12(c.endTime) : '')
+                  : (c.duration ? c.duration + ' min' : '');
+                const linked  = (c.projectId  ? projects.find(p => p.id === c.projectId)  : null)
+                              || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
+                const st = c._occStatus || 'planned';
+                const stIcon  = st==='done' ? '✅' : st==='not_done' ? '✕' : st==='not_attended' ? '✕' : icon;
+                const stColor = st==='done' ? '#16a34a' : st==='not_done' ? '#6b7280' : st==='not_attended' ? '#d97706' : '#2563eb';
+                const stBg    = st==='done' ? '#f0fdf4' : st==='not_done' ? '#f3f4f6' : st==='not_attended' ? '#fffbeb' : '#eff6ff';
+                const stBorder= st==='done' ? '#bbf7d0' : st==='not_done' ? '#d1d5db' : st==='not_attended' ? '#fde68a' : '#bfdbfe';
+                return `<div class="summary-task-item" onclick="openCommModal('${c.id}')">
+                  <span style="font-size:15px;line-height:1;flex-shrink:0">${stIcon}</span>
+                  <div style="flex:1;min-width:0">
+                    <div class="summary-task-title ${isDone?'done-title':''}">${esc(c.title)}</div>
+                    ${timeStr || linked ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${timeStr ? '⏱ '+timeStr : ''}${timeStr && linked ? ' · ' : ''}${linked ? esc(linked.name) : ''}</div>` : ''}
+                  </div>
+                  <select onclick="event.stopPropagation()"
+                          onchange="event.stopPropagation();dashSetCommStatus('${c.id}',this.value)"
+                          style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid ${stBorder};color:${stColor};background:${stBg}">
+                    <option value="planned"      ${st==='planned'     ?'selected':''}>📅 Planned</option>
+                    <option value="done"         ${st==='done'        ?'selected':''}>✅ Done</option>
+                    <option value="not_done"     ${st==='not_done'    ?'selected':''}>✕ Canceled</option>
+                    <option value="not_attended" ${st==='not_attended'?'selected':''}>✕ Not Attended</option>
+                  </select>
+                </div>`;
+              }
+              return (active.length ? `<div class="summary-task-list">${active.map(commRow).join('')}</div>` : '')
+                + (completed.length ? `
+                  <div style="margin-top:8px;border-radius:8px;background:var(--bg);padding:4px 8px 2px;border:1px solid var(--border)">
+                    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 2px">Done / Canceled</div>
+                    <div class="summary-task-list">${completed.map(commRow).join('')}</div>
+                  </div>` : '');
+            })()}
           </div>
 
           <div class="summary-card">
