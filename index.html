@@ -1563,7 +1563,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.7</div>
+      <div class="sidebar-version">v1.7.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3565,7 +3565,8 @@ const renderers = {
         'personal-detail':() => renderPersonalDetail(activePersonalId),
         kanban:           renderKanban,
         gantt:            renderGantt,
-        comms:            renderComms
+        comms:            renderComms,
+        followups:        renderFollowupsPage
       };
 
       if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
@@ -3631,6 +3632,8 @@ const renderers = {
       const todayList     = open.filter(t => isTaskActiveOn(t, today));
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
+      const openFus       = followups.filter(f => f.status === 'Open' || f.status === 'Discussed');
+      const overdueFus    = openFus.filter(f => f.dueDate && f.dueDate < today);
       const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
       // Planned (all, incl. done) & done counts for today and this week
       // Use .slice(0,10) to guard against dates stored with time components or whitespace
@@ -3791,6 +3794,10 @@ const renderers = {
             <div class="ss-value">${open.filter(t => t.taskType !== 'timeoff').length}</div>
             <div class="ss-label">Open Tasks</div>
           </div>
+          <div class="summary-stat ${overdueFus.length > 0 ? 's-warning' : 's-neutral'}" onclick="showView('followups')">
+            <div class="ss-value" style="color:${overdueFus.length > 0 ? 'var(--warning)' : 'var(--primary)'}">${openFus.length}</div>
+            <div class="ss-label">Follow-ups</div>
+          </div>
         </div>
 
         <div class="summary-grid">
@@ -3882,6 +3889,33 @@ const renderers = {
             }
           </div>
 
+
+          <div class="summary-card">
+            <div class="summary-card-header">
+              <span class="summary-card-title" style="${overdueFus.length > 0 ? 'color:var(--warning)' : ''}">📋 Open Follow-ups${overdueFus.length > 0 ? ' <span style="font-size:11px;font-weight:600;color:var(--warning);margin-left:4px">'+overdueFus.length+' overdue</span>' : ''}</span>
+              <button class="summary-card-link" onclick="showView('followups')">View all →</button>
+            </div>
+            ${openFus.length === 0
+              ? `<div class="summary-empty">✅ No open follow-ups</div>`
+              : `<div class="summary-task-list">${openFus.slice(0,6).map(f => {
+                  const proj = f.projectId ? projects.find(p => p.id === f.projectId) : null;
+                  const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
+                  const isOd = f.dueDate && f.dueDate < today;
+                  const dotColor = f.status === 'Discussed' ? '#f59e0b' : '#2563eb';
+                  return '<div class="summary-task-item" onclick="openFollowupModal(\''+f.id+'\')">'
+                    + '<div style="width:8px;height:8px;border-radius:50%;background:'+dotColor+';flex-shrink:0;margin-top:2px"></div>'
+                    + '<div style="flex:1;min-width:0">'
+                    +   '<div class="summary-task-title">' + esc(f.topic) + '</div>'
+                    +   (proj ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(proj.name)+(linkedTask?' · 🔗 '+esc(linkedTask.title):'')+'</div>' : (linkedTask ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">🔗 '+esc(linkedTask.title)+'</div>' : ''))
+                    + '</div>'
+                    + (f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'">'+formatDue(f.dueDate)+'</span>' : '')
+                    + '<span class="fu-status-badge fu-'+(f.status==='Discussed'?'discussed':'open')+'">'+f.status+'</span>'
+                    + '</div>';
+                }).join('')}
+                ${openFus.length > 6 ? '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:6px 0">+' + (openFus.length-6) + ' more</div>' : ''}
+              </div>`
+            }
+          </div>
 
           <div class="summary-card">
             <div class="summary-card-header">
@@ -6973,6 +7007,58 @@ const renderers = {
       if (s.projectId && c.projectId !== s.projectId) return false;
       if (s.personalId && c.personalId !== s.personalId) return false;
       return true;
+    }
+
+    function renderFollowupsPage() {
+      const today = todayStr();
+      const open     = followups.filter(f => f.status === 'Open' || f.status === 'Discussed');
+      const resolved = followups.filter(f => f.status === 'Resolved');
+      const overdue  = open.filter(f => f.dueDate && f.dueDate < today);
+      const upcoming = open.filter(f => f.dueDate && f.dueDate >= today).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
+      const noDue    = open.filter(f => !f.dueDate);
+
+      function fuRow(f) {
+        const proj = f.projectId ? projects.find(p => p.id === f.projectId) : null;
+        const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
+        const isOd = f.dueDate && f.dueDate < today;
+        const dotColor = f.status === 'Discussed' ? '#f59e0b' : '#2563eb';
+        return '<div class="summary-task-item" style="padding:8px 0;cursor:pointer" onclick="openFollowupModal(\''+f.id+'\')">'
+          + '<div style="width:9px;height:9px;border-radius:50%;background:'+dotColor+';flex-shrink:0;margin-top:2px"></div>'
+          + '<div style="flex:1;min-width:0">'
+          +   '<div class="summary-task-title">'+esc(f.topic)+'</div>'
+          +   '<div style="font-size:11px;color:var(--text-muted);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap">'
+          +     (proj ? '<span>🗂 '+esc(proj.name)+'</span>' : '')
+          +     (linkedTask ? '<span>🔗 '+esc(linkedTask.title)+'</span>' : '')
+          +   '</div>'
+          + '</div>'
+          + (f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'">'+formatDue(f.dueDate)+'</span>' : '')
+          + '<span class="fu-status-badge fu-'+(f.status==='Discussed'?'discussed':'open')+'">'+f.status+'</span>'
+          + '</div>';
+      }
+
+      function section(title, items, emptyMsg) {
+        if (items.length === 0) return '';
+        return '<div style="margin-bottom:20px">'
+          + '<div style="font-size:11px;font-weight:700;color:var(--text-muted);letter-spacing:.06em;text-transform:uppercase;padding:0 0 6px">' + title + ' (' + items.length + ')</div>'
+          + '<div class="summary-task-list" style="background:var(--card);border-radius:10px;border:1px solid var(--border);padding:0 12px">'
+          + items.map(fuRow).join('')
+          + '</div></div>';
+      }
+
+      return `
+        <div class="view-header">
+          <div><div class="view-title">📋 Follow-ups</div>
+            <div class="view-subtitle">${open.length} open · ${overdue.length} overdue · ${resolved.length} resolved</div>
+          </div>
+          <button class="btn btn-primary" onclick="openFollowupModal()">＋ New Follow-up</button>
+        </div>
+        <div style="padding:0 4px">
+          ${overdue.length > 0 ? section('⚠ Overdue', overdue, '') : ''}
+          ${upcoming.length > 0 ? section('📅 Upcoming', upcoming, '') : ''}
+          ${noDue.length > 0   ? section('No Date', noDue, '') : ''}
+          ${open.length === 0  ? '<div class="empty-state"><div class="icon">📋</div><h3>No open follow-ups</h3><p>All caught up!</p></div>' : ''}
+          ${resolved.length > 0 ? section('✅ Resolved', resolved, '') : ''}
+        </div>`;
     }
 
     function renderComms() {
