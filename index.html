@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.6</div>
+      <div class="sidebar-version">v1.8.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3826,7 +3826,7 @@ const renderers = {
                   + '</div>';
               }
               return (activeTasks.length ? '<div class="summary-task-list">'+activeTasks.map(taskRow).join('')+'</div>' : '')
-                + (doneTasks.length ? '<div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-16px;background:var(--bg);padding:6px 18px 12px;border-radius:0 0 10px 10px">'
+                + (doneTasks.length ? '<div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-20px;background:var(--bg);padding:6px 18px 20px;border-radius:0 0 10px 10px">'
                   + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done</div>'
                   + '<div class="summary-task-list">'+doneTasks.map(taskRow).join('')+'</div>'
                   + '</div>' : '');
@@ -3873,7 +3873,7 @@ const renderers = {
               }
               return (active.length ? `<div class="summary-task-list">${active.map(commRow).join('')}</div>` : '')
                 + (completed.length ? `
-                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-16px;background:var(--bg);padding:6px 18px 12px;border-radius:0 0 10px 10px">
+                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-20px;background:var(--bg);padding:6px 18px 20px;border-radius:0 0 10px 10px">
                     <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done / Canceled</div>
                     <div class="summary-task-list">${completed.map(commRow).join('')}</div>
                   </div>` : '');
