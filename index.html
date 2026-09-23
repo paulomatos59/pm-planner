@@ -978,7 +978,7 @@
     .contact-suggest-item { padding: 7px 12px; font-size: 13px; color: var(--text); cursor: pointer; }
     .contact-suggest-item:hover { background: var(--bg); }
 
-    .summary-stats { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 14px; }
+    .summary-stats { display: grid; grid-template-columns: repeat(6, 1fr); gap: 10px; margin-bottom: 14px; }
     .summary-stat {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 10px; padding: 14px 12px; cursor: pointer; transition: all 0.15s; text-align: center;
@@ -989,7 +989,7 @@
     .summary-stat.s-warning { border-top: 3px solid var(--warning); }
     .summary-stat.s-success { border-top: 3px solid var(--success); }
     .summary-stat.s-neutral { border-top: 3px solid var(--border); }
-    .ss-value { font-size: 28px; font-weight: 800; line-height: 1; }
+    .ss-value { font-size: 26px; font-weight: 800; line-height: 1; }
     .ss-label { font-size: 10px; font-weight: 700; color: var(--text-muted); margin-top: 5px; text-transform: uppercase; letter-spacing: 0.4px; }
     /* Split planned/done layout */
     .ss-split { display: flex; align-items: baseline; justify-content: center; gap: 3px; line-height: 1; }
@@ -1274,11 +1274,9 @@
       .view-header { flex-direction: column; align-items: flex-start; gap: 10px; margin-bottom: 16px; }
       .view-title  { font-size: 20px; }
 
-      /* Summary stats: 2 columns */
-      .summary-stats { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+      /* Summary stats: 3 columns on mobile */
+      .summary-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
       .summary-grid  { grid-template-columns: 1fr; gap: 12px; }
-      /* 5th stat overflows — move to next row */
-      .summary-stats .summary-stat:nth-child(5) { grid-column: span 2; }
 
       /* Projects / notes grids: 1 column */
       .projects-grid { grid-template-columns: 1fr; }
@@ -1378,7 +1376,7 @@
     ============================================================ */
     @media (min-width: 1800px) {
       .main { padding: 32px 48px; }
-      .summary-stats { grid-template-columns: repeat(5, 1fr); }
+      .summary-stats { grid-template-columns: repeat(6, 1fr); }
       .dash-stat-grid { grid-template-columns: repeat(4, 1fr); }
     }
   </style>
@@ -1563,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.7.8</div>
+      <div class="sidebar-version">v1.7.9</div>
     </nav>
 
     <!-- ── Main content ── -->
