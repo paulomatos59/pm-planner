@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.4</div>
+      <div class="sidebar-version">v1.8.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3867,7 +3867,7 @@ const renderers = {
               }
               return (active.length ? `<div class="summary-task-list">${active.map(commRow).join('')}</div>` : '')
                 + (completed.length ? `
-                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-16px;background:var(--bg);padding:6px 18px 12px;border-top:1px solid var(--border);border-radius:0 0 10px 10px">
+                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-16px;background:var(--bg);padding:6px 18px 12px;border-radius:0 0 10px 10px">
                     <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done / Canceled</div>
                     <div class="summary-task-list">${completed.map(commRow).join('')}</div>
                   </div>` : '');
