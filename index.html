@@ -1561,7 +1561,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.7</div>
+      <div class="sidebar-version">v1.8.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3663,6 +3663,7 @@ const renderers = {
         ...todayList.filter(t => !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b)),
         ...todayDoneList.sort((a,b) => priorityOrder(a) - priorityOrder(b))
       ];
+      const hasDoneTasks = topTasks.some(t => t.status === 'Done');
 
       // Upcoming (next 7 days, not today, not overdue) — tasks + comms
       const upcomingTasks = open
@@ -3724,6 +3725,7 @@ const renderers = {
           if (da !== db) return da - db;
           return (a.startTime || '').localeCompare(b.startTime || '');
         });
+      const hasDoneComms = todayComms.some(c => (c._occStatus || 'planned') !== 'planned');
 
       // Upcoming Events card: work tasks + time-off in next 30 days
       const in30 = new Date(); in30.setDate(in30.getDate() + 30);
@@ -3803,7 +3805,7 @@ const renderers = {
 
         <div class="summary-grid">
 
-          <div class="summary-card">
+          <div class="summary-card" style="${hasDoneTasks ? 'padding-bottom:0' : ''}">
             <div class="summary-card-header">
               <span class="summary-card-title">Today's Tasks</span>
               <button class="summary-card-link" onclick="showView('today')">View all →</button>
@@ -3826,14 +3828,14 @@ const renderers = {
                   + '</div>';
               }
               return (activeTasks.length ? '<div class="summary-task-list">'+activeTasks.map(taskRow).join('')+'</div>' : '')
-                + (doneTasks.length ? '<div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-20px;background:var(--bg);padding:6px 18px 20px;border-radius:0 0 10px 10px">'
+                + (doneTasks.length ? '<div style="margin-top:8px;margin-left:-18px;margin-right:-18px;background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">'
                   + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done</div>'
                   + '<div class="summary-task-list">'+doneTasks.map(taskRow).join('')+'</div>'
                   + '</div>' : '');
             })()}
           </div>
 
-          <div class="summary-card">
+          <div class="summary-card" style="${hasDoneComms ? 'padding-bottom:0' : ''}">
             <div class="summary-card-header">
               <span class="summary-card-title">💬 Today's Comms</span>
               <button class="summary-card-link" onclick="showView('comms')">View all →</button>
@@ -3873,7 +3875,7 @@ const renderers = {
               }
               return (active.length ? `<div class="summary-task-list">${active.map(commRow).join('')}</div>` : '')
                 + (completed.length ? `
-                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;margin-bottom:-20px;background:var(--bg);padding:6px 18px 20px;border-radius:0 0 10px 10px">
+                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">
                     <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done / Canceled</div>
                     <div class="summary-task-list">${completed.map(commRow).join('')}</div>
                   </div>` : '');
