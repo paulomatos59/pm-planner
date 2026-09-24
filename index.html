@@ -1572,7 +1572,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.9</div>
+      <div class="sidebar-version">v1.9.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3984,10 +3984,16 @@ const renderers = {
         <div class="summary-card" style="margin-top:14px">
           <div class="summary-card-header">
             <span class="summary-card-title">This Week</span>
-            <button class="summary-card-link" onclick="showView('week')">Full week view →</button>
+            <div style="display:flex;align-items:center;gap:8px">
+              <button onclick="toggleWeekWorkOnly()" title="${_weekWorkOnly ? 'Show full week' : 'Show work week only'}"
+                style="background:${_weekWorkOnly ? 'var(--primary)' : 'var(--bg)'};color:${_weekWorkOnly ? 'white' : 'var(--text-muted)'};border:1px solid ${_weekWorkOnly ? 'var(--primary)' : 'var(--border)'};border-radius:6px;padding:2px 7px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap;transition:all .15s">
+                Mon–Fri
+              </button>
+              <button class="summary-card-link" onclick="showView('week')">Full week view →</button>
+            </div>
           </div>
-          <div class="summary-week-strip">
-            ${weekDays.map(d => `
+          <div class="summary-week-strip" style="${_weekWorkOnly ? 'grid-template-columns:repeat(5,minmax(0,1fr))' : ''}">
+            ${(_weekWorkOnly ? weekDays.filter(d => { const dow=d.date.getDay(); return dow>=1&&dow<=5; }) : weekDays).map(d => `
               ${(() => {
                 const cap = capacitySettings;
                 const dow = d.date.getDay();
@@ -8003,6 +8009,7 @@ const renderers = {
     ============================== */
     let _occHideDone = { task: false, comm: false };
     let _occTab      = { task: 'upcoming', comm: 'upcoming' };
+    let _weekWorkOnly = localStorage.getItem('dp_week_workonly') === 'true';
 
     // Returns sorted list of occurrence dates (YYYY-MM-DD) for a recurring obj.
     // firstDateKey: 'dueDate' for tasks, 'date' for comms.
@@ -8129,6 +8136,12 @@ const renderers = {
       const paBtn = document.getElementById('commOccTabPast');
       if (upBtn) upBtn.classList.toggle('active', tab === 'upcoming');
       if (paBtn) paBtn.classList.toggle('active', tab === 'past');
+    }
+
+    function toggleWeekWorkOnly() {
+      _weekWorkOnly = !_weekWorkOnly;
+      localStorage.setItem('dp_week_workonly', _weekWorkOnly);
+      renderHome();
     }
 
     function switchOccTab(type, tab) {
