@@ -1572,7 +1572,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.2</div>
+      <div class="sidebar-version">v1.9.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3756,6 +3756,58 @@ const renderers = {
         return da.localeCompare(db);
       }).slice(0, 7);
 
+      // Pre-split for tasks/comms Done section (used by padding:0 card approach)
+      const topTasksActive = topTasks.filter(t => t.status !== 'Done');
+      const topTasksDone   = topTasks.filter(t => t.status === 'Done');
+      const todayCommsActive = todayComms.filter(c => (c._occStatus||'planned') === 'planned');
+      const todayCommsDone   = todayComms.filter(c => (c._occStatus||'planned') !== 'planned');
+
+      function _taskRowHtml(t) {
+        const proj   = t.projectId  ? projects.find(p => p.id === t.projectId)  : null;
+        const pers   = t.personalId ? projects.find(p => p.id === t.personalId) : null;
+        const linked = proj || pers;
+        return '<div class="summary-task-item" onclick="openTaskModal(\''+t.id+'\')">'
+          + '<div class="s-task-dot s-dot-'+t.priority.toLowerCase()+'" style="'+(t.status==='Done'?'opacity:.4':'')+'"></div>'
+          + '<div style="flex:1;min-width:0">'
+          +   '<div class="summary-task-title '+(t.status==='Done'?'done-title':'')+'">'+esc(t.title)+'</div>'
+          +   (linked ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(linked.name)+'</div>' : '')
+          + '</div>'
+          + '<span class="status-badge status-'+statusClass(t.status)+'">'+t.status+'</span>'
+          + '</div>';
+      }
+
+      function _commRowHtml(c) {
+        const icon    = COMM_ICONS[c.type] || '💬';
+        const isDone  = c._occDone !== undefined ? c._occDone : c.status === 'Done';
+        const timeStr = c.startTime
+          ? fmt12(c.startTime) + (c.endTime ? ' – ' + fmt12(c.endTime) : '')
+          : (c.duration ? c.duration + ' min' : '');
+        const linked  = (c.projectId  ? projects.find(p => p.id === c.projectId)  : null)
+                      || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
+        const st      = c._occStatus || 'planned';
+        const stIcon  = st==='done'?'✅':st==='not_done'?'✕':st==='not_attended'?'✕':icon;
+        const stColor = st==='done'?'#16a34a':st==='not_done'?'#6b7280':st==='not_attended'?'#d97706':'#2563eb';
+        const stBg    = st==='done'?'#f0fdf4':st==='not_done'?'#f3f4f6':st==='not_attended'?'#fffbeb':'#eff6ff';
+        const stBdr   = st==='done'?'#bbf7d0':st==='not_done'?'#d1d5db':st==='not_attended'?'#fde68a':'#bfdbfe';
+        const subLine = (timeStr || linked)
+          ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+(timeStr?'⏱ '+timeStr:'')+(timeStr&&linked?' · ':'')+(linked?esc(linked.name):'')+  '</div>'
+          : '';
+        return '<div class="summary-task-item" onclick="openCommModal(\''+c.id+'\')">'
+          + '<span style="font-size:15px;line-height:1;flex-shrink:0">'+stIcon+'</span>'
+          + '<div style="flex:1;min-width:0">'
+          +   '<div class="summary-task-title '+(isDone?'done-title':'')+'">'+esc(c.title)+'</div>'
+          +   subLine
+          + '</div>'
+          + '<select onclick="event.stopPropagation()" onchange="event.stopPropagation();dashSetCommStatus(\''+c.id+'\',this.value)"'
+          + ' style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid '+stBdr+';color:'+stColor+';background:'+stBg+'">'
+          +   '<option value="planned" '+(st==='planned'?'selected':'')+'>📅 Planned</option>'
+          +   '<option value="done" '+(st==='done'?'selected':'')+'>✅ Done</option>'
+          +   '<option value="not_done" '+(st==='not_done'?'selected':'')+'>✕ Canceled</option>'
+          +   '<option value="not_attended" '+(st==='not_attended'?'selected':'')+'>✕ Not Attended</option>'
+          + '</select>'
+          + '</div>';
+      }
+
       return `
         <div class="summary-hero" style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap">
           <div>
@@ -3816,81 +3868,40 @@ const renderers = {
 
         <div class="summary-grid">
 
-          <div class="summary-card" style="${hasDoneTasks ? 'padding-bottom:0' : ''}">
-            <div class="summary-card-header">
-              <span class="summary-card-title">Today's Tasks</span>
-              <button class="summary-card-link" onclick="showView('today')">View all →</button>
+          <div class="summary-card" style="padding:0">
+            <div style="padding:16px 18px ${topTasksDone.length ? '8px' : '16px'}">
+              <div class="summary-card-header">
+                <span class="summary-card-title">Today's Tasks</span>
+                <button class="summary-card-link" onclick="showView('today')">View all →</button>
+              </div>
+              ${topTasks.length === 0
+                ? '<div class="summary-empty">🎉 No tasks for today</div>'
+                : topTasksActive.length ? '<div class="summary-task-list">'+topTasksActive.map(_taskRowHtml).join('')+'</div>' : ''}
             </div>
-            ${(() => {
-              if (topTasks.length === 0) return `<div class="summary-empty">🎉 No tasks for today</div>`;
-              const activeTasks = topTasks.filter(t => t.status !== 'Done');
-              const doneTasks   = topTasks.filter(t => t.status === 'Done');
-              function taskRow(t) {
-                const proj   = t.projectId  ? projects.find(p => p.id === t.projectId)  : null;
-                const pers   = t.personalId ? projects.find(p => p.id === t.personalId) : null;
-                const linked = proj || pers;
-                return '<div class="summary-task-item" onclick="openTaskModal(\''+t.id+'\')">'
-                  + '<div class="s-task-dot s-dot-'+t.priority.toLowerCase()+'" style="'+(t.status==='Done'?'opacity:.4':'')+'"></div>'
-                  + '<div style="flex:1;min-width:0">'
-                  +   '<div class="summary-task-title '+(t.status==='Done'?'done-title':'')+'">'+esc(t.title)+'</div>'
-                  +   (linked ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(linked.name)+'</div>' : '')
-                  + '</div>'
-                  + '<span class="status-badge status-'+statusClass(t.status)+'">'+t.status+'</span>'
-                  + '</div>';
-              }
-              return (activeTasks.length ? '<div class="summary-task-list">'+activeTasks.map(taskRow).join('')+'</div>' : '')
-                + (doneTasks.length ? '<div style="margin-top:8px;margin-left:-18px;margin-right:-18px;background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">'
-                  + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done</div>'
-                  + '<div class="summary-task-list">'+doneTasks.map(taskRow).join('')+'</div>'
-                  + '</div>' : '');
-            })()}
+            ${topTasksDone.length
+              ? '<div style="background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">'
+                + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done</div>'
+                + '<div class="summary-task-list">'+topTasksDone.map(_taskRowHtml).join('')+'</div>'
+                + '</div>'
+              : ''}
           </div>
 
-          <div class="summary-card" style="${hasDoneComms ? 'padding-bottom:0' : ''}">
-            <div class="summary-card-header">
-              <span class="summary-card-title">💬 Today's Comms</span>
-              <button class="summary-card-link" onclick="showView('comms')">View all →</button>
+          <div class="summary-card" style="padding:0">
+            <div style="padding:16px 18px ${todayCommsDone.length ? '8px' : '16px'}">
+              <div class="summary-card-header">
+                <span class="summary-card-title">💬 Today's Comms</span>
+                <button class="summary-card-link" onclick="showView('comms')">View all →</button>
+              </div>
+              ${todayComms.length === 0
+                ? '<div class="summary-empty">No comms scheduled for today</div>'
+                : todayCommsActive.length ? '<div class="summary-task-list">'+todayCommsActive.map(_commRowHtml).join('')+'</div>' : ''}
             </div>
-            ${(() => {
-              if (todayComms.length === 0) return `<div class="summary-empty">No comms scheduled for today</div>`;
-              const active    = todayComms.filter(c => { const st = c._occStatus||'planned'; return st === 'planned'; });
-              const completed = todayComms.filter(c => { const st = c._occStatus||'planned'; return st !== 'planned'; });
-              function commRow(c) {
-                const icon    = COMM_ICONS[c.type] || '💬';
-                const isDone  = c._occDone !== undefined ? c._occDone : c.status === 'Done';
-                const timeStr = c.startTime
-                  ? fmt12(c.startTime) + (c.endTime ? ' – ' + fmt12(c.endTime) : '')
-                  : (c.duration ? c.duration + ' min' : '');
-                const linked  = (c.projectId  ? projects.find(p => p.id === c.projectId)  : null)
-                              || (c.personalId ? projects.find(p => p.id === c.personalId) : null);
-                const st = c._occStatus || 'planned';
-                const stIcon  = st==='done' ? '✅' : st==='not_done' ? '✕' : st==='not_attended' ? '✕' : icon;
-                const stColor = st==='done' ? '#16a34a' : st==='not_done' ? '#6b7280' : st==='not_attended' ? '#d97706' : '#2563eb';
-                const stBg    = st==='done' ? '#f0fdf4' : st==='not_done' ? '#f3f4f6' : st==='not_attended' ? '#fffbeb' : '#eff6ff';
-                const stBorder= st==='done' ? '#bbf7d0' : st==='not_done' ? '#d1d5db' : st==='not_attended' ? '#fde68a' : '#bfdbfe';
-                return `<div class="summary-task-item" onclick="openCommModal('${c.id}')">
-                  <span style="font-size:15px;line-height:1;flex-shrink:0">${stIcon}</span>
-                  <div style="flex:1;min-width:0">
-                    <div class="summary-task-title ${isDone?'done-title':''}">${esc(c.title)}</div>
-                    ${timeStr || linked ? `<div style="font-size:11px;color:var(--text-muted);margin-top:1px">${timeStr ? '⏱ '+timeStr : ''}${timeStr && linked ? ' · ' : ''}${linked ? esc(linked.name) : ''}</div>` : ''}
-                  </div>
-                  <select onclick="event.stopPropagation()"
-                          onchange="event.stopPropagation();dashSetCommStatus('${c.id}',this.value)"
-                          style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid ${stBorder};color:${stColor};background:${stBg}">
-                    <option value="planned"      ${st==='planned'     ?'selected':''}>📅 Planned</option>
-                    <option value="done"         ${st==='done'        ?'selected':''}>✅ Done</option>
-                    <option value="not_done"     ${st==='not_done'    ?'selected':''}>✕ Canceled</option>
-                    <option value="not_attended" ${st==='not_attended'?'selected':''}>✕ Not Attended</option>
-                  </select>
-                </div>`;
-              }
-              return (active.length ? `<div class="summary-task-list">${active.map(commRow).join('')}</div>` : '')
-                + (completed.length ? `
-                  <div style="margin-top:8px;margin-left:-18px;margin-right:-18px;background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">
-                    <div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done / Canceled</div>
-                    <div class="summary-task-list">${completed.map(commRow).join('')}</div>
-                  </div>` : '');
-            })()}
+            ${todayCommsDone.length
+              ? '<div style="background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">'
+                + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done / Canceled</div>'
+                + '<div class="summary-task-list">'+todayCommsDone.map(_commRowHtml).join('')+'</div>'
+                + '</div>'
+              : ''}
           </div>
 
           <div class="summary-card">
