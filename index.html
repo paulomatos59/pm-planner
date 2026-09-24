@@ -1572,7 +1572,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.1</div>
+      <div class="sidebar-version">v1.9.2</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7575,7 +7575,7 @@ const renderers = {
       persistComms();
       _notifyMainWindow();
       closeCommModal();
-      if (!isPopupMode() && currentView === 'comms') showView('comms');
+      if (!isPopupMode()) showView(currentView);
     }
 
     function deleteComm() {
@@ -7584,7 +7584,7 @@ const renderers = {
       comms = comms.filter(c => c.id !== editingCommId);
       persistComms();
       closeCommModal();
-      if (currentView === 'comms') showView('comms');
+      if (!isPopupMode()) showView(currentView);
     }
 
     /* ── Comm RTE helpers ── */
