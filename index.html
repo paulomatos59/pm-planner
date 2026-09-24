@@ -1572,7 +1572,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.0</div>
+      <div class="sidebar-version">v1.9.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8141,7 +8141,7 @@ const renderers = {
     function toggleWeekWorkOnly() {
       _weekWorkOnly = !_weekWorkOnly;
       localStorage.setItem('dp_week_workonly', _weekWorkOnly);
-      renderHome();
+      showView('summary');
     }
 
     function switchOccTab(type, tab) {
