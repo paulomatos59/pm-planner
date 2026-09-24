@@ -30,6 +30,7 @@
       font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
       background: var(--bg); color: var(--text);
       min-height: 100vh; display: flex; flex-direction: column;
+      overflow-x: hidden;
     }
 
     /* ── Header ── */
@@ -163,7 +164,7 @@
     .add-dropdown-item:hover { background: var(--primary-light); color: var(--primary); }
 
     /* ── Main ── */
-    .main { flex: 1; padding: 24px; overflow-y: auto; min-width: 0; }
+    .main { flex: 1; padding: 24px; overflow-y: auto; overflow-x: hidden; min-width: 0; }
     .view-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 20px; }
     .view-title { font-size: 22px; font-weight: 700; }
     .view-subtitle { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
@@ -1004,9 +1005,9 @@
     .summary-stat.s-warning .ss-value { color: var(--warning); }
     .summary-stat.s-success .ss-value { color: #16a34a; }
 
-    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 14px; }
     .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; overflow: hidden; }
-    .summary-card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .summary-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; gap: 6px; flex-wrap: wrap; }
     .summary-card-title { font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 0.6px; color: var(--text-muted); }
     .summary-card-link { background: none; border: none; color: var(--primary); font-size: 12px; font-weight: 600; cursor: pointer; padding: 0; }
     .summary-card-link:hover { text-decoration: underline; }
@@ -1053,10 +1054,10 @@
     .upcoming-type-task    { background:var(--primary-light); color:var(--primary); }
     .upcoming-type-timeoff { background:#ecfeff; color:#0891b2; }
 
-    .summary-week-strip { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
+    .summary-week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
     .summary-week-day {
       text-align: center; padding: 8px 4px; border-radius: 8px; cursor: pointer;
-      transition: background 0.1s; border: 1px solid transparent;
+      transition: background 0.1s; border: 1px solid transparent; min-width: 0; overflow: hidden;
     }
     .summary-week-day:hover { background: var(--bg); }
     .summary-week-day.s-today { background: var(--primary-light); border-color: var(--primary); }
@@ -1285,9 +1286,9 @@
       /* Dashboard stat grid: 2 columns */
       .dash-stat-grid { grid-template-columns: repeat(2, 1fr); gap: 10px; }
 
-      /* Week strip */
-      .summary-week-strip { gap: 2px; }
-      .summary-week-day   { min-width: 34px; padding: 6px 4px; }
+      /* Week strip: horizontal scroll on mobile so days don't get crushed */
+      .summary-week-strip { gap: 4px; grid-template-columns: repeat(7, minmax(44px, 1fr)); overflow-x: auto; }
+      .summary-week-day   { min-width: 44px; padding: 6px 4px; }
 
       /* Task cards */
       .task-card { padding: 10px 12px; }
@@ -1348,10 +1349,20 @@
     }
 
     /* ============================================================
-       RESPONSIVE — MEDIUM SCREENS  (769px – 1199px)
+       RESPONSIVE — MEDIUM SCREENS  (769px – 1099px)
     ============================================================ */
     @media (min-width: 769px) and (max-width: 1099px) {
-      .summary-grid { grid-template-columns: 1fr 1fr; }
+      .summary-grid  { grid-template-columns: 1fr 1fr; }
+      .summary-stats { grid-template-columns: repeat(3, 1fr); gap: 8px; }
+      .summary-week-strip { grid-template-columns: repeat(7, minmax(80px, 1fr)); overflow-x: auto; }
+    }
+
+    /* ============================================================
+       RESPONSIVE — SMALL-LARGE SCREENS  (1100px – 1399px)
+    ============================================================ */
+    @media (min-width: 1100px) and (max-width: 1399px) {
+      .summary-stats { grid-template-columns: repeat(6, 1fr); gap: 10px; }
+      .summary-grid  { grid-template-columns: repeat(auto-fill, minmax(min(260px,100%), 1fr)); }
     }
 
     /* ============================================================
@@ -1561,7 +1572,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.8.8</div>
+      <div class="sidebar-version">v1.8.9</div>
     </nav>
 
     <!-- ── Main content ── -->
