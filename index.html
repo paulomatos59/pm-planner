@@ -1572,7 +1572,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.3</div>
+      <div class="sidebar-version">v1.9.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3940,13 +3940,16 @@ const renderers = {
                   const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
                   const isOd = f.dueDate && f.dueDate < today;
                   const dotColor = f.status === 'Discussed' ? '#f59e0b' : '#2563eb';
+                  const metaLine = [
+                    proj ? esc(proj.name)+(linkedTask?' · 🔗 '+esc(linkedTask.title):'') : (linkedTask ? '🔗 '+esc(linkedTask.title) : ''),
+                    f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'" style="font-size:11px">'+formatDue(f.dueDate)+'</span>' : ''
+                  ].filter(Boolean).join(' · ');
                   return '<div class="summary-task-item" onclick="openFollowupModal(\''+f.id+'\')">'
                     + '<div style="width:8px;height:8px;border-radius:50%;background:'+dotColor+';flex-shrink:0;margin-top:2px"></div>'
                     + '<div style="flex:1;min-width:0">'
                     +   '<div class="summary-task-title">' + esc(f.topic) + '</div>'
-                    +   (proj ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(proj.name)+(linkedTask?' · 🔗 '+esc(linkedTask.title):'')+'</div>' : (linkedTask ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">🔗 '+esc(linkedTask.title)+'</div>' : ''))
+                    +   (metaLine ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+metaLine+'</div>' : '')
                     + '</div>'
-                    + (f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'">'+formatDue(f.dueDate)+'</span>' : '')
                     + '<span class="fu-status-badge fu-'+(f.status==='Discussed'?'discussed':'open')+'">'+f.status+'</span>'
                     + '</div>';
                 }).join('')}
