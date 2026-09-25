@@ -1579,7 +1579,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.6</div>
+      <div class="sidebar-version">v1.9.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5404,7 +5404,10 @@ const renderers = {
         priority: document.getElementById('filterPriority')?.value || '',
         // statuses Set is managed separately via toggleStatusFilter
       };
+      const _searchVal = filterState.search;
       document.getElementById('mainContent').innerHTML = renderAll();
+      const _inp = document.getElementById('filterSearch');
+      if (_inp) { _inp.focus(); _inp.setSelectionRange(_searchVal.length, _searchVal.length); }
     }
     function setTaskTimeTab(tab) {
       taskTimeTab = tab;
