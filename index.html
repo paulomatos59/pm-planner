@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.19</div>
+      <div class="sidebar-version">v1.9.20</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3809,14 +3809,17 @@ const renderers = {
         const proj   = t.projectId  ? projects.find(p => p.id === t.projectId)  : null;
         const pers   = t.personalId ? projects.find(p => p.id === t.personalId) : null;
         const linked = proj || pers;
-        const ss     = _taskStStyle[t.status] || _taskStStyle['Todo'];
+        // For recurring tasks, today's occurrence state overrides global status in the dropdown
+        const _todayStr = new Date().toISOString().slice(0,10);
+        const effectiveStatus = (t.recurrence?.freq && t.completedOccurrences?.[_todayStr]) ? 'Done' : t.status;
+        const ss     = _taskStStyle[effectiveStatus] || _taskStStyle['Todo'];
         const stSel  = ['Todo','In Progress','Done','Delayed','Blocked'].map(s =>
-          '<option value="'+s+'" '+(s===t.status?'selected':'')+'>'+s+'</option>'
+          '<option value="'+s+'" '+(s===effectiveStatus?'selected':'')+'>'+s+'</option>'
         ).join('');
         return '<div class="summary-task-item" onclick="openTaskModal(\''+t.id+'\')">'
-          + '<div class="s-task-dot s-dot-'+t.priority.toLowerCase()+'" style="'+(t.status==='Done'?'opacity:.4':'')+'"></div>'
+          + '<div class="s-task-dot s-dot-'+t.priority.toLowerCase()+'" style="'+(effectiveStatus==='Done'?'opacity:.4':'')+'"></div>'
           + '<div style="flex:1;min-width:0">'
-          +   '<div class="summary-task-title '+(t.status==='Done'?'done-title':'')+'">'+esc(t.title)+'</div>'
+          +   '<div class="summary-task-title '+(effectiveStatus==='Done'?'done-title':'')+'">'+esc(t.title)+'</div>'
           +   (linked ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(linked.name)+'</div>' : '')
           + '</div>'
           + '<select onclick="event.stopPropagation()" onchange="event.stopPropagation();dashSetTaskStatus(\''+t.id+'\',this.value)"'
@@ -8362,13 +8365,24 @@ const renderers = {
     function dashSetTaskStatus(taskId, status) {
       const t = tasks.find(x => x.id === taskId);
       if (!t) return;
-      t.status    = status;
       t.updatedAt = new Date().toISOString();
-      if (status === 'Done') {
-        t.completedAt = t.completedAt || new Date().toISOString();
-        if (t.recurrence && t.recurrence.freq) spawnNextRecurrence(t);
+      // For recurring tasks, "Done" marks today's occurrence; other statuses change global status
+      if (t.recurrence && t.recurrence.freq) {
+        if (status === 'Done') {
+          if (!t.completedOccurrences) t.completedOccurrences = {};
+          t.completedOccurrences[todayStr()] = new Date().toISOString();
+        } else {
+          // Un-done today's occurrence if user picks something else
+          if (t.completedOccurrences) delete t.completedOccurrences[todayStr()];
+          t.status = status;
+        }
       } else {
-        t.completedAt = null;
+        t.status = status;
+        if (status === 'Done') {
+          t.completedAt = t.completedAt || new Date().toISOString();
+        } else {
+          t.completedAt = null;
+        }
       }
       persistTasks();
       showView(currentView);
