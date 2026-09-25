@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.12</div>
+      <div class="sidebar-version">v1.9.13</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2590,7 +2590,7 @@
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
     const ganttCollapsed     = new Set(); // group keys currently collapsed
-    let ganttHolidayCountries   = new Set(); // selected ISO codes e.g. Set(['PT','US'])
+    let ganttHolidayCountries   = new Set(JSON.parse(localStorage.getItem('dp_gantt_holidays') || '[]')); // selected ISO codes e.g. Set(['PT','US'])
     let ganttHolidayDropOpen    = false;
     const ganttHolidaysCache    = {};        // { 'PT-2026': [...] }
     const GANTT_HOL_COUNTRIES = [
@@ -4158,13 +4158,15 @@ const renderers = {
     function navGantt(delta) { ganttOffset += delta; showView('gantt'); }
     function setGanttScale(s) { ganttScale = s; ganttOffset = 0; showView('gantt'); }
     function setGanttFilter(f) { ganttFilter = f; showView('gantt'); }
+    function _saveGanttHolidays() { localStorage.setItem('dp_gantt_holidays', JSON.stringify([...ganttHolidayCountries])); }
     function toggleGanttHolidayCountry(code) {
       if (ganttHolidayCountries.has(code)) ganttHolidayCountries.delete(code);
       else ganttHolidayCountries.add(code);
+      _saveGanttHolidays();
       showView('gantt');
     }
     function toggleGanttHolidayDrop() { ganttHolidayDropOpen = !ganttHolidayDropOpen; showView('gantt'); }
-    function clearGanttHolidays() { ganttHolidayCountries.clear(); ganttHolidayDropOpen = false; showView('gantt'); }
+    function clearGanttHolidays() { ganttHolidayCountries.clear(); _saveGanttHolidays(); ganttHolidayDropOpen = false; showView('gantt'); }
 
     async function _fetchHolidayYear(cc, year) {
       const key = `${cc}-${year}`;
