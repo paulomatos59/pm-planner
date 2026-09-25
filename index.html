@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.21</div>
+      <div class="sidebar-version">v1.9.22</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3933,7 +3933,7 @@ const renderers = {
                 : topTasksActive.length ? '<div class="summary-task-list">'+topTasksActive.map(_taskRowHtml).join('')+'</div>' : ''}
             </div>
             ${topTasksDone.length
-              ? '<div style="background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">'
+              ? '<div style="padding:0 18px 16px">'
                 + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done</div>'
                 + '<div class="summary-task-list">'+topTasksDone.map(_taskRowHtml).join('')+'</div>'
                 + '</div>'
@@ -3951,7 +3951,7 @@ const renderers = {
                 : todayCommsActive.length ? '<div class="summary-task-list">'+todayCommsActive.map(_commRowHtml).join('')+'</div>' : ''}
             </div>
             ${todayCommsDone.length
-              ? '<div style="background:var(--bg);padding:6px 18px 16px;border-radius:0 0 10px 10px">'
+              ? '<div style="padding:0 18px 16px">'
                 + '<div style="font-size:10px;font-weight:700;color:var(--text-muted);letter-spacing:.05em;text-transform:uppercase;padding:4px 0 4px">Done / Canceled</div>'
                 + '<div class="summary-task-list">'+todayCommsDone.map(_commRowHtml).join('')+'</div>'
                 + '</div>'
