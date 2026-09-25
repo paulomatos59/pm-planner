@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.16</div>
+      <div class="sidebar-version">v1.9.17</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4201,7 +4201,7 @@ const renderers = {
         const r = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${cc}`);
         ganttHolidaysCache[key] = r.ok ? await r.json() : [];
       } catch(_) { ganttHolidaysCache[key] = []; }
-      showView('gantt');
+      showView(currentView);
     }
     function toggleGanttGroup(key) {
       if (ganttCollapsed.has(key)) ganttCollapsed.delete(key);
