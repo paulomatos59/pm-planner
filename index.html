@@ -461,7 +461,7 @@
     .tasks-table { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
     .table-header, .table-row {
       display: grid;
-      grid-template-columns: 28px 1fr 100px 78px 96px 86px 52px;
+      grid-template-columns: 28px 1fr 100px 78px 96px 86px 52px 80px;
       padding: 10px 14px; gap: 8px; align-items: center;
     }
     .table-header { background: var(--bg); border-bottom: 1px solid var(--border); font-size: 11px; font-weight: 700; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.4px; }
@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.9</div>
+      <div class="sidebar-version">v1.9.10</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5356,6 +5356,7 @@ const renderers = {
             ${thSort('due',      'Due')}
             ${thSort('status',   'Status')}
             ${thSort('hours',    'Hrs')}
+            ${thSort('updated',  'Updated')}
           </div>
           ${filteredSorted.length === 0
             ? '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px">No tasks match your filters.</div>'
@@ -5393,6 +5394,7 @@ const renderers = {
           case 'due':      return m * ((a.dueDate || '9999') < (b.dueDate || '9999') ? -1 : (a.dueDate || '9999') > (b.dueDate || '9999') ? 1 : 0);
           case 'status':   return m * (a.status || '').localeCompare(b.status || '');
           case 'hours':    return m * ((parseFloat(a.estimatedHours) || 0) - (parseFloat(b.estimatedHours) || 0));
+          case 'updated':  return m * ((a.updatedAt || '') < (b.updatedAt || '') ? -1 : (a.updatedAt || '') > (b.updatedAt || '') ? 1 : 0);
           default:         return 0;
         }
       });
@@ -5436,6 +5438,22 @@ const renderers = {
       showView('all');
     }
 
+    function fmtUpdated(iso) {
+      if (!iso) return '—';
+      const d = new Date(iso);
+      const now = new Date();
+      const diffMs = now - d;
+      const diffMins = Math.floor(diffMs / 60000);
+      if (diffMins < 1)   return 'Just now';
+      if (diffMins < 60)  return diffMins + 'm ago';
+      const diffHrs = Math.floor(diffMins / 60);
+      if (diffHrs < 24)   return diffHrs + 'h ago';
+      const diffDays = Math.floor(diffHrs / 24);
+      if (diffDays === 1) return 'Yesterday';
+      if (diffDays < 7)   return diffDays + 'd ago';
+      return d.toLocaleDateString('en-GB', { day:'2-digit', month:'short' });
+    }
+
     function tableRow(t) {
       const od = isOverdue(t);
       return `
@@ -5447,6 +5465,7 @@ const renderers = {
           <div class="task-due ${od?'overdue-text':''}">${formatDue(t.dueDate)}</div>
           <div><span class="status-badge status-${statusClass(t.status)}">${t.status}</span></div>
           <div style="color:var(--text-muted)">${t.estimatedHours ? t.estimatedHours+'h' : '—'}</div>
+          <div style="color:var(--text-muted);font-size:11px" title="${t.updatedAt ? new Date(t.updatedAt).toLocaleString() : ''}">${fmtUpdated(t.updatedAt)}</div>
         </div>`;
     }
 
