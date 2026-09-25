@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.18</div>
+      <div class="sidebar-version">v1.9.19</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3662,7 +3662,8 @@ const renderers = {
       const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
       // Planned (all, incl. done) & done counts for today and this week
       // Use .slice(0,10) to guard against dates stored with time components or whitespace
-      const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && (t.dueDate||'').slice(0,10) === today);
+      const _isRecurDoneToday = t => !!(t.recurrence?.freq && t.completedOccurrences?.[today]);
+      const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && (t.status === 'Done' && (t.dueDate||'').slice(0,10) === today || _isRecurDoneToday(t)));
       const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && (isTaskActiveOn(t, today) || t.status === 'Done' && (t.dueDate||'').slice(0,10) === today));
       const weekDoneCount = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const weekPlanned   = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
@@ -3684,13 +3685,20 @@ const renderers = {
       });
 
       // Top tasks for today: overdue first, then open today's, then done today's
-      const todayDoneList = tasks.filter(t => t.status === 'Done' && t.taskType !== 'timeoff' && (t.dueDate||'').slice(0,10) === today && !t.parentId);
+      const todayDoneList = tasks.filter(t =>
+        t.taskType !== 'timeoff' && !t.parentId && (
+          (t.status === 'Done' && (t.dueDate||'').slice(0,10) === today) ||
+          _isRecurDoneToday(t)
+        )
+      );
+      // Exclude recurring tasks whose today-occurrence is already done from the open list
+      const todayOpenList = todayList.filter(t => !isOverdue(t) && !_isRecurDoneToday(t));
       const topTasks = [
         ...overdueList.sort((a,b) => priorityOrder(a) - priorityOrder(b)),
-        ...todayList.filter(t => !isOverdue(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b)),
+        ...todayOpenList.sort((a,b) => priorityOrder(a) - priorityOrder(b)),
         ...todayDoneList.sort((a,b) => priorityOrder(a) - priorityOrder(b))
       ];
-      const hasDoneTasks = topTasks.some(t => t.status === 'Done');
+      const hasDoneTasks = todayDoneList.length > 0;
 
       // Upcoming (next 7 days, not today, not overdue) — tasks + comms
       const upcomingTasks = open
