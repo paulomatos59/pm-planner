@@ -1005,6 +1005,13 @@
     .summary-stat.s-warning .ss-value { color: var(--warning); }
     .summary-stat.s-success .ss-value { color: #16a34a; }
 
+    .multi-proj-picker { display:flex; flex-wrap:wrap; gap:4px; align-items:center; padding:4px 8px; border:1px solid var(--border); border-radius:8px; background:var(--surface); min-height:36px; cursor:text; }
+    .multi-proj-picker:focus-within { border-color:var(--primary); }
+    .mpp-tag { display:inline-flex; align-items:center; gap:3px; background:var(--primary-light); color:var(--primary); border-radius:20px; padding:2px 8px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .mpp-tag button { background:none; border:none; cursor:pointer; color:var(--primary); font-size:13px; line-height:1; padding:0 0 0 2px; opacity:.7; }
+    .mpp-tag button:hover { opacity:1; }
+    .mpp-add-select { border:none; background:transparent; color:var(--text-muted); font-size:12px; cursor:pointer; outline:none; flex:1; min-width:100px; padding:2px 0; }
+
     .summary-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(280px, 100%), 1fr)); gap: 14px; }
     .summary-card { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 16px 18px; overflow: hidden; }
     .summary-card-header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 12px; gap: 6px; flex-wrap: wrap; }
@@ -1572,7 +1579,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.5</div>
+      <div class="sidebar-version">v1.9.6</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1766,9 +1773,7 @@
             </div>
             <div class="form-group">
               <label class="form-label">Assign to</label>
-              <select class="form-select" id="taskProjectLink">
-                <option value="">— None —</option>
-              </select>
+              <div class="multi-proj-picker" id="taskProjPicker" data-selected="[]"></div>
             </div>
           </div>
 
@@ -2051,9 +2056,7 @@
 
           <div class="form-group">
             <label class="form-label">Project</label>
-            <select class="form-select" id="commProject">
-              <option value="">— None —</option>
-            </select>
+            <div class="multi-proj-picker" id="commProjPicker" data-selected="[]"></div>
           </div>
 
           <div class="form-group">
@@ -2309,9 +2312,7 @@
 
           <div class="form-group">
             <label class="form-label">Assign to</label>
-            <select class="form-select" id="followupProjectId" onchange="refreshFollowupTaskOptions()">
-              <option value="">— None —</option>
-            </select>
+            <div class="multi-proj-picker" id="followupProjPicker" data-selected="[]"></div>
           </div>
 
           <div class="form-group" id="followupTaskGroup">
@@ -3936,12 +3937,13 @@ const renderers = {
             ${openFus.length === 0
               ? `<div class="summary-empty">✅ No open follow-ups</div>`
               : `<div class="summary-task-list">${openFus.slice(0,6).map(f => {
-                  const proj = f.projectId ? projects.find(p => p.id === f.projectId) : null;
+                  const fuProjIds = f.projectIds && f.projectIds.length ? f.projectIds : (f.projectId ? [f.projectId] : []);
+                  const fuProjNames = fuProjIds.map(pid => { const p = projects.find(x => x.id === pid); return p ? esc(p.name) : ''; }).filter(Boolean).join(', ');
                   const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
                   const isOd = f.dueDate && f.dueDate < today;
                   const dotColor = f.status === 'Discussed' ? '#f59e0b' : '#2563eb';
                   const metaLine = [
-                    proj ? esc(proj.name)+(linkedTask?' · 🔗 '+esc(linkedTask.title):'') : (linkedTask ? '🔗 '+esc(linkedTask.title) : ''),
+                    fuProjNames ? fuProjNames+(linkedTask?' · 🔗 '+esc(linkedTask.title):'') : (linkedTask ? '🔗 '+esc(linkedTask.title) : ''),
                     f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'" style="font-size:11px">'+formatDue(f.dueDate)+'</span>' : ''
                   ].filter(Boolean).join(' · ');
                   return '<div class="summary-task-item" onclick="openFollowupModal(\''+f.id+'\')">'
@@ -4092,11 +4094,11 @@ const renderers = {
           </div>
           <div class="summary-task-list">
             ${activeProjs.map(p => {
-              const ptasks = tasks.filter(t => t.projectId === p.id);
+              const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))));
               const pdone  = ptasks.filter(t => t.status === 'Done').length;
               const ptotal = ptasks.length;
               const pct    = ptotal > 0 ? Math.round((pdone / ptotal) * 100) : 0;
-              const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+              const pfu    = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
               const pod    = ptasks.filter(t => isOverdue(t)).length;
               const color  = p.color || '#2563eb';
               return '<div class="summary-task-item" onclick="openProject(\''+p.id+'\')">'
@@ -4760,7 +4762,7 @@ const renderers = {
       }
 
       function projectRow(p) {
-        const ptasks = tasks.filter(t => t.projectId === p.id && t.taskType !== 'timeoff');
+        const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.taskType !== 'timeoff');
         const total  = ptasks.length;
         // column-level totals for header
         return `
@@ -4866,9 +4868,9 @@ const renderers = {
           </div>
           <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
             ${allProjects.map((p, i) => {
-              const openT  = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
-              const openFu = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
-              const odT    = tasks.filter(t => t.projectId === p.id && isOverdue(t)).length;
+              const openT  = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
+              const openFu = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
+              const odT    = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && isOverdue(t)).length;
               const pri    = p.priority || 'None';
               const priDot = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : pri === 'Low' ? '🟢' : '⚪';
               return `
@@ -6004,8 +6006,8 @@ const renderers = {
     }
 
     function okrCard(p) {
-      const ptasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
-      const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+      const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
+      const pfu    = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
       const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
 
       // Resolve Objective & KR context
@@ -6054,8 +6056,8 @@ const renderers = {
     }
 
     function projectCard(p) {
-      const ptasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
-      const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+      const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
+      const pfu    = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
       const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
       const bet    = p.betId ? projects.find(x => x.id === p.betId) : null;
 
@@ -6280,8 +6282,8 @@ const renderers = {
     }
 
     function personalCard(p) {
-      const ptasks = tasks.filter(t => t.projectId === p.id && t.status !== 'Done').length;
-      const pfu    = followups.filter(f => f.projectId === p.id && f.status === 'Open').length;
+      const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
+      const pfu    = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
       const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
       return `
         <div class="project-card" onclick="openPersonalItem('${p.id}')">
@@ -7009,7 +7011,7 @@ const renderers = {
 
     function openCommModalForProject(pid) {
       openCommModal();
-      setTimeout(() => { document.getElementById('commProject').value = pid; }, 50);
+      setTimeout(() => { mppInit('commProjPicker', pid ? [pid] : []); }, 50);
     }
     function openCommModalForPersonal(pid) {
       openCommModal();
@@ -7472,12 +7474,8 @@ const renderers = {
       }
       toggleCommRecurrenceUI();
 
-      // Project dropdown
-      const projSel = document.getElementById('commProject');
-      projSel.innerHTML = '<option value="">— None —</option>' +
-        projects.filter(p => p.type !== 'personal').map(p =>
-          `<option value="${p.id}" ${c?.projectId === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
-        ).join('');
+      // Project picker
+      mppInit('commProjPicker', c?.projectIds || (c?.projectId ? [c.projectId] : []));
 
       // Personal dropdown
       const persSel = document.getElementById('commPersonal');
@@ -7568,7 +7566,8 @@ const renderers = {
         organizer:    document.getElementById('commOrganizer').value.trim()    || '',
         participants: document.getElementById('commParticipants').value.trim() || '',
         type:         activeTypeBtn ? activeTypeBtn.dataset.type : 'Meeting',
-        projectId:    document.getElementById('commProject').value      || '',
+        projectId:    mppGetIds('commProjPicker')[0] || '',
+        projectIds:   mppGetIds('commProjPicker'),
         personalId:   document.getElementById('commPersonal').value     || '',
         notes:               document.getElementById('commDesc').innerHTML.trim() || '',
         recurrence,
@@ -7760,7 +7759,7 @@ const renderers = {
       tasks.push({
         id: uid(), title,
         commId:    editingCommId,
-        projectId: document.getElementById('commProject').value  || '',
+        projectId: mppGetIds('commProjPicker')[0] || '',
         status:    'Todo', priority: 'Medium', category: 'Meeting',
         taskType:  'task',
         dueDate: '', startDate: '', estimatedHours: '', workLog: [],
@@ -7795,8 +7794,7 @@ const renderers = {
             dueEl.value = c?.date || today;
           }
         }
-        const projEl = document.getElementById('taskProjectLink');
-        if (projEl && commAssignId) projEl.value = commAssignId;
+        if (commAssignId) mppInit('taskProjPicker', [commAssignId]);
       }, 50);
     }
 
@@ -8410,7 +8408,8 @@ const renderers = {
           dueDate:        document.getElementById('taskDueDate').value,
           status:         document.getElementById('taskStatus').value,
           estimatedHours: document.getElementById('taskHours').value,
-          projectId:      document.getElementById('taskProjectLink').value,
+          projectId:      mppGetIds('taskProjPicker')[0] || '',
+          projectIds:     mppGetIds('taskProjPicker'),
         };
       } else if (type === 'comm') {
         // commId is pre-generated even for new comms (so an added task can link to it
@@ -8529,7 +8528,7 @@ const renderers = {
       setRecurrenceToForm(t?.taskType === 'timeoff' ? null : (t?.recurrence || null));
 
       // Populate assign-to dropdown
-      buildAssignOptions(document.getElementById('taskProjectLink'), t?.projectId || preProjectId || '');
+      mppInit('taskProjPicker', t?.projectIds || (t?.projectId ? [t.projectId] : (preProjectId ? [preProjectId] : [])));
 
       // ── Subtasks section ──
       const subsSection = document.getElementById('subtasksSection');
@@ -8645,7 +8644,8 @@ const renderers = {
         attachments:    rteGetAttachments(),
         category:       document.getElementById('taskCategory').value,
         priority:       document.getElementById('taskPriority').value,
-        projectId:      document.getElementById('taskProjectLink').value || null,
+        projectId:      mppGetIds('taskProjPicker')[0] || null,
+        projectIds:     mppGetIds('taskProjPicker'),
         startDate:      document.getElementById('taskStartDate').value || null,
         dueDate:        document.getElementById('taskDueDate').value,
         dueTime:        document.getElementById('taskDueTime').value,
@@ -9146,17 +9146,19 @@ const renderers = {
     }
 
     function refreshFollowupTaskOptions(selectedTaskId = null) {
-      const projectId = document.getElementById('followupProjectId').value;
+      const projIds = mppGetIds('followupProjPicker');
       const sel = document.getElementById('followupTaskId');
       // preserve current selection if no override passed
       const current = selectedTaskId !== null ? selectedTaskId : sel.value;
       let html = `<option value="">— None —</option>`;
-      if (projectId) {
-        const projectTasks = tasks.filter(t => t.projectId === projectId && t.taskType !== 'timeoff');
+      if (projIds.length) {
+        const projectTasks = tasks.filter(t => projIds.includes(t.projectId) && t.taskType !== 'timeoff');
         if (projectTasks.length) {
           projectTasks.forEach(t => {
+            const proj = projects.find(p => p.id === t.projectId);
+            const label = projIds.length > 1 && proj ? `${esc(t.title)} (${esc(proj.name)})` : esc(t.title);
             const sel_ = t.id === current ? 'selected' : '';
-            html += `<option value="${t.id}" ${sel_}>${esc(t.title)}</option>`;
+            html += `<option value="${t.id}" ${sel_}>${label}</option>`;
           });
         }
       } else {
@@ -9174,6 +9176,61 @@ const renderers = {
       sel.innerHTML = html;
     }
 
+    function _buildMppHtml(containerId) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      const selected = JSON.parse(el.dataset.selected || '[]');
+      const workProjs = projects.filter(p => p.type !== 'personal' && p.status !== 'Archived');
+      const persProjs = projects.filter(p => p.type === 'personal');
+      let opts = '<option value="">＋ Add initiative…</option>';
+      if (workProjs.length) {
+        opts += '<optgroup label="Initiatives & Milestones">'
+          + workProjs.filter(p => !selected.includes(p.id)).map(p => '<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')
+          + '</optgroup>';
+      }
+      if (persProjs.length) {
+        opts += '<optgroup label="Personal">'
+          + persProjs.filter(p => !selected.includes(p.id)).map(p => '<option value="'+p.id+'">'+esc(p.name)+'</option>').join('')
+          + '</optgroup>';
+      }
+      const tags = selected.map(id => {
+        const p = projects.find(x => x.id === id);
+        if (!p) return '';
+        return '<span class="mpp-tag">'+esc(p.name)+'<button type="button" onclick="mppRemove(\''+containerId+'\',\''+id+'\')">×</button></span>';
+      }).join('');
+      el.innerHTML = tags + '<select class="mpp-add-select" onchange="mppAdd(\''+containerId+'\',this)">' + opts + '</select>';
+    }
+
+    function mppAdd(containerId, sel) {
+      const val = sel.value;
+      if (!val) return;
+      const el = document.getElementById(containerId);
+      const selected = JSON.parse(el.dataset.selected || '[]');
+      if (!selected.includes(val)) { selected.push(val); el.dataset.selected = JSON.stringify(selected); }
+      _buildMppHtml(containerId);
+      if (containerId === 'followupProjPicker') refreshFollowupTaskOptions();
+    }
+
+    function mppRemove(containerId, projId) {
+      const el = document.getElementById(containerId);
+      const selected = JSON.parse(el.dataset.selected || '[]');
+      el.dataset.selected = JSON.stringify(selected.filter(id => id !== projId));
+      _buildMppHtml(containerId);
+      if (containerId === 'followupProjPicker') refreshFollowupTaskOptions();
+    }
+
+    function mppGetIds(containerId) {
+      const el = document.getElementById(containerId);
+      return JSON.parse(el?.dataset?.selected || '[]');
+    }
+
+    function mppInit(containerId, selectedIds) {
+      const el = document.getElementById(containerId);
+      if (!el) return;
+      el.dataset.selected = JSON.stringify(selectedIds || []);
+      _buildMppHtml(containerId);
+    }
+
     function openFollowupModal(id = null, projectId = null) {
       editingFuId = id;
       const isNew = !id;
@@ -9188,7 +9245,7 @@ const renderers = {
       document.getElementById('followupStatus').value               = f?.status || 'Open';
       document.getElementById('followupDueDate').value              = f?.dueDate || '';
       document.getElementById('followupTopic').style.borderColor    = '';
-      buildAssignOptions(document.getElementById('followupProjectId'), preId);
+      mppInit('followupProjPicker', f?.projectIds || (preId ? [preId] : []));
       refreshFollowupTaskOptions(f?.taskId || null);
 
       document.getElementById('followupModal').classList.remove('hidden');
@@ -9215,7 +9272,8 @@ const renderers = {
       const existing = followups.find(x => x.id === id);
       const fu = {
         id, topic,
-        projectId: document.getElementById('followupProjectId').value,
+        projectId: mppGetIds('followupProjPicker')[0] || '',
+        projectIds: mppGetIds('followupProjPicker'),
         taskId:    document.getElementById('followupTaskId').value || null,
         dueDate:   document.getElementById('followupDueDate').value || null,
         notes:     document.getElementById('followupNotes').innerHTML.trim(),
