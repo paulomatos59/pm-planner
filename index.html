@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.17</div>
+      <div class="sidebar-version">v1.9.18</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7861,19 +7861,24 @@ const renderers = {
       setTimeout(() => {
         const catEl = document.getElementById('taskCategory');
         if (catEl) catEl.value = 'Meeting';
-        const dueEl = document.getElementById('taskDueDate');
+        const dueEl   = document.getElementById('taskDueDate');
+        const startEl = document.getElementById('taskStartDate');
         if (dueEl) {
           // For recurring comms c.date is the series start (may be past); use today's occurrence instead
           const today = new Date().toISOString().slice(0, 10);
+          let resolvedDate;
           if (c?.recurrence && c.recurrence.freq) {
             // Find the closest upcoming (or today's) occurrence
             const occs = getAllOccurrences(c, 'date', new Date(Date.now() + 90*86400000).toISOString().slice(0,10));
             const ovr  = c?.dateOverrides || {};
             const upcoming = occs.map(o => ovr[o] || o).filter(d => d >= today);
-            dueEl.value = upcoming.length ? upcoming[0] : today;
+            resolvedDate = upcoming.length ? upcoming[0] : today;
           } else {
-            dueEl.value = c?.date || today;
+            resolvedDate = c?.date || today;
           }
+          dueEl.value = resolvedDate;
+          // Sync start date so it never exceeds due date (avoids validation failure for past comms)
+          if (startEl && startEl.value > resolvedDate) startEl.value = resolvedDate;
         }
         if (commAssignId) mppInit('taskProjPicker', [commAssignId]);
       }, 50);
