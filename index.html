@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.10</div>
+      <div class="sidebar-version">v1.9.12</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3772,17 +3772,32 @@ const renderers = {
       const todayCommsActive = todayComms.filter(c => (c._occStatus||'planned') === 'planned');
       const todayCommsDone   = todayComms.filter(c => (c._occStatus||'planned') !== 'planned');
 
+      const _taskStStyle = {
+        'Todo':        { c:'#6b7280', bg:'#f9fafb', b:'#d1d5db' },
+        'In Progress': { c:'#2563eb', bg:'#eff6ff', b:'#93c5fd' },
+        'Done':        { c:'#16a34a', bg:'#f0fdf4', b:'#86efac' },
+        'Delayed':     { c:'#d97706', bg:'#fffbeb', b:'#fcd34d' },
+        'Blocked':     { c:'#dc2626', bg:'#fef2f2', b:'#fca5a5' },
+      };
+
       function _taskRowHtml(t) {
         const proj   = t.projectId  ? projects.find(p => p.id === t.projectId)  : null;
         const pers   = t.personalId ? projects.find(p => p.id === t.personalId) : null;
         const linked = proj || pers;
+        const ss     = _taskStStyle[t.status] || _taskStStyle['Todo'];
+        const stSel  = ['Todo','In Progress','Done','Delayed','Blocked'].map(s =>
+          '<option value="'+s+'" '+(s===t.status?'selected':'')+'>'+s+'</option>'
+        ).join('');
         return '<div class="summary-task-item" onclick="openTaskModal(\''+t.id+'\')">'
           + '<div class="s-task-dot s-dot-'+t.priority.toLowerCase()+'" style="'+(t.status==='Done'?'opacity:.4':'')+'"></div>'
           + '<div style="flex:1;min-width:0">'
           +   '<div class="summary-task-title '+(t.status==='Done'?'done-title':'')+'">'+esc(t.title)+'</div>'
           +   (linked ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+esc(linked.name)+'</div>' : '')
           + '</div>'
-          + '<span class="status-badge status-'+statusClass(t.status)+'">'+t.status+'</span>'
+          + '<select onclick="event.stopPropagation()" onchange="event.stopPropagation();dashSetTaskStatus(\''+t.id+'\',this.value)"'
+          + ' style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid '+ss.b+';color:'+ss.c+';background:'+ss.bg+'">'
+          +   stSel
+          + '</select>'
           + '</div>';
       }
 
@@ -4084,12 +4099,19 @@ const renderers = {
                     <span class="task-chip" style="background:#eff6ff;color:#2563eb">${item.type || 'Meeting'}</span>
                   </div>`;
               }
+              const _uss  = _taskStStyle[item.status] || _taskStStyle['Todo'];
+              const _uSel = ['Todo','In Progress','Done','Delayed','Blocked'].map(s =>
+                '<option value="'+s+'" '+(s===item.status?'selected':'')+'>'+s+'</option>'
+              ).join('');
               return `
                 <div class="summary-task-item" onclick="openTaskModal('${item.id}')">
                   <div class="s-task-dot s-dot-${item.priority.toLowerCase()}"></div>
-                  <div class="summary-task-title">${esc(item.title)}</div>
-                  <span class="summary-task-due">${formatDue(item.dueDate)}</span>
-                  <span class="task-chip chip-${item.priority.toLowerCase()}">${item.priority}</span>
+                  <div style="flex:1;min-width:0">
+                    <div class="summary-task-title">${esc(item.title)}</div>
+                    <div style="font-size:11px;color:var(--text-muted);margin-top:1px">${formatDue(item.dueDate)}</div>
+                  </div>
+                  <select onclick="event.stopPropagation()" onchange="event.stopPropagation();dashSetTaskStatus('${item.id}',this.value)"
+                    style="font-size:10px;font-weight:700;padding:2px 4px;border-radius:4px;cursor:pointer;border:1px solid ${_uss.b};color:${_uss.c};background:${_uss.bg}">${_uSel}</select>
                 </div>`;
             }).join('')}
           </div>
@@ -8281,6 +8303,21 @@ const renderers = {
       }
       c.updatedAt = new Date().toISOString();
       persistComms();
+      showView(currentView);
+    }
+
+    function dashSetTaskStatus(taskId, status) {
+      const t = tasks.find(x => x.id === taskId);
+      if (!t) return;
+      t.status    = status;
+      t.updatedAt = new Date().toISOString();
+      if (status === 'Done') {
+        t.completedAt = t.completedAt || new Date().toISOString();
+        if (t.recurrence && t.recurrence.freq) spawnNextRecurrence(t);
+      } else {
+        t.completedAt = null;
+      }
+      persistTasks();
       showView(currentView);
     }
 
