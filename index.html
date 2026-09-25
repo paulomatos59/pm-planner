@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.20</div>
+      <div class="sidebar-version">v1.9.21</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3792,8 +3792,9 @@ const renderers = {
         .slice(0, 10);
 
       // Pre-split for tasks/comms Done section (used by padding:0 card approach)
-      const topTasksActive = topTasks.filter(t => t.status !== 'Done');
-      const topTasksDone   = topTasks.filter(t => t.status === 'Done');
+      const _isEffDone     = t => t.status === 'Done' || _isRecurDoneToday(t);
+      const topTasksActive = topTasks.filter(t => !_isEffDone(t));
+      const topTasksDone   = topTasks.filter(t => _isEffDone(t));
       const todayCommsActive = todayComms.filter(c => (c._occStatus||'planned') === 'planned');
       const todayCommsDone   = todayComms.filter(c => (c._occStatus||'planned') !== 'planned');
 
