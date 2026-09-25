@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.14</div>
+      <div class="sidebar-version">v1.9.16</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1658,6 +1658,12 @@
                   <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="6" style="display:none"><span class="recur-day-btn" data-day="6">Sa</span></label>
                   <label style="cursor:pointer"><input type="checkbox" class="recur-day" value="7" style="display:none"><span class="recur-day-btn" data-day="7">Su</span></label>
                 </div>
+              </div>
+              <div class="form-group" id="recurrenceWorkDaysGroup" style="margin:0;display:none;align-self:flex-end;padding-bottom:2px">
+                <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:12px;font-weight:600;color:var(--text-muted);white-space:nowrap">
+                  <input type="checkbox" id="recurrenceWorkDaysOnly" style="width:14px;height:14px;accent-color:var(--primary);cursor:pointer">
+                  Mon–Fri only
+                </label>
               </div>
               <div class="form-group" style="margin:0;min-width:140px">
                 <label class="form-label" style="margin-bottom:4px">End date <span style="font-weight:400;color:var(--text-muted)">(optional)</span></label>
@@ -3748,11 +3754,34 @@ const renderers = {
         });
       const hasDoneComms = todayComms.some(c => (c._occStatus || 'planned') !== 'planned');
 
-      // Upcoming Events card: time-off only
-      const upcomingEvents = tasks
+      // Upcoming Events card: time-off entries
+      const _timeoffEvents = tasks
         .filter(t => t.taskType === 'timeoff' && (t.startDate || t.dueDate) >= today)
-        .sort((a,b) => (a.startDate || a.dueDate).localeCompare(b.startDate || b.dueDate))
-        .slice(0, 7);
+        .map(t => ({ _type: 'timeoff', _date: t.startDate || t.dueDate, _t: t }))
+        .sort((a,b) => a._date.localeCompare(b._date));
+
+      // Upcoming holidays from the Gantt holiday cache (1 per country)
+      const _holidayEvents = [];
+      if (ganttHolidayCountries.size) {
+        const thisYear = new Date().getFullYear();
+        ganttHolidayCountries.forEach(cc => {
+          [thisYear, thisYear + 1].forEach(yr => {
+            if (ganttHolidaysCache[`${cc}-${yr}`] === undefined) _fetchHolidayYear(cc, yr);
+          });
+          const hols = [
+            ...(ganttHolidaysCache[`${cc}-${thisYear}`]     || []),
+            ...(ganttHolidaysCache[`${cc}-${thisYear + 1}`] || [])
+          ].filter(h => h.date >= today).sort((a,b) => a.date.localeCompare(b.date));
+          if (hols.length) {
+            const info = GANTT_HOL_COUNTRIES.find(x => x.code === cc);
+            _holidayEvents.push({ _type: 'holiday', _date: hols[0].date, _name: hols[0].localName || hols[0].name, _flag: info?.flag || '', _country: info?.name || cc });
+          }
+        });
+      }
+
+      const upcomingEvents = [..._timeoffEvents, ..._holidayEvents]
+        .sort((a,b) => a._date.localeCompare(b._date))
+        .slice(0, 10);
 
       // Pre-split for tasks/comms Done section (used by padding:0 card approach)
       const topTasksActive = topTasks.filter(t => t.status !== 'Done');
@@ -3979,9 +4008,24 @@ const renderers = {
             </div>
             ${upcomingEvents.length === 0
               ? `<div class="summary-empty">No upcoming time off or events</div>`
-              : `<div>${upcomingEvents.map(t => {
-                  const dateStr    = t.startDate || t.dueDate;
-                  const d          = parseLocal(dateStr);
+              : `<div>${upcomingEvents.map(item => {
+                  if (item._type === 'holiday') {
+                    const d = parseLocal(item._date);
+                    return `<div class="upcoming-item">
+                      <div class="upcoming-date-col">
+                        <div class="upcoming-date-day">${d.getDate()}</div>
+                        <div class="upcoming-date-mon">${d.toLocaleDateString('en-US',{month:'short'})}</div>
+                      </div>
+                      <div style="flex:1;min-width:0">
+                        <div class="upcoming-title">🎌 ${esc(item._name)}</div>
+                        <div class="upcoming-meta">
+                          <span class="upcoming-type-badge" style="background:#fef3c7;color:#92400e;border:none">${item._flag} ${esc(item._country)}</span>
+                        </div>
+                      </div>
+                    </div>`;
+                  }
+                  const t = item._t;
+                  const d = parseLocal(item._date);
                   const rangeLabel = t.startDate && t.dueDate && t.startDate !== t.dueDate
                     ? `Until ${formatDue(t.dueDate)}` : '';
                   return `<div class="upcoming-item" onclick="openTaskModal('${t.id}')">
@@ -7953,6 +7997,8 @@ const renderers = {
       body.style.display = on ? 'flex' : 'none';
       lbl.classList.toggle('active', on);
       if (dg) dg.style.display = (on && freq === 'weekly') ? 'block' : 'none';
+      const wdg = document.getElementById('recurrenceWorkDaysGroup');
+      if (wdg) wdg.style.display = (on && freq === 'daily') ? 'flex' : 'none';
       // Wire day-picker clicks — stopPropagation prevents the parent <label>
       // from double-toggling the checkbox after our manual toggle
       document.querySelectorAll('#recurrenceDayPicker .recur-day-btn').forEach(btn => {
@@ -7969,11 +8015,12 @@ const renderers = {
       if (!document.getElementById('taskRecurring').checked) return null;
       const freq     = document.getElementById('recurrenceFreq').value;
       const interval = parseInt(document.getElementById('recurrenceInterval').value) || 1;
-      const days     = freq === 'weekly'
+      const days         = freq === 'weekly'
         ? [...document.querySelectorAll('#recurrenceDayPicker .recur-day-btn.selected')].map(btn => parseInt(btn.dataset.day))
         : [];
-      const endDate  = document.getElementById('recurrenceEndDate').value || null;
-      return { freq, interval, days, endDate };
+      const workDaysOnly = freq === 'daily' && (document.getElementById('recurrenceWorkDaysOnly')?.checked || false);
+      const endDate      = document.getElementById('recurrenceEndDate').value || null;
+      return { freq, interval, days, workDaysOnly, endDate };
     }
 
     function setRecurrenceToForm(rec) {
@@ -7983,6 +8030,8 @@ const renderers = {
         document.getElementById('recurrenceFreq').value     = rec.freq || 'weekly';
         document.getElementById('recurrenceInterval').value = rec.interval || 1;
         document.getElementById('recurrenceEndDate').value  = rec.endDate || '';
+        const wdo = document.getElementById('recurrenceWorkDaysOnly');
+        if (wdo) wdo.checked = !!(rec.workDaysOnly);
         document.querySelectorAll('.recur-day').forEach(cb => {
           cb.checked = (rec.days || []).includes(parseInt(cb.value));
           cb.nextElementSibling.classList.toggle('selected', cb.checked);
@@ -7997,7 +8046,14 @@ const renderers = {
       if (!dueDate || !rec) return null;
       const d = parseLocal(dueDate);
       const n = parseInt(rec.interval) || 1;
-      if (rec.freq === 'daily')   { d.setDate(d.getDate() + n); }
+      if (rec.freq === 'daily') {
+        d.setDate(d.getDate() + n);
+        if (rec.workDaysOnly) {
+          const dow = d.getDay();
+          if (dow === 6) d.setDate(d.getDate() + 2); // Sat → Mon
+          if (dow === 0) d.setDate(d.getDate() + 1); // Sun → Mon
+        }
+      }
       else if (rec.freq === 'weekly') {
         if (rec.days && rec.days.length > 0) {
           // JS getDay: 0=Sun…6=Sat; our days: 1=Mon…7=Sun
