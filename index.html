@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.24</div>
+      <div class="sidebar-version">v1.9.25</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2913,8 +2913,16 @@
     // Returns the set of actual occurrence dates (after applying dateOverrides) for a comm, up to maxDate.
     function _commActualOccurrencesUpTo(c, maxDate) {
       const overrides = c.dateOverrides || {};
-      return getAllOccurrences(c, 'date', maxDate)
-        .map(orig => overrides[orig] || orig);
+      // If there are dateOverrides, some future raw occurrence may have been moved
+      // to maxDate (or earlier). Extend the raw look-ahead window so those overrides
+      // are captured, then filter back down after applying them.
+      const hasOverrides = Object.keys(overrides).length > 0;
+      const lookAhead = hasOverrides
+        ? new Date(new Date(maxDate + 'T00:00:00').getTime() + 14 * 86400000).toISOString().slice(0, 10)
+        : maxDate;
+      return getAllOccurrences(c, 'date', lookAhead)
+        .map(orig => overrides[orig] || orig)
+        .filter(d => d <= maxDate);
     }
 
     // Same logic as isRecurDueToday but for comm objects (uses c.date instead of t.dueDate).
