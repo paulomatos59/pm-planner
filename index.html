@@ -772,7 +772,7 @@
     .followup-card.resolved { opacity: 0.55; }
     .followup-dot { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
     .fd-open      { background: var(--warning); }
-    .fd-discussed { background: var(--primary); }
+    .fd-in-progress { background: var(--primary); }
     .fd-resolved  { background: var(--success); }
     .followup-content { flex: 1; min-width: 0; }
     .followup-topic { font-size: 14px; font-weight: 500; }
@@ -780,7 +780,7 @@
     .followup-notes-text { font-size: 12px; color: var(--text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .fu-status-badge { font-size: 10px; font-weight: 700; padding: 2px 7px; border-radius: 20px; white-space: nowrap; flex-shrink: 0; }
     .fu-open      { background: var(--warning-light); color: #92400e; }
-    .fu-discussed { background: var(--primary-light); color: var(--primary); }
+    .fu-in-progress { background: var(--primary-light); color: var(--primary); }
     .fu-resolved  { background: var(--success-light); color: #15803d; }
 
     /* ── Notes ── */
@@ -1588,7 +1588,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.26</div>
+      <div class="sidebar-version">v1.9.27</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2315,7 +2315,7 @@
             <label class="form-label">Status</label>
             <select class="form-select" id="followupStatus">
               <option value="Open">🟡 Open</option>
-              <option value="Discussed">💬 Discussed</option>
+              <option value="In Progress">🔄 In Progress</option>
               <option value="Resolved">✅ Resolved</option>
             </select>
           </div>
@@ -3511,7 +3511,7 @@
       return `<span class="task-priority priority-${p.priority.toLowerCase()}" style="font-size:10px;padding:2px 7px;border-radius:20px;font-weight:600">${dot} ${p.priority}${rank}</span>`;
     }
     function fuStatusClass(s) {
-      return { 'Open':'open','Discussed':'discussed','Resolved':'resolved' }[s] || 'open';
+      return { 'Open':'open','In Progress':'in-progress','Resolved':'resolved' }[s] || 'open';
     }
 
     /* ==============================
@@ -3666,7 +3666,7 @@ const renderers = {
       const todayList     = open.filter(t => isTaskActiveOn(t, today));
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
-      const openFus       = followups.filter(f => f.status === 'Open' || f.status === 'Discussed');
+      const openFus       = followups.filter(f => f.status === 'Open' || f.status === 'In Progress');
       const overdueFus    = openFus.filter(f => f.dueDate && f.dueDate < today);
       const doneThisWeek  = tasks.filter(t => { if (t.status !== 'Done') return false; const ts = t.completedAt || t.updatedAt; return ts && ts.slice(0,10) >= monStr; });
       // Planned (all, incl. done) & done counts for today and this week
@@ -4005,7 +4005,7 @@ const renderers = {
                   const fuProjNames = fuProjIds.map(pid => { const p = projects.find(x => x.id === pid); return p ? esc(p.name) : ''; }).filter(Boolean).join(', ');
                   const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
                   const isOd = f.dueDate && f.dueDate < today;
-                  const dotColor = f.status === 'Discussed' ? '#f59e0b' : '#2563eb';
+                  const dotColor = f.status === 'In Progress' ? '#f59e0b' : '#2563eb';
                   const metaLine = [
                     fuProjNames ? fuProjNames+(linkedTask?' · 🔗 '+esc(linkedTask.title):'') : (linkedTask ? '🔗 '+esc(linkedTask.title) : ''),
                     f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'" style="font-size:11px">'+formatDue(f.dueDate)+'</span>' : ''
@@ -4016,7 +4016,7 @@ const renderers = {
                     +   '<div class="summary-task-title">' + esc(f.topic) + '</div>'
                     +   (metaLine ? '<div style="font-size:11px;color:var(--text-muted);margin-top:1px">'+metaLine+'</div>' : '')
                     + '</div>'
-                    + '<span class="fu-status-badge fu-'+(f.status==='Discussed'?'discussed':'open')+'">'+f.status+'</span>'
+                    + '<span class="fu-status-badge fu-'+(f.status==='In Progress'?'in-progress':'open')+'">'+f.status+'</span>'
                     + '</div>';
                 }).join('')}
                 ${openFus.length > 6 ? '<div style="font-size:12px;color:var(--text-muted);text-align:center;padding:6px 0">+' + (openFus.length-6) + ' more</div>' : ''}
@@ -6307,7 +6307,7 @@ const renderers = {
 
       if (activeProjectTab === 'followups') {
         const open     = pfu.filter(f => f.status === 'Open').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
-        const discussed= pfu.filter(f => f.status === 'Discussed');
+        const discussed= pfu.filter(f => f.status === 'In Progress');
         const resolved = pfu.filter(f => f.status === 'Resolved');
         html += `
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
@@ -6321,7 +6321,7 @@ const renderers = {
                      <div class="followup-list">${open.map(followupCard).join('')}</div>`;
           }
           if (discussed.length > 0) {
-            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Discussed</span><span class="section-count">${discussed.length}</span></div>
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">In Progress</span><span class="section-count">${discussed.length}</span></div>
                      <div class="followup-list">${discussed.map(followupCard).join('')}</div>`;
           }
           if (resolved.length > 0) {
@@ -6498,7 +6498,7 @@ const renderers = {
 
       if (activeProjectTab === 'followups') {
         const open     = pfu.filter(f => f.status === 'Open').sort((a,b) => new Date(b.createdAt)-new Date(a.createdAt));
-        const discussed= pfu.filter(f => f.status === 'Discussed');
+        const discussed= pfu.filter(f => f.status === 'In Progress');
         const resolved = pfu.filter(f => f.status === 'Resolved');
         html += `
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
@@ -6512,7 +6512,7 @@ const renderers = {
                      <div class="followup-list">${open.map(followupCard).join('')}</div>`;
           }
           if (discussed.length > 0) {
-            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Discussed</span><span class="section-count">${discussed.length}</span></div>
+            html += `<div class="section-header" style="margin-top:16px"><span class="section-title">In Progress</span><span class="section-count">${discussed.length}</span></div>
                      <div class="followup-list">${discussed.map(followupCard).join('')}</div>`;
           }
           if (resolved.length > 0) {
@@ -7164,7 +7164,7 @@ const renderers = {
 
     function renderFollowupsPage() {
       const today = todayStr();
-      const open     = followups.filter(f => f.status === 'Open' || f.status === 'Discussed');
+      const open     = followups.filter(f => f.status === 'Open' || f.status === 'In Progress');
       const resolved = followups.filter(f => f.status === 'Resolved');
       const overdue  = open.filter(f => f.dueDate && f.dueDate < today);
       const upcoming = open.filter(f => f.dueDate && f.dueDate >= today).sort((a,b) => a.dueDate.localeCompare(b.dueDate));
@@ -7174,7 +7174,7 @@ const renderers = {
         const proj = f.projectId ? projects.find(p => p.id === f.projectId) : null;
         const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
         const isOd = f.dueDate && f.dueDate < today;
-        const dotColor = f.status === 'Discussed' ? '#f59e0b' : '#2563eb';
+        const dotColor = f.status === 'In Progress' ? '#f59e0b' : '#2563eb';
         return '<div class="summary-task-item" style="padding:8px 0;cursor:pointer" onclick="openFollowupModal(\''+f.id+'\')">'
           + '<div style="width:9px;height:9px;border-radius:50%;background:'+dotColor+';flex-shrink:0;margin-top:2px"></div>'
           + '<div style="flex:1;min-width:0">'
@@ -7185,7 +7185,7 @@ const renderers = {
           +   '</div>'
           + '</div>'
           + (f.dueDate ? '<span class="summary-task-due'+(isOd?' od':'')+'">'+formatDue(f.dueDate)+'</span>' : '')
-          + '<span class="fu-status-badge fu-'+(f.status==='Discussed'?'discussed':'open')+'">'+f.status+'</span>'
+          + '<span class="fu-status-badge fu-'+(f.status==='In Progress'?'in-progress':'open')+'">'+f.status+'</span>'
           + '</div>';
       }
 
@@ -7970,7 +7970,7 @@ const renderers = {
        FOLLOW-UP CARD
     ============================== */
     function followupCard(f) {
-      const dotClass = { Open:'fd-open', Discussed:'fd-discussed', Resolved:'fd-resolved' }[f.status] || 'fd-open';
+      const dotClass = { Open:'fd-open', 'In Progress':'fd-in-progress', Resolved:'fd-resolved' }[f.status] || 'fd-open';
       const linkedTask = f.taskId ? tasks.find(t => t.id === f.taskId) : null;
       const today = todayStr();
       const isOverdue = f.dueDate && f.dueDate < today && f.status !== 'Resolved';
