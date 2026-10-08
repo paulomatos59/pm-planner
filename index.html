@@ -1601,7 +1601,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.29</div>
+      <div class="sidebar-version">v1.9.30</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5795,8 +5795,6 @@ const renderers = {
 
     function renderProjects() {
       const workProjects = projects.filter(p => p.type !== 'personal' && p.type !== 'okr');
-      const activeProj   = workProjects.filter(p => p.status === 'Active');
-      const otherProj    = workProjects.filter(p => p.status !== 'Active');
       const isList       = projectsViewMode === 'list';
 
       const toggle = `
@@ -5819,13 +5817,21 @@ const renderers = {
         ? `<div class="projects-list">${items.map(projectListRow).join('')}</div>`
         : `<div class="projects-grid">${items.map(projectCard).join('')}</div>`;
 
-      if (activeProj.length > 0) {
-        html += `<div class="section-header"><span class="section-title">Active</span><span class="section-count">${activeProj.length}</span></div>
-                 ${renderGroup(activeProj)}`;
+      const statusOrder = ['Active', 'On Hold', 'Completed', 'Cancelled'];
+      let first = true;
+      for (const status of statusOrder) {
+        const group = workProjects.filter(p => p.status === status);
+        if (group.length === 0) continue;
+        html += `<div class="section-header" ${first ? '' : 'style="margin-top:24px"'}><span class="section-title">${status}</span><span class="section-count">${group.length}</span></div>
+                 ${renderGroup(group)}`;
+        first = false;
       }
-      if (otherProj.length > 0) {
-        html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${otherProj.length}</span></div>
-                 ${renderGroup(otherProj)}`;
+      // catch any unexpected status values
+      const knownStatuses = new Set(statusOrder);
+      const unknown = workProjects.filter(p => !knownStatuses.has(p.status));
+      if (unknown.length > 0) {
+        html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${unknown.length}</span></div>
+                 ${renderGroup(unknown)}`;
       }
       return html;
     }
