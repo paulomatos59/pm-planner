@@ -713,6 +713,18 @@
 
     /* ── Project cards ── */
     .projects-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+    .projects-list { display: flex; flex-direction: column; gap: 0; border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .project-list-row { display: flex; align-items: center; gap: 12px; padding: 10px 14px; background: var(--surface); border-bottom: 1px solid var(--border); cursor: pointer; transition: background 0.1s; }
+    .project-list-row:last-child { border-bottom: none; }
+    .project-list-row:hover { background: var(--bg); }
+    .project-list-stripe { width: 4px; height: 36px; border-radius: 2px; flex-shrink: 0; }
+    .project-list-name { font-size: 14px; font-weight: 600; flex: 1; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .project-list-badges { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
+    .project-list-stats { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+    .project-list-stat { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .view-toggle { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
+    .view-toggle-btn { background: none; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 13px; color: var(--text-muted); transition: all 0.1s; }
+    .view-toggle-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
     .project-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 10px; overflow: hidden; cursor: pointer;
@@ -1589,7 +1601,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.28</div>
+      <div class="sidebar-version">v1.9.29</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2525,8 +2537,9 @@
     let currentView      = 'today';
     let activeProjectId  = null;
     let activePersonalId = null;
-    let activeProjectTab = 'overview';
-    let activeOkrId      = null;
+    let activeProjectTab   = 'overview';
+    let projectsViewMode   = localStorage.getItem('dp_projects_view') || 'grid';
+    let activeOkrId        = null;
     let okrObjectives    = JSON.parse(localStorage.getItem('dp_okr_objectives') || '[]');
     let okrKeyResults    = JSON.parse(localStorage.getItem('dp_okr_keyresults')  || '[]');
     function persistOkrObjectives() { localStorage.setItem('dp_okr_objectives', JSON.stringify(okrObjectives)); }
@@ -5752,28 +5765,67 @@ const renderers = {
     /* ==============================
        PROJECTS VIEW
     ============================== */
+    function setProjectsViewMode(mode) {
+      projectsViewMode = mode;
+      localStorage.setItem('dp_projects_view', mode);
+      showView('projects');
+    }
+
+    function projectListRow(p) {
+      const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
+      const pfu    = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status !== 'Resolved').length;
+      const pnotes = projectNotes.filter(n => n.projectId === p.id).length;
+      const bet    = p.betId ? projects.find(x => x.id === p.betId) : null;
+      return `<div class="project-list-row" onclick="openProject('${p.id}')">
+        <div class="project-list-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
+        <div class="project-list-name" title="${esc(p.name)}">${esc(p.name)}</div>
+        ${bet ? `<span style="font-size:11px;color:#7c3aed;white-space:nowrap;flex-shrink:0">🎯 ${esc(bet.name)}</span>` : ''}
+        <div class="project-list-badges">
+          <span class="project-status-badge ps-${projectStatusClass(p.status)}">${p.status}</span>
+          ${projectPriorityBadge(p)}
+          ${p.type !== 'okr' && p.type !== 'personal' ? `<span class="im-badge im-badge--${p.subtype||'initiative'}">${p.subtype==='milestone'?'🏁 Milestone':'🚀 Initiative'}</span>` : ''}
+        </div>
+        <div class="project-list-stats">
+          <span class="project-list-stat">📋 ${ptasks}</span>
+          <span class="project-list-stat">📌 ${pfu}</span>
+          <span class="project-list-stat">📝 ${pnotes}</span>
+        </div>
+      </div>`;
+    }
+
     function renderProjects() {
       const workProjects = projects.filter(p => p.type !== 'personal' && p.type !== 'okr');
       const activeProj   = workProjects.filter(p => p.status === 'Active');
       const otherProj    = workProjects.filter(p => p.status !== 'Active');
+      const isList       = projectsViewMode === 'list';
+
+      const toggle = `
+        <div class="view-toggle">
+          <button class="view-toggle-btn ${!isList?'active':''}" onclick="setProjectsViewMode('grid')" title="Grid view">⊞</button>
+          <button class="view-toggle-btn ${isList?'active':''}"  onclick="setProjectsViewMode('list')" title="List view">≡</button>
+        </div>`;
 
       let html = `
         <div class="view-header">
           <div><div class="view-title">Initiatives & Milestones</div><div class="view-subtitle">${workProjects.length} item${workProjects.length!==1?'s':''}</div></div>
-          <button class="btn btn-primary" onclick="openProjectModal()">＋ New Initiative</button>
+          <div style="display:flex;gap:8px;align-items:center">${toggle}<button class="btn btn-primary" onclick="openProjectModal()">＋ New Initiative</button></div>
         </div>`;
 
       if (workProjects.length === 0) {
         return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No initiatives or milestones yet</h3><p>Create one to organise tasks, follow-ups, and notes in one place.</p></div>`;
       }
 
+      const renderGroup = (items) => isList
+        ? `<div class="projects-list">${items.map(projectListRow).join('')}</div>`
+        : `<div class="projects-grid">${items.map(projectCard).join('')}</div>`;
+
       if (activeProj.length > 0) {
         html += `<div class="section-header"><span class="section-title">Active</span><span class="section-count">${activeProj.length}</span></div>
-                 <div class="projects-grid">${activeProj.map(projectCard).join('')}</div>`;
+                 ${renderGroup(activeProj)}`;
       }
       if (otherProj.length > 0) {
         html += `<div class="section-header" style="margin-top:24px"><span class="section-title">Other</span><span class="section-count">${otherProj.length}</span></div>
-                 <div class="projects-grid">${otherProj.map(projectCard).join('')}</div>`;
+                 ${renderGroup(otherProj)}`;
       }
       return html;
     }
