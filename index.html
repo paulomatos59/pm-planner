@@ -722,6 +722,9 @@
     .project-list-badges { display: flex; align-items: center; gap: 5px; flex-shrink: 0; flex-wrap: wrap; }
     .project-list-stats { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
     .project-list-stat { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+    .pri-proj-row.drag-above { box-shadow: inset 0 2px 0 var(--primary); }
+    .pri-proj-row.drag-below { box-shadow: inset 0 -2px 0 var(--primary); }
+    .pri-proj-row.dragging   { opacity: 0.4; }
     .view-toggle { display: flex; gap: 2px; background: var(--bg); border: 1px solid var(--border); border-radius: 6px; padding: 2px; }
     .view-toggle-btn { background: none; border: none; border-radius: 4px; padding: 4px 8px; cursor: pointer; font-size: 13px; color: var(--text-muted); transition: all 0.1s; }
     .view-toggle-btn.active { background: var(--surface); color: var(--text); box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
@@ -1601,7 +1604,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.34</div>
+      <div class="sidebar-version">v1.9.35</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3622,8 +3625,9 @@ const renderers = {
       if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
       document.getElementById('mainContent').innerHTML = renderers[view]?.() ?? '';
       if (view === 'summary') tzInit();
-      if (view === 'backlog')    _setupBacklogDnd();
-      if (view === 'okrs-list') _setupOkrListDnd();
+      if (view === 'backlog')      _setupBacklogDnd();
+      if (view === 'okrs-list')   _setupOkrListDnd();
+      if (view === 'priorities')  _setupPrioritiesDnD();
       updateHeader();
     }
 
@@ -4926,10 +4930,17 @@ const renderers = {
         return 0;
       }
 
-      // ── Projects sorted by priority ──
+      // ── Projects sorted by priority, then by saved drag order ──
+      const _priOrder = JSON.parse(localStorage.getItem('dp_priorities_order') || '[]');
       const allProjects = [...projects]
         .filter(p => ['Active','On Hold'].includes(p.status))
-        .sort((a, b) => (PORDER[a.priority||'None'] - PORDER[b.priority||'None']) || a.name.localeCompare(b.name));
+        .sort((a, b) => {
+          const ai = _priOrder.indexOf(a.id), bi = _priOrder.indexOf(b.id);
+          if (ai >= 0 && bi >= 0) return ai - bi;
+          if (ai >= 0) return -1;
+          if (bi >= 0) return  1;
+          return (PORDER[a.priority||'None'] - PORDER[b.priority||'None']) || a.name.localeCompare(b.name);
+        });
 
       let html = `
         <div class="view-header">
@@ -4944,7 +4955,7 @@ const renderers = {
             <span class="section-title">🗂 Initiatives & Milestones</span>
             <span class="section-count">${allProjects.length}</span>
           </div>
-          <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
+          <div id="prioritiesProjList" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
             ${allProjects.map((p, i) => {
               const openT  = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
               const openFu = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
@@ -4952,10 +4963,11 @@ const renderers = {
               const pri    = p.priority || 'None';
               const priDot = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : pri === 'Low' ? '🟢' : '⚪';
               return `
-                <div onclick="openProject('${p.id}')" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < allProjects.length-1 ? '1px solid var(--border)' : 'none'};transition:background .1s" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+                <div class="pri-proj-row" data-proj-id="${p.id}" draggable="true" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < allProjects.length-1 ? '1px solid var(--border)' : 'none'};transition:background .1s;position:relative" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+                  <span class="pri-drag-handle" title="Drag to reorder" onclick="event.stopPropagation()" style="cursor:grab;color:var(--text-muted);font-size:14px;padding:0 2px;flex-shrink:0">⠿</span>
                   <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(p.color||'#2563eb')}"></div>
                   <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}${p.priorityRank ? ` <span style="opacity:.65">#${p.priorityRank}</span>` : ''}</span>
-                  <div style="flex:1;min-width:0">
+                  <div style="flex:1;min-width:0" onclick="openProject('${p.id}')">
                     <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
                     <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:2px">
                       <span>${p.status}</span>
@@ -5722,6 +5734,73 @@ const renderers = {
 
           localStorage.setItem('dp_okrlist_order', JSON.stringify(okrListOrder));
           showView('okrs-list');
+        });
+      });
+    }
+
+    /* ── Priorities drag-and-drop setup (called after render) ── */
+    function _setupPrioritiesDnD() {
+      let _prDragSrc = null;
+      const rows = document.querySelectorAll('.pri-proj-row');
+
+      rows.forEach(el => {
+        el.addEventListener('dragstart', function(e) {
+          _prDragSrc = this;
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', this.dataset.projId);
+        });
+
+        el.addEventListener('dragend', function() {
+          this.classList.remove('dragging');
+          rows.forEach(x => x.classList.remove('drag-above','drag-below'));
+          _prDragSrc = null;
+        });
+
+        el.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (!_prDragSrc || this === _prDragSrc) return;
+          rows.forEach(x => x.classList.remove('drag-above','drag-below'));
+          const rect = this.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
+          else this.classList.add('drag-below');
+        });
+
+        el.addEventListener('dragleave', function(e) {
+          if (!this.contains(e.relatedTarget)) this.classList.remove('drag-above','drag-below');
+        });
+
+        el.addEventListener('drop', function(e) {
+          e.stopPropagation();
+          this.classList.remove('drag-above','drag-below');
+          if (!_prDragSrc || this === _prDragSrc) return;
+
+          // Build current ordered list from DOM
+          const allRows = [...document.querySelectorAll('.pri-proj-row')];
+          let order = allRows.map(r => r.dataset.projId);
+
+          const fromId = _prDragSrc.dataset.projId;
+          const toId   = this.dataset.projId;
+          const fi = order.indexOf(fromId);
+          if (fi < 0) return;
+
+          const rect = this.getBoundingClientRect();
+          const before = e.clientY < rect.top + rect.height / 2;
+
+          order.splice(fi, 1);
+          const ti = order.indexOf(toId);
+          if (ti < 0) return;
+          order.splice(before ? ti : ti + 1, 0, fromId);
+
+          // Update priorityRank for every project in the new order
+          order.forEach((id, idx) => {
+            const p = projects.find(x => x.id === id);
+            if (p) p.priorityRank = idx + 1;
+          });
+          persistProjects();
+
+          localStorage.setItem('dp_priorities_order', JSON.stringify(order));
+          showView('priorities');
         });
       });
     }
