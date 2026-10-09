@@ -1604,7 +1604,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.40</div>
+      <div class="sidebar-version">v1.9.41</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5051,7 +5051,7 @@ const renderers = {
             <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(color)}"></div>
             <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}</span>
             <div style="flex:1;min-width:0" onclick="openTaskModal('${t.id}')">
-              <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>${esc(t.name)}</strong></div>
+              <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>${esc(t.title)}</strong></div>
               <div style="display:flex;gap:8px;font-size:11px;color:var(--text-muted);margin-top:2px;align-items:center;flex-wrap:wrap">
                 ${projBadge}
                 ${dueFmt ? `<span>${overdue ? '🚨' : '📅'} ${dueFmt}</span>` : ''}
