@@ -1601,7 +1601,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.31</div>
+      <div class="sidebar-version">v1.9.32</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1654,6 +1654,7 @@
                   <input type="number" class="form-input" id="recurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
                   <select class="form-select" id="recurrenceFreq" onchange="toggleRecurrenceUI()" style="flex:1">
                     <option value="daily">Day(s)</option>
+                    <option value="workdays">Work Day(s)</option>
                     <option value="weekly" selected>Week(s)</option>
                     <option value="monthly">Month(s)</option>
                     <option value="yearly">Year(s)</option>
@@ -1918,6 +1919,7 @@
                   <input type="number" class="form-input" id="commRecurrenceInterval" value="1" min="1" max="99" style="width:60px;text-align:center">
                   <select class="form-select" id="commRecurrenceFreq" onchange="toggleCommRecurrenceUI()" style="flex:1">
                     <option value="daily">Day(s)</option>
+                    <option value="workdays">Work Day(s)</option>
                     <option value="weekly" selected>Week(s)</option>
                     <option value="monthly">Month(s)</option>
                     <option value="yearly">Year(s)</option>
@@ -8135,7 +8137,16 @@ const renderers = {
       if (!dueDate || !rec) return null;
       const d = parseLocal(dueDate);
       const n = parseInt(rec.interval) || 1;
-      if (rec.freq === 'daily') {
+      if (rec.freq === 'workdays') {
+        // Advance exactly n Mon–Fri days
+        let count = 0;
+        while (count < n) {
+          d.setDate(d.getDate() + 1);
+          const dow = d.getDay();
+          if (dow !== 0 && dow !== 6) count++;
+        }
+      }
+      else if (rec.freq === 'daily') {
         d.setDate(d.getDate() + n);
         if (rec.workDaysOnly) {
           const dow = d.getDay();
