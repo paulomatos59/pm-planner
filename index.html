@@ -612,6 +612,10 @@
     .rte-btn:hover { background: var(--border); }
     .rte-btn.rte-active { background: var(--primary); color: #fff; border-radius: 4px; }
     .rte-divider { width: 1px; height: 16px; background: var(--border); margin: 0 3px; flex-shrink: 0; }
+    .rte-size-select { height: 26px; padding: 0 4px; font-size: 11px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text); cursor: pointer; outline: none; }
+    .rte-size-select:hover { border-color: var(--primary); }
+    .rte-clear-btn { font-size: 12px; font-weight: 700; color: var(--text-muted); position: relative; }
+    .rte-clear-btn::after { content: '×'; position: absolute; top: -2px; right: 1px; font-size: 9px; font-weight: 900; color: var(--danger); line-height: 1; }
     .rte-editor {
       padding: 10px 12px; min-height: 180px; max-height: 360px; overflow-y: auto;
       outline: none; font-size: 14px; font-family: inherit; color: var(--text);
@@ -1604,7 +1608,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.41</div>
+      <div class="sidebar-version">v1.9.42</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1729,6 +1733,15 @@
                 <label class="rte-btn" title="Attach file" style="cursor:pointer" onmousedown="event.preventDefault()">
                   📎<input type="file" id="rteFileInput" style="display:none" onchange="rteAttachFile(this)" multiple>
                 </label>
+                <div class="rte-divider"></div>
+                <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('taskDesc', this.value, this)">
+                  <option value="">Size</option>
+                  <option value="h1">H1</option>
+                  <option value="h2">H2</option>
+                  <option value="h3">H3</option>
+                  <option value="p">Normal</option>
+                </select>
+                <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" onmousedown="event.preventDefault();rteClearFormat('taskDesc')">T</button>
               </div>
               <div class="rte-editor" id="taskDesc" contenteditable="true" data-placeholder="Details, links, context…"
                    onkeydown="rteKeyDown(event)" onkeyup="rteUpdateToolbar()" onmouseup="rteUpdateToolbar()" onfocus="rteUpdateToolbar()" onclick="rteCloseColorPicker()" oninput="scheduleDraftSave('task')"></div>
@@ -1991,6 +2004,15 @@
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();commRteAddLink()">🔗</button>
                 <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'commDesc')">😊</button>
+                <div class="rte-divider"></div>
+                <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('commDesc', this.value, this)">
+                  <option value="">Size</option>
+                  <option value="h1">H1</option>
+                  <option value="h2">H2</option>
+                  <option value="h3">H3</option>
+                  <option value="p">Normal</option>
+                </select>
+                <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" onmousedown="event.preventDefault();rteClearFormat('commDesc')">T</button>
               </div>
               <div class="rte-editor" id="commDesc" contenteditable="true" data-placeholder="Key points, decisions, action items…"
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
@@ -2318,6 +2340,15 @@
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();fuRteAddLink()">🔗</button>
                 <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'followupNotes')">😊</button>
+                <div class="rte-divider"></div>
+                <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('followupNotes', this.value, this)">
+                  <option value="">Size</option>
+                  <option value="h1">H1</option>
+                  <option value="h2">H2</option>
+                  <option value="h3">H3</option>
+                  <option value="p">Normal</option>
+                </select>
+                <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" onmousedown="event.preventDefault();rteClearFormat('followupNotes')">T</button>
               </div>
               <div class="rte-editor" id="followupNotes" contenteditable="true" data-placeholder="Context, owner, next steps…"
                    onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
@@ -3023,6 +3054,32 @@
     /* ── Rich Text Editor (RTE) ── */
     let _rteCurrentColor = '#e53e3e';
     let _rteAttachments  = []; // [{name, type, url}]
+
+    // ── Shared RTE helpers: size & clear formatting ──
+    let _rteSavedSel = null;
+    function rteSaveSel() {
+      const s = window.getSelection();
+      _rteSavedSel = s.rangeCount ? s.getRangeAt(0).cloneRange() : null;
+    }
+    function rteRestoreSel(editorId) {
+      document.getElementById(editorId).focus();
+      if (!_rteSavedSel) return;
+      const s = window.getSelection();
+      s.removeAllRanges();
+      s.addRange(_rteSavedSel);
+    }
+    function rteApplySize(editorId, val, sel) {
+      if (!val) return;
+      rteRestoreSel(editorId);
+      if (val === 'p') document.execCommand('formatBlock', false, 'p');
+      else document.execCommand('formatBlock', false, val);
+      sel.value = '';
+    }
+    function rteClearFormat(editorId) {
+      document.getElementById(editorId).focus();
+      document.execCommand('removeFormat', false, null);
+      document.execCommand('formatBlock', false, 'p');
+    }
 
     function rteExec(cmd, val) {
       document.getElementById('taskDesc').focus();
@@ -7028,6 +7085,15 @@ const renderers = {
             <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projRteExec('insertOrderedList')" style="height:24px">
               <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
             </button>
+            <div class="rte-divider" style="margin:0 3px"></div>
+            <select class="rte-size-select" title="Text size" style="height:22px;font-size:10px" onmousedown="rteSaveSel()" onchange="rteApplySize('projSummaryEditor', this.value, this)">
+              <option value="">Size</option>
+              <option value="h1">H1</option>
+              <option value="h2">H2</option>
+              <option value="h3">H3</option>
+              <option value="p">Normal</option>
+            </select>
+            <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" style="height:24px" onmousedown="event.preventDefault();rteClearFormat('projSummaryEditor')">T</button>
             <div style="flex:1"></div>
             <span class="draft-badge" id="projSummaryBadge" style="transition:opacity .4s;opacity:0"></span>
           </div>
