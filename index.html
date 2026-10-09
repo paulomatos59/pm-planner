@@ -1601,7 +1601,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.30</div>
+      <div class="sidebar-version">v1.9.31</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3691,7 +3691,7 @@ const renderers = {
       const weekDoneCount = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const weekPlanned   = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const focusNote     = localStorage.getItem('dp_focus') || '';
-      const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal');
+      const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal' && p.type !== 'okr' && p.subtype !== 'milestone');
 
       const hour = new Date().getHours();
       const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
