@@ -1604,7 +1604,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.35</div>
+      <div class="sidebar-version">v1.9.37</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4625,7 +4625,11 @@ const renderers = {
       }
 
       // ── Groups: tasks + comms together per project/personal ──
-      const allProjects = projects.filter(p => ['Active','On Hold'].includes(p.status));
+      // Include any project that has items in the window, not just Active/On Hold
+      const _activeProjs  = new Set(projects.filter(p => ['Active','On Hold'].includes(p.status)).map(p => p.id));
+      const _taskProjIds  = new Set(workTasks.map(t => t.projectId).filter(Boolean));
+      const _commProjIds  = new Set([...winComms.map(c => c.projectId), ...winComms.map(c => c.personalId)].filter(Boolean));
+      const allProjects   = projects.filter(p => _activeProjs.has(p.id) || _taskProjIds.has(p.id) || _commProjIds.has(p.id));
       const groups = [];
       allProjects.forEach(p => {
         const pt = ganttFilter !== 'meetings'
@@ -4930,17 +4934,30 @@ const renderers = {
         return 0;
       }
 
-      // ── Projects sorted by priority, then by saved drag order ──
-      const _priOrder = JSON.parse(localStorage.getItem('dp_priorities_order') || '[]');
-      const allProjects = [...projects]
-        .filter(p => ['Active','On Hold'].includes(p.status))
-        .sort((a, b) => {
-          const ai = _priOrder.indexOf(a.id), bi = _priOrder.indexOf(b.id);
-          if (ai >= 0 && bi >= 0) return ai - bi;
-          if (ai >= 0) return -1;
-          if (bi >= 0) return  1;
-          return (PORDER[a.priority||'None'] - PORDER[b.priority||'None']) || a.name.localeCompare(b.name);
-        });
+      function _priRow(p, i, total, containerId, extraLabel) {
+        const openT  = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
+        const openFu = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
+        const odT    = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && isOverdue(t)).length;
+        const pri    = p.priority || 'None';
+        const priDot = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : pri === 'Low' ? '🟢' : '⚪';
+        return `
+          <div class="pri-proj-row" data-proj-id="${p.id}" data-container="${containerId}" draggable="true"
+               style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < total-1 ? '1px solid var(--border)' : 'none'};transition:background .1s;position:relative"
+               onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+            <span class="pri-drag-handle" title="Drag to reorder" onclick="event.stopPropagation()" style="cursor:grab;color:var(--text-muted);font-size:14px;padding:0 2px;flex-shrink:0">⠿</span>
+            <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(p.color||'#2563eb')}"></div>
+            <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}${p.priorityRank ? ` <span style="opacity:.65">#${p.priorityRank}</span>` : ''}</span>
+            <div style="flex:1;min-width:0" onclick="openProject('${p.id}')">
+              <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${extraLabel || `<strong>${esc(p.name)}</strong>`}</div>
+              <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:2px">
+                <span>${p.status}</span>
+                <span>📋 ${openT} open</span>
+                ${openFu > 0 ? `<span>📌 ${openFu} follow-up${openFu!==1?'s':''}</span>` : ''}
+                ${odT    > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${odT} overdue</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+      }
 
       let html = `
         <div class="view-header">
@@ -4948,40 +4965,62 @@ const renderers = {
           <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
         </div>`;
 
-      // ── Section: Projects ──
-      if (allProjects.length > 0) {
+      // ── Section 1: OKRs / BETs & Milestones ──
+      const bets = projects.filter(p => p.type === 'okr' && ['Active','On Hold'].includes(p.status));
+      // Build flat list: one item per milestone, or per BET if it has no milestones
+      let betMsItems = [];
+      bets.forEach(bet => {
+        const kr  = bet.krId ? okrKeyResults.find(k => k.id === bet.krId) : null;
+        const obj = kr?.objectiveId ? okrObjectives.find(o => o.id === kr.objectiveId) : null;
+        const milestones = projects.filter(p => p.betId === bet.id && ['Active','On Hold'].includes(p.status))
+          .sort((a,b) => (PORDER[a.priority||'None'] - PORDER[b.priority||'None']));
+        if (milestones.length > 0) {
+          milestones.forEach(ms => betMsItems.push({ id: ms.id, p: ms, bet, obj }));
+        } else {
+          betMsItems.push({ id: bet.id, p: bet, bet, obj, noms: true });
+        }
+      });
+      const _bmsOrder = JSON.parse(localStorage.getItem('dp_priorities_betms_order') || '[]');
+      if (_bmsOrder.length > 0) {
+        betMsItems.sort((a,b) => {
+          const ai = _bmsOrder.indexOf(a.id), bi = _bmsOrder.indexOf(b.id);
+          if (ai >= 0 && bi >= 0) return ai - bi;
+          if (ai >= 0) return -1; if (bi >= 0) return 1; return 0;
+        });
+      }
+      if (betMsItems.length > 0) {
         html += `
-          <div class="section-header">
-            <span class="section-title">🗂 Initiatives & Milestones</span>
-            <span class="section-count">${allProjects.length}</span>
-          </div>
-          <div id="prioritiesProjList" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
-            ${allProjects.map((p, i) => {
-              const openT  = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.status !== 'Done').length;
-              const openFu = followups.filter(f => (f.projectId === p.id || (f.projectIds && f.projectIds.includes(p.id))) && f.status === 'Open').length;
-              const odT    = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && isOverdue(t)).length;
-              const pri    = p.priority || 'None';
-              const priDot = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : pri === 'Low' ? '🟢' : '⚪';
-              return `
-                <div class="pri-proj-row" data-proj-id="${p.id}" draggable="true" style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < allProjects.length-1 ? '1px solid var(--border)' : 'none'};transition:background .1s;position:relative" onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
-                  <span class="pri-drag-handle" title="Drag to reorder" onclick="event.stopPropagation()" style="cursor:grab;color:var(--text-muted);font-size:14px;padding:0 2px;flex-shrink:0">⠿</span>
-                  <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(p.color||'#2563eb')}"></div>
-                  <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}${p.priorityRank ? ` <span style="opacity:.65">#${p.priorityRank}</span>` : ''}</span>
-                  <div style="flex:1;min-width:0" onclick="openProject('${p.id}')">
-                    <div style="font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div>
-                    <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:2px">
-                      <span>${p.status}</span>
-                      <span>📋 ${openT} open</span>
-                      ${openFu > 0 ? `<span>📌 ${openFu} follow-up${openFu!==1?'s':''}</span>` : ''}
-                      ${odT    > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${odT} overdue</span>` : ''}
-                    </div>
-                  </div>
-                </div>`;
+          <div class="section-header"><span class="section-title">🎯 OKRs / BETs & Milestones</span><span class="section-count">${betMsItems.length}</span></div>
+          <div id="prioritiesBetMsList" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
+            ${betMsItems.map((item, i) => {
+              const objPart = item.obj  ? `<span style="color:var(--text-muted)">${esc(item.obj.name)}</span><span style="color:var(--text-muted);margin:0 5px">&rsaquo;&rsaquo;</span>` : '';
+              const betPart = `<span style="color:var(--text-muted)">${esc(item.bet.name)}</span>`;
+              const msPart  = item.noms ? '' : `<span style="color:var(--text-muted);margin:0 5px">&rsaquo;&rsaquo;</span><strong>${esc(item.p.name)}</strong>`;
+              const chain   = objPart + betPart + msPart;
+              return _priRow(item.p, i, betMsItems.length, 'betms', chain);
             }).join('')}
           </div>`;
       }
 
-      // ── Section: Activities by priority ──
+      // ── Section 2: Initiatives ──
+      const _initOrder = JSON.parse(localStorage.getItem('dp_priorities_order') || '[]');
+      const initiatives = [...projects]
+        .filter(p => p.type !== 'okr' && p.type !== 'personal' && p.subtype !== 'milestone' && ['Active','On Hold'].includes(p.status))
+        .sort((a,b) => {
+          const ai = _initOrder.indexOf(a.id), bi = _initOrder.indexOf(b.id);
+          if (ai >= 0 && bi >= 0) return ai - bi;
+          if (ai >= 0) return -1; if (bi >= 0) return 1;
+          return (PORDER[a.priority||'None'] - PORDER[b.priority||'None']) || a.name.localeCompare(b.name);
+        });
+      if (initiatives.length > 0) {
+        html += `
+          <div class="section-header"><span class="section-title">🚀 Initiatives</span><span class="section-count">${initiatives.length}</span></div>
+          <div id="prioritiesProjList" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
+            ${initiatives.map((p, i) => _priRow(p, i, initiatives.length, 'init', null)).join('')}
+          </div>`;
+      }
+
+      // ── Section 3: Activities by priority ──
       const open = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId);
 
       html += `
@@ -5741,68 +5780,70 @@ const renderers = {
     /* ── Priorities drag-and-drop setup (called after render) ── */
     function _setupPrioritiesDnD() {
       let _prDragSrc = null;
-      const rows = document.querySelectorAll('.pri-proj-row');
 
-      rows.forEach(el => {
-        el.addEventListener('dragstart', function(e) {
-          _prDragSrc = this;
-          this.classList.add('dragging');
-          e.dataTransfer.effectAllowed = 'move';
-          e.dataTransfer.setData('text/plain', this.dataset.projId);
-        });
+      function _setupContainer(containerId, storageKey) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const rows = container.querySelectorAll('.pri-proj-row');
 
-        el.addEventListener('dragend', function() {
-          this.classList.remove('dragging');
-          rows.forEach(x => x.classList.remove('drag-above','drag-below'));
-          _prDragSrc = null;
-        });
-
-        el.addEventListener('dragover', function(e) {
-          e.preventDefault();
-          if (!_prDragSrc || this === _prDragSrc) return;
-          rows.forEach(x => x.classList.remove('drag-above','drag-below'));
-          const rect = this.getBoundingClientRect();
-          if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
-          else this.classList.add('drag-below');
-        });
-
-        el.addEventListener('dragleave', function(e) {
-          if (!this.contains(e.relatedTarget)) this.classList.remove('drag-above','drag-below');
-        });
-
-        el.addEventListener('drop', function(e) {
-          e.stopPropagation();
-          this.classList.remove('drag-above','drag-below');
-          if (!_prDragSrc || this === _prDragSrc) return;
-
-          // Build current ordered list from DOM
-          const allRows = [...document.querySelectorAll('.pri-proj-row')];
-          let order = allRows.map(r => r.dataset.projId);
-
-          const fromId = _prDragSrc.dataset.projId;
-          const toId   = this.dataset.projId;
-          const fi = order.indexOf(fromId);
-          if (fi < 0) return;
-
-          const rect = this.getBoundingClientRect();
-          const before = e.clientY < rect.top + rect.height / 2;
-
-          order.splice(fi, 1);
-          const ti = order.indexOf(toId);
-          if (ti < 0) return;
-          order.splice(before ? ti : ti + 1, 0, fromId);
-
-          // Update priorityRank for every project in the new order
-          order.forEach((id, idx) => {
-            const p = projects.find(x => x.id === id);
-            if (p) p.priorityRank = idx + 1;
+        rows.forEach(el => {
+          el.addEventListener('dragstart', function(e) {
+            _prDragSrc = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.dataset.projId);
           });
-          persistProjects();
 
-          localStorage.setItem('dp_priorities_order', JSON.stringify(order));
-          showView('priorities');
+          el.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            rows.forEach(x => x.classList.remove('drag-above','drag-below'));
+            _prDragSrc = null;
+          });
+
+          el.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (!_prDragSrc || this === _prDragSrc) return;
+            rows.forEach(x => x.classList.remove('drag-above','drag-below'));
+            const rect = this.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
+            else this.classList.add('drag-below');
+          });
+
+          el.addEventListener('dragleave', function(e) {
+            if (!this.contains(e.relatedTarget)) this.classList.remove('drag-above','drag-below');
+          });
+
+          el.addEventListener('drop', function(e) {
+            e.stopPropagation();
+            this.classList.remove('drag-above','drag-below');
+            if (!_prDragSrc || this === _prDragSrc) return;
+
+            let order = [...container.querySelectorAll('.pri-proj-row')].map(r => r.dataset.projId);
+            const fromId = _prDragSrc.dataset.projId;
+            const toId   = this.dataset.projId;
+            const fi = order.indexOf(fromId);
+            if (fi < 0) return;
+
+            const rect = this.getBoundingClientRect();
+            const before = e.clientY < rect.top + rect.height / 2;
+            order.splice(fi, 1);
+            const ti = order.indexOf(toId);
+            if (ti < 0) return;
+            order.splice(before ? ti : ti + 1, 0, fromId);
+
+            order.forEach((id, idx) => {
+              const p = projects.find(x => x.id === id);
+              if (p) p.priorityRank = idx + 1;
+            });
+            persistProjects();
+            localStorage.setItem(storageKey, JSON.stringify(order));
+            showView('priorities');
+          });
         });
-      });
+      }
+
+      _setupContainer('prioritiesBetMsList', 'dp_priorities_betms_order');
+      _setupContainer('prioritiesProjList',  'dp_priorities_order');
     }
 
     /* ==============================
