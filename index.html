@@ -1604,7 +1604,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.38</div>
+      <div class="sidebar-version">v1.9.39</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6447,7 +6447,7 @@ const renderers = {
         html += renderBetInitiativesTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
-        const done = ptasks.filter(t => t.status === 'Done');
+        const done = ptasks.filter(t => t.status === 'Done').sort((a,b) => new Date(b.completedAt||b.updatedAt||0) - new Date(a.completedAt||a.updatedAt||0));
         html += `
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
             <button class="btn btn-primary btn-sm" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
@@ -6638,7 +6638,7 @@ const renderers = {
         html += renderBetInitiativesTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
         const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
-        const done = ptasks.filter(t => t.status === 'Done');
+        const done = ptasks.filter(t => t.status === 'Done').sort((a,b) => new Date(b.completedAt||b.updatedAt||0) - new Date(a.completedAt||a.updatedAt||0));
         html += `
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
             <button class="btn btn-primary btn-sm" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
