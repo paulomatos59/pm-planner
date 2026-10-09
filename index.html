@@ -1604,7 +1604,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.39</div>
+      <div class="sidebar-version">v1.9.40</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5020,8 +5020,48 @@ const renderers = {
           </div>`;
       }
 
-      // ── Section 3: Activities by priority ──
+      // ── Section 3: Activities ──
       const open = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId);
+      const _actOrder = JSON.parse(localStorage.getItem('dp_priorities_act_order') || '[]');
+      const sortedActivities = [...open].sort((a, b) => {
+        const ai = _actOrder.indexOf(a.id), bi = _actOrder.indexOf(b.id);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1; if (bi >= 0) return 1;
+        return (PORDER[a.priority||'None'] - PORDER[b.priority||'None']) || sortByDue(a, b);
+      });
+
+      function _taskPriRow(t, i, total) {
+        const proj    = t.projectId ? projects.find(p => p.id === t.projectId) : null;
+        const pri     = t.priority || 'None';
+        const priDot  = pri === 'High' ? '🔴' : pri === 'Medium' ? '🟡' : pri === 'Low' ? '🟢' : '⚪';
+        const overdue = isOverdue(t);
+        const color   = proj?.color || (pri === 'High' ? '#ef4444' : pri === 'Medium' ? '#f59e0b' : pri === 'Low' ? '#22c55e' : '#94a3b8');
+        const dueFmt  = t.dueDate ? new Date(t.dueDate + 'T00:00:00').toLocaleDateString('en-US', {month:'short', day:'numeric'}) : '';
+        const recBadge = t.recurrence?.freq
+          ? `<span style="font-size:10px;color:var(--primary);background:var(--primary-light);border-radius:8px;padding:1px 6px">${t.recurrence.freq}</span>`
+          : '';
+        const projBadge = proj
+          ? `<span style="font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:140px" title="${esc(proj.name)}">📦 ${esc(proj.name)}</span>`
+          : '';
+        return `
+          <div class="pri-proj-row" data-task-id="${t.id}" draggable="true"
+               style="display:flex;align-items:center;gap:12px;padding:11px 16px;cursor:pointer;border-bottom:${i < total-1 ? '1px solid var(--border)' : 'none'};transition:background .1s;position:relative"
+               onmouseover="this.style.background='var(--bg)'" onmouseout="this.style.background=''">
+            <span class="pri-drag-handle" title="Drag to reorder" onclick="event.stopPropagation()" style="cursor:grab;color:var(--text-muted);font-size:14px;padding:0 2px;flex-shrink:0">⠿</span>
+            <div style="width:4px;min-width:4px;height:32px;border-radius:2px;background:${esc(color)}"></div>
+            <span style="font-size:12px;font-weight:700;color:${priColor[pri]};white-space:nowrap;min-width:72px">${priDot}${pri !== 'None' ? ' '+pri : ''}</span>
+            <div style="flex:1;min-width:0" onclick="openTaskModal('${t.id}')">
+              <div style="font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis"><strong>${esc(t.name)}</strong></div>
+              <div style="display:flex;gap:8px;font-size:11px;color:var(--text-muted);margin-top:2px;align-items:center;flex-wrap:wrap">
+                ${projBadge}
+                ${dueFmt ? `<span>${overdue ? '🚨' : '📅'} ${dueFmt}</span>` : ''}
+                <span>${t.status||'Todo'}</span>
+                ${recBadge}
+                ${overdue ? `<span style="color:var(--danger);font-weight:700">Overdue</span>` : ''}
+              </div>
+            </div>
+          </div>`;
+      }
 
       html += `
         <div class="section-header" style="margin-bottom:16px">
@@ -5029,26 +5069,12 @@ const renderers = {
           <span class="section-count">${open.length} open</span>
         </div>`;
 
-      const levels = ['High','Medium','Low','None'];
-      let anyTasks = false;
-      levels.forEach(pri => {
-        const group = open
-          .filter(t => (t.priority === pri) || (pri === 'None' && (!t.priority || t.priority === 'None')))
-          .sort(sortByDue);
-        if (group.length === 0) return;
-        anyTasks = true;
-        html += `
-          <div style="margin-bottom:20px">
-            <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;padding:6px 0;border-bottom:2px solid ${priBar[pri]}">
-              <span style="font-size:13px;font-weight:800;color:${priColor[pri]}">${priLabel[pri]}</span>
-              <span style="font-size:11px;font-weight:600;color:var(--text-muted);background:var(--bg);border-radius:10px;padding:1px 8px">${group.length}</span>
-            </div>
-            <div class="task-list">${group.map(taskCardWithSubs).join('')}</div>
-          </div>`;
-      });
-
-      if (!anyTasks) {
+      if (sortedActivities.length === 0) {
         html += `<div class="empty-state"><div class="icon">✅</div><h3>All clear!</h3><p>No open tasks. Nice work.</p></div>`;
+      } else {
+        html += `<div id="prioritiesActList" style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:28px">
+          ${sortedActivities.map((t, i) => _taskPriRow(t, i, sortedActivities.length)).join('')}
+        </div>`;
       }
 
       return html;
@@ -5844,6 +5870,57 @@ const renderers = {
 
       _setupContainer('prioritiesBetMsList', 'dp_priorities_betms_order');
       _setupContainer('prioritiesProjList',  'dp_priorities_order');
+
+      // Task-based container (Activities section)
+      function _setupTaskContainer(containerId, storageKey) {
+        const container = document.getElementById(containerId);
+        if (!container) return;
+        const rows = container.querySelectorAll('.pri-proj-row');
+        rows.forEach(el => {
+          el.addEventListener('dragstart', function(e) {
+            _prDragSrc = this;
+            this.classList.add('dragging');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', this.dataset.taskId);
+          });
+          el.addEventListener('dragend', function() {
+            this.classList.remove('dragging');
+            rows.forEach(x => x.classList.remove('drag-above','drag-below'));
+            _prDragSrc = null;
+          });
+          el.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            if (!_prDragSrc || this === _prDragSrc) return;
+            rows.forEach(x => x.classList.remove('drag-above','drag-below'));
+            const rect = this.getBoundingClientRect();
+            if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
+            else this.classList.add('drag-below');
+          });
+          el.addEventListener('dragleave', function(e) {
+            if (!this.contains(e.relatedTarget)) this.classList.remove('drag-above','drag-below');
+          });
+          el.addEventListener('drop', function(e) {
+            e.stopPropagation();
+            this.classList.remove('drag-above','drag-below');
+            if (!_prDragSrc || this === _prDragSrc) return;
+            let order = [...container.querySelectorAll('.pri-proj-row')].map(r => r.dataset.taskId);
+            const fromId = _prDragSrc.dataset.taskId;
+            const toId   = this.dataset.taskId;
+            const fi = order.indexOf(fromId);
+            if (fi < 0) return;
+            const rect = this.getBoundingClientRect();
+            const before = e.clientY < rect.top + rect.height / 2;
+            order.splice(fi, 1);
+            const ti = order.indexOf(toId);
+            if (ti < 0) return;
+            order.splice(before ? ti : ti + 1, 0, fromId);
+            localStorage.setItem(storageKey, JSON.stringify(order));
+            showView('priorities');
+          });
+        });
+      }
+
+      _setupTaskContainer('prioritiesActList', 'dp_priorities_act_order');
     }
 
     /* ==============================
