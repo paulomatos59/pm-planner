@@ -1604,7 +1604,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.37</div>
+      <div class="sidebar-version">v1.9.38</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -9281,12 +9281,10 @@ const renderers = {
       const existing = projects.find(x => x.id === id);
       const newRank  = document.getElementById('projectPriorityRank').value ? Number(document.getElementById('projectPriorityRank').value) : null;
       if (newRank) {
+        // If another project already holds this rank, clear its rank so the
+        // manually-chosen value wins (drag-and-drop is the authoritative reorder).
         const conflict = projects.find(x => x.id !== id && x.priorityRank === newRank);
-        if (conflict) {
-          alert(`Rank ${newRank} is already assigned to "${conflict.name}". Please choose a different rank.`);
-          document.getElementById('projectPriorityRank').focus();
-          return;
-        }
+        if (conflict) conflict.priorityRank = null;
       }
       const savedType = document.getElementById('projectType').value || 'project';
       const proj = {
