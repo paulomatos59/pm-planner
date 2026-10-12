@@ -1614,7 +1614,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.43</div>
+      <div class="sidebar-version">v1.9.44</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2680,7 +2680,8 @@
     let taskTimeTab        = 'all';   // 'today' | 'week' | 'month' | 'all' | 'custom'
     let taskDateFrom       = '';
     let taskDateTo         = '';
-    let taskSortDir        = 'asc';   // 'asc' = oldest first, 'desc' = newest first
+    let taskSortDir        = localStorage.getItem('dp_task_sort_dir')   || 'asc';   // 'asc' = oldest first, 'desc' = newest first
+    let taskSortField      = localStorage.getItem('dp_task_sort_field') || 'dueDate'; // 'dueDate' | 'startDate'
     let taskHideDone       = false;
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
     let kanbanHiddenCols   = new Set(JSON.parse(localStorage.getItem('dp_kanban_hidden_cols') || '[]'));
@@ -5490,8 +5491,10 @@ const renderers = {
         if (isOverdue(a) && !isOverdue(b)) return -1;
         if (!isOverdue(a) && isOverdue(b)) return 1;
         const dir = taskSortDir === 'desc' ? -1 : 1;
-        if (a.dueDate && b.dueDate) return dir * a.dueDate.localeCompare(b.dueDate);
-        if (a.dueDate) return -1; if (b.dueDate) return 1;
+        const af = taskSortField === 'startDate' ? (a.startDate || a.dueDate) : a.dueDate;
+        const bf = taskSortField === 'startDate' ? (b.startDate || b.dueDate) : b.dueDate;
+        if (af && bf) return dir * af.localeCompare(bf);
+        if (af) return -1; if (bf) return 1;
         return priorityOrder(a) - priorityOrder(b);
       });
 
@@ -5513,8 +5516,9 @@ const renderers = {
           <input type="date" value="${taskDateTo}" onchange="setTaskCustomRange('to',this.value)">
         </div>` : '';
 
-      const taskSortBtn     = `<button class="comm-filter-chip${taskSortDir==='desc'?' active':''}" onclick="toggleTaskSortDir()" title="Toggle date order">${taskSortDir==='asc' ? '↑ Oldest First' : '↓ Newest First'}</button>`;
-      const taskHideDoneBtn = `<button class="comm-filter-chip${taskHideDone?' active':''}" onclick="toggleTaskHideDone()">${taskHideDone ? '✓ Hiding Done' : '👁 Show Done'}</button>`;
+      const taskSortFieldBtn = `<button class="comm-filter-chip${taskSortField==='startDate'?' active':''}" onclick="toggleTaskSortField()" title="Toggle sort field">${taskSortField==='dueDate' ? '📅 Due Date' : '🗓 Start Date'}</button>`;
+      const taskSortBtn      = `<button class="comm-filter-chip${taskSortDir==='desc'?' active':''}" onclick="toggleTaskSortDir()" title="Toggle date order">${taskSortDir==='asc' ? '↑ Oldest First' : '↓ Newest First'}</button>`;
+      const taskHideDoneBtn  = `<button class="comm-filter-chip${taskHideDone?' active':''}" onclick="toggleTaskHideDone()">${taskHideDone ? '✓ Hiding Done' : '👁 Show Done'}</button>`;
 
       return `
         <div class="view-header">
@@ -5564,7 +5568,7 @@ const renderers = {
               </div>
             </div>` : ''}
           </div>
-          <span style="margin-left:auto;display:flex;gap:6px">${taskSortBtn}${taskHideDoneBtn}</span>
+          <span style="margin-left:auto;display:flex;gap:6px">${taskSortFieldBtn}${taskSortBtn}${taskHideDoneBtn}</span>
         </div>
         <div class="tasks-table">
           <div class="table-header">
@@ -5648,9 +5652,15 @@ const renderers = {
       else                  taskDateTo   = val;
       showView('all');
     }
-    function toggleTaskSortDir() {
+    function toggleTaskSortDir(rerender) {
       taskSortDir = taskSortDir === 'asc' ? 'desc' : 'asc';
-      showView('all');
+      localStorage.setItem('dp_task_sort_dir', taskSortDir);
+      if (rerender) showView(rerender); else showView('all');
+    }
+    function toggleTaskSortField(rerender) {
+      taskSortField = taskSortField === 'dueDate' ? 'startDate' : 'dueDate';
+      localStorage.setItem('dp_task_sort_field', taskSortField);
+      if (rerender) showView(rerender); else showView('all');
     }
     function toggleTaskHideDone() {
       taskHideDone = !taskHideDone;
@@ -6596,10 +6606,26 @@ const renderers = {
       } else if (activeProjectTab === 'initiatives') {
         html += renderBetInitiativesTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
-        const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+        function _projSortTasks(list) {
+          const dir = taskSortDir === 'desc' ? -1 : 1;
+          return [...list].sort((a,b) => {
+            if (isOverdue(a) && !isOverdue(b)) return -1;
+            if (!isOverdue(a) && isOverdue(b)) return 1;
+            const af = taskSortField === 'startDate' ? (a.startDate || a.dueDate) : a.dueDate;
+            const bf = taskSortField === 'startDate' ? (b.startDate || b.dueDate) : b.dueDate;
+            if (af && bf) return dir * af.localeCompare(bf);
+            if (af) return -1; if (bf) return 1;
+            return priorityOrder(a) - priorityOrder(b);
+          });
+        }
+        const open = _projSortTasks(ptasks.filter(t => t.status !== 'Done'));
         const done = ptasks.filter(t => t.status === 'Done').sort((a,b) => new Date(b.completedAt||b.updatedAt||0) - new Date(a.completedAt||a.updatedAt||0));
         html += `
-          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+            <div style="display:flex;gap:6px">
+              <button class="comm-filter-chip${taskSortField==='startDate'?' active':''}" onclick="toggleTaskSortField('project-detail')" title="Sort field">${taskSortField==='dueDate' ? '📅 Due Date' : '🗓 Start Date'}</button>
+              <button class="comm-filter-chip${taskSortDir==='desc'?' active':''}" onclick="toggleTaskSortDir('project-detail')" title="Sort direction">${taskSortDir==='asc' ? '↑ Oldest First' : '↓ Newest First'}</button>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
           </div>`;
         if (ptasks.length === 0) {
@@ -6787,10 +6813,26 @@ const renderers = {
       } else if (activeProjectTab === 'initiatives') {
         html += renderBetInitiativesTab(pid, p);
       } else if (activeProjectTab === 'tasks') {
-        const open = ptasks.filter(t => t.status !== 'Done').sort((a,b) => priorityOrder(a) - priorityOrder(b));
+        function _projSortTasks2(list) {
+          const dir = taskSortDir === 'desc' ? -1 : 1;
+          return [...list].sort((a,b) => {
+            if (isOverdue(a) && !isOverdue(b)) return -1;
+            if (!isOverdue(a) && isOverdue(b)) return 1;
+            const af = taskSortField === 'startDate' ? (a.startDate || a.dueDate) : a.dueDate;
+            const bf = taskSortField === 'startDate' ? (b.startDate || b.dueDate) : b.dueDate;
+            if (af && bf) return dir * af.localeCompare(bf);
+            if (af) return -1; if (bf) return 1;
+            return priorityOrder(a) - priorityOrder(b);
+          });
+        }
+        const open = _projSortTasks2(ptasks.filter(t => t.status !== 'Done'));
         const done = ptasks.filter(t => t.status === 'Done').sort((a,b) => new Date(b.completedAt||b.updatedAt||0) - new Date(a.completedAt||a.updatedAt||0));
         html += `
-          <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px;flex-wrap:wrap">
+            <div style="display:flex;gap:6px">
+              <button class="comm-filter-chip${taskSortField==='startDate'?' active':''}" onclick="toggleTaskSortField('personal-detail')" title="Sort field">${taskSortField==='dueDate' ? '📅 Due Date' : '🗓 Start Date'}</button>
+              <button class="comm-filter-chip${taskSortDir==='desc'?' active':''}" onclick="toggleTaskSortDir('personal-detail')" title="Sort direction">${taskSortDir==='asc' ? '↑ Oldest First' : '↓ Newest First'}</button>
+            </div>
             <button class="btn btn-primary btn-sm" onclick="openTaskModal(null,'${pid}')">＋ Add Task</button>
           </div>`;
         if (ptasks.length === 0) {
