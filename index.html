@@ -903,6 +903,12 @@
     .kch-blocked  { color: #dc2626; }
     .kch-done     { color: #16a34a; }
     .kb2-col-hdr-count { font-size: 11px; background: rgba(0,0,0,0.07); border-radius: 10px; padding: 1px 6px; }
+    .kb2-col-eye { background:none; border:none; cursor:pointer; opacity:0.45; font-size:13px; padding:0 0 0 4px; line-height:1; flex-shrink:0; transition:opacity .15s; }
+    .kb2-col-eye:hover { opacity:1; }
+    .kb2-col-hdr-collapsed { padding:0; justify-content:center; align-items:center; cursor:pointer; background:var(--bg); opacity:0.6; transition:opacity .15s; }
+    .kb2-col-hdr-collapsed:hover { opacity:1; }
+    .kb2-col-hdr-collapsed-label { writing-mode:vertical-lr; transform:rotate(180deg); font-size:9px; font-weight:700; text-transform:uppercase; letter-spacing:0.06em; white-space:nowrap; }
+    .kb2-cell-collapsed { padding:0; background:var(--bg); opacity:0.3; border-left:1px solid var(--border); }
     /* Project rows */
     .kb2-row {
       display: grid; grid-template-columns: 170px repeat(5, 1fr);
@@ -1608,7 +1614,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.42</div>
+      <div class="sidebar-version">v1.9.43</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2677,6 +2683,7 @@
     let taskSortDir        = 'asc';   // 'asc' = oldest first, 'desc' = newest first
     let taskHideDone       = false;
     let kanbanShowInactive = JSON.parse(localStorage.getItem('dp_kanban_inactive') || 'false');
+    let kanbanHiddenCols   = new Set(JSON.parse(localStorage.getItem('dp_kanban_hidden_cols') || '[]'));
     let capacitySettings   = JSON.parse(localStorage.getItem('dp_capacity') || '{"workingDays":[1,2,3,4,5],"hoursPerDay":8,"bufferPct":20}');
 
     // Cloud sync state
@@ -4904,34 +4911,17 @@ const renderers = {
           </div>`;
       }
 
-      function projectRow(p) {
-        const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.taskType !== 'timeoff');
-        const total  = ptasks.length;
-        // column-level totals for header
-        return `
-          <div class="kb2-row">
-            <div class="kb2-row-label">
-              <div class="kb2-row-dot" style="background:${esc(p.color||'#2563eb')}"></div>
-              <span class="kb2-row-name">${esc(p.name)}</span>
-              <span class="kb2-row-count">${total}</span>
-            </div>
-            ${COLS.map(col => {
-              const cards = ptasks.filter(t => t.status === col.key);
-              return `<div class="kb2-cell">
-                ${cards.length === 0
-                  ? `<div class="kb2-cell-empty">—</div>`
-                  : cards.map(kbCard).join('')}
-              </div>`;
-            }).join('')}
-          </div>`;
+      // Dynamic grid template: 170px for row label, 36px for collapsed cols, 1fr for visible
+      function gridTpl() {
+        return '170px ' + COLS.map(col => kanbanHiddenCols.has(col.key) ? '36px' : '1fr').join(' ');
       }
 
       function section(label, color, emoji, sectionProjects) {
         const totalTasks = tasks.filter(t => sectionProjects.some(p => p.id === t.projectId)).length;
-        // Per-column totals across all projects in this section
-        const colTotals = COLS.map(col =>
+        const colTotals  = COLS.map(col =>
           tasks.filter(t => t.status === col.key && sectionProjects.some(p => p.id === t.projectId)).length
         );
+        const tpl = gridTpl();
         return `
           <div class="kb2-section">
             <div class="kb2-section-header">
@@ -4942,15 +4932,41 @@ const renderers = {
             ${sectionProjects.length === 0
               ? `<div class="empty-state" style="padding:24px 0"><div class="icon">📭</div><p>No items yet</p></div>`
               : `<div class="kb2-scroll"><div class="kb2-grid">
-                  <div class="kb2-col-header-row">
+                  <div class="kb2-col-header-row" style="grid-template-columns:${tpl}">
                     <div class="kb2-corner"></div>
-                    ${COLS.map((col, i) => `
-                      <div class="kb2-col-hdr ${col.cls}">
+                    ${COLS.map((col, i) => {
+                      const hidden = kanbanHiddenCols.has(col.key);
+                      if (hidden) {
+                        return `<div class="kb2-col-hdr ${col.cls} kb2-col-hdr-collapsed" title="Show ${col.label}" onclick="toggleKanbanCol('${col.key}')">
+                          <span class="kb2-col-hdr-collapsed-label">${col.label} ${colTotals[i]>0?'('+colTotals[i]+')':''}</span>
+                        </div>`;
+                      }
+                      return `<div class="kb2-col-hdr ${col.cls}">
                         ${col.label}
                         <span class="kb2-col-hdr-count">${colTotals[i]}</span>
-                      </div>`).join('')}
+                        <button class="kb2-col-eye" title="Hide column" onclick="toggleKanbanCol('${col.key}')">👁</button>
+                      </div>`;
+                    }).join('')}
                   </div>
-                  ${sectionProjects.map(projectRow).join('')}
+                  ${sectionProjects.map(p => {
+                    const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.taskType !== 'timeoff');
+                    return `<div class="kb2-row" style="grid-template-columns:${tpl}">
+                      <div class="kb2-row-label">
+                        <div class="kb2-row-dot" style="background:${esc(p.color||'#2563eb')}"></div>
+                        <span class="kb2-row-name">${esc(p.name)}</span>
+                        <span class="kb2-row-count">${ptasks.length}</span>
+                      </div>
+                      ${COLS.map(col => {
+                        if (kanbanHiddenCols.has(col.key)) {
+                          return `<div class="kb2-cell-collapsed"></div>`;
+                        }
+                        const cards = ptasks.filter(t => t.status === col.key);
+                        return `<div class="kb2-cell">
+                          ${cards.length === 0 ? `<div class="kb2-cell-empty">—</div>` : cards.map(kbCard).join('')}
+                        </div>`;
+                      }).join('')}
+                    </div>`;
+                  }).join('')}
                 </div></div>`
             }
           </div>`;
@@ -10454,6 +10470,13 @@ const renderers = {
     function toggleKanbanInactive() {
       kanbanShowInactive = !kanbanShowInactive;
       localStorage.setItem('dp_kanban_inactive', JSON.stringify(kanbanShowInactive));
+      showView('kanban');
+    }
+
+    function toggleKanbanCol(key) {
+      if (kanbanHiddenCols.has(key)) kanbanHiddenCols.delete(key);
+      else kanbanHiddenCols.add(key);
+      localStorage.setItem('dp_kanban_hidden_cols', JSON.stringify([...kanbanHiddenCols]));
       showView('kanban');
     }
 
