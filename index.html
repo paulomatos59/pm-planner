@@ -319,6 +319,7 @@
     .gantt-bar:hover { filter: brightness(1.1); }
     .gantt-bar.g-done { opacity: 0.4; }
     .gantt-bar.g-overdue { box-shadow: 0 0 0 2px var(--danger), 0 1px 4px rgba(0,0,0,0.15); }
+    .gantt-bar-endtag { margin-left: auto; flex-shrink: 0; font-size: 9px; font-weight: 600; opacity: 0.85; padding-left: 5px; white-space: nowrap; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
@@ -1615,7 +1616,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.48</div>
+      <div class="sidebar-version">v1.9.49</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4644,6 +4645,9 @@ const renderers = {
         const od   = isOverdue(t);
         const color = t.status === 'Done' ? '#94a3b8' : projColor;
         const label = rawW > 44 ? esc(t.title) : '';
+        const endClipped = xEnd > totalW + 2;
+        const endTag = endClipped ? `<span class="gantt-bar-endtag">${new Date(t.dueDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
+        const barContent = label ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${label}</span>${endTag}` : endTag;
         return `
           <div class="gantt-row">
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">📋 ${esc(t.title)}</div>
@@ -4652,7 +4656,7 @@ const renderers = {
               <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
                    style="left:${x1}px;width:${rawW}px;background:${color}"
                    onclick="openTaskModal('${t.id}')"
-                   title="📋 ${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
+                   title="📋 ${esc(t.title)} (${from} → ${t.dueDate})">${barContent}</div>
             </div>
           </div>`;
       }
@@ -4663,6 +4667,9 @@ const renderers = {
         const xEnd = xOf(t.dueDate) + (ganttScale==='days'?colPx:0);
         const rawW = clamp(xEnd - x1 - 2, minBarW, totalW - x1);
         const label = rawW > 44 ? esc(t.title) : '';
+        const endClipped = xEnd > totalW + 2;
+        const endTag = endClipped ? `<span class="gantt-bar-endtag">${new Date(t.dueDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
+        const barContent = label ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${label}</span>${endTag}` : endTag;
         return `
           <div class="gantt-row">
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}</div>
@@ -4670,7 +4677,7 @@ const renderers = {
               ${backdrop()}
               <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${TOFF_COLOR};opacity:0.85"
                    onclick="openTaskModal('${t.id}')"
-                   title="${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
+                   title="${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)} (${from} → ${t.dueDate})">${barContent}</div>
             </div>
           </div>`;
       }
@@ -7408,7 +7415,10 @@ const renderers = {
         const od    = isOverdue(t);
         const bc    = t.status==='Done' ? '#94a3b8' : (isToff ? TOFF_COLOR : projColor);
         const toffIcon = isToff ? (t.taskType==='corporate'?'🏢 ':'🌴 ') : '';
-        const label = rawW > 44 ? `${toffIcon}${esc(t.title)}` : '';
+        const rawLabel = rawW > 44 ? `${toffIcon}${esc(t.title)}` : '';
+        const endClipped = xEnd > totalW + 2;
+        const endTag = endClipped ? `<span class="gantt-bar-endtag">${new Date(t.dueDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
+        const barContent = rawLabel ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${rawLabel}</span>${endTag}` : endTag;
         return `<div class="gantt-row">
           <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${toffIcon}${esc(t.title)}</div>
           <div class="gantt-bars-cell" style="width:${totalW}px">
@@ -7416,7 +7426,7 @@ const renderers = {
             <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
                  style="left:${x1}px;width:${rawW}px;background:${bc};${isToff?'opacity:0.85':''}"
                  onclick="openTaskModal('${t.id}')"
-                 title="${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
+                 title="${esc(t.title)} (${from} → ${t.dueDate})">${barContent}</div>
           </div></div>`;
       }).join('');
 
