@@ -1622,7 +1622,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.56</div>
+      <div class="sidebar-version">v1.9.57</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -10064,7 +10064,7 @@ const renderers = {
         let rows = '';
 
         // — Bets / Initiatives → Milestones hierarchy —
-        const bets = projects.filter(p => p.type !== 'personal' && p.type !== 'okr' && p.subtype !== 'milestone' && p.status !== 'Archived');
+        const bets = projects.filter(p => p.type !== 'personal' && p.subtype !== 'milestone' && p.status !== 'Archived');
         const milestones = projects.filter(p => p.subtype === 'milestone' && p.status !== 'Archived');
         if (bets.length || milestones.length) {
           bets.forEach(bet => {
