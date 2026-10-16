@@ -1094,7 +1094,8 @@
     .upcoming-meta  { font-size:11px; color:var(--text-muted); margin-top:2px; display:flex; gap:6px; flex-wrap:wrap; }
     .upcoming-type-badge { font-size:10px; font-weight:700; padding:1px 6px; border-radius:8px; }
     .upcoming-type-task    { background:var(--primary-light); color:var(--primary); }
-    .upcoming-type-timeoff { background:#ecfeff; color:#0891b2; }
+    .upcoming-type-timeoff  { background:#ecfeff; color:#0891b2; }
+    .upcoming-type-corporate { background:#ede9fe; color:#6d28d9; }
 
     .summary-week-strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
     .summary-week-day {
@@ -1614,7 +1615,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.47</div>
+      <div class="sidebar-version">v1.9.48</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4192,9 +4193,9 @@ const renderers = {
                       <div class="upcoming-date-dow">${d.toLocaleDateString('en-US',{weekday:'short'})}</div>
                     </div>
                     <div style="flex:1;min-width:0">
-                      <div class="upcoming-title">🌴 ${esc(t.title)}</div>
+                      <div class="upcoming-title">${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}</div>
                       <div class="upcoming-meta">
-                        <span class="upcoming-type-badge upcoming-type-timeoff">Time Off</span>
+                        <span class="upcoming-type-badge ${t.taskType==='corporate'?'upcoming-type-corporate':'upcoming-type-timeoff'}">${t.taskType==='corporate'?'Corporate Event':'Time Off'}</span>
                         ${rangeLabel ? `<span>${rangeLabel}</span>` : ''}
                       </div>
                     </div>
@@ -4565,7 +4566,7 @@ const renderers = {
           const from = t.startDate || t.dueDate;
           const x1 = clamp(xOf(from), 0, totalW);
           const x2 = clamp(xOf(t.dueDate) + (ganttScale==='days'?colPx:0), 0, totalW);
-          html += `<div class="gantt-timeoff-overlay" style="left:${x1}px;width:${Math.max(2,x2-x1)}px" title="🌴 ${esc(t.title)}"></div>`;
+          html += `<div class="gantt-timeoff-overlay" style="left:${x1}px;width:${Math.max(2,x2-x1)}px" title="${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}"></div>`;
         });
         // Holiday bands — band per row, label only in column header
         windowHolidays.forEach(h => {
@@ -4664,12 +4665,12 @@ const renderers = {
         const label = rawW > 44 ? esc(t.title) : '';
         return `
           <div class="gantt-row">
-            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">🌴 ${esc(t.title)}</div>
+            <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
               ${backdrop()}
               <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${TOFF_COLOR};opacity:0.85"
                    onclick="openTaskModal('${t.id}')"
-                   title="🌴 ${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
+                   title="${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)} (${from} → ${t.dueDate})">${label}</div>
             </div>
           </div>`;
       }
@@ -5439,7 +5440,7 @@ const renderers = {
                   const to   = t.dueDate   || t.startDate;
                   const pos  = ds === from && ds === to ? '' : ds === from ? 'starts' : ds === to ? 'ends' : 'mid';
                   const showLabel = ds === from || d.getDay() === 1; // show label on start or each Monday
-                  return `<div class="month-timeoff-chip ${pos}" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="${esc(t.title)}">🌴 ${showLabel ? esc(t.title) : '&nbsp;'}</div>`;
+                  return `<div class="month-timeoff-chip ${pos}" onclick="event.stopPropagation();openTaskModal('${t.id}')" title="${esc(t.title)}">${t.taskType==='corporate'?'🏢':'🌴'} ${showLabel ? esc(t.title) : '&nbsp;'}</div>`;
                 }).join('')}
                 ${visible.map(t => `
                   <div class="month-task-chip priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
@@ -7406,9 +7407,10 @@ const renderers = {
         const rawW  = clamp(xEnd-x1-2, minBarW, totalW-x1);
         const od    = isOverdue(t);
         const bc    = t.status==='Done' ? '#94a3b8' : (isToff ? TOFF_COLOR : projColor);
-        const label = rawW > 44 ? `${isToff?'🌴 ':''}${esc(t.title)}` : '';
+        const toffIcon = isToff ? (t.taskType==='corporate'?'🏢 ':'🌴 ') : '';
+        const label = rawW > 44 ? `${toffIcon}${esc(t.title)}` : '';
         return `<div class="gantt-row">
-          <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${isToff?'🌴 ':''}${esc(t.title)}</div>
+          <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${toffIcon}${esc(t.title)}</div>
           <div class="gantt-bars-cell" style="width:${totalW}px">
             ${backdrop()}
             <div class="gantt-bar ${t.status==='Done'?'g-done':''} ${od?'g-overdue':''}"
