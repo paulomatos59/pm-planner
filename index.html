@@ -559,7 +559,7 @@
       border-radius: 12px; overflow-y: visible;
     }
     #noteModal .modal-header { padding: 16px 24px 12px; }
-    #noteModal .form-textarea-tall { min-height: 260px; max-height: none; resize: vertical; }
+    #noteModal .rte-editor { min-height: 260px; max-height: none; overflow-y: visible; }
     /* ── Comm modal ── */
     #commModal { padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
     #commModal .modal {
@@ -1614,7 +1614,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.46</div>
+      <div class="sidebar-version">v1.9.47</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2427,7 +2427,54 @@
         </div>
         <div class="form-group">
           <label class="form-label">Content</label>
-          <textarea class="form-textarea form-textarea-tall" id="noteContent" placeholder="Write your note here…" oninput="scheduleDraftSave('note')"></textarea>
+          <div class="rte-wrapper">
+            <div class="rte-toolbar">
+              <button type="button" class="rte-btn" id="noteRteBoldBtn" title="Bold" onmousedown="event.preventDefault();noteRteExec('bold');noteRteUpdateToolbar()"><b style="font-size:14px">B</b></button>
+              <div class="rte-divider"></div>
+              <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();noteRteExec('insertUnorderedList')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();noteRteExec('insertOrderedList')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <div class="rte-divider"></div>
+              <div class="rte-color-wrap">
+                <button type="button" class="rte-btn" id="noteRteColorBtn" title="Text color" onmousedown="event.preventDefault();noteRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
+                  <span style="font-weight:700;font-size:13px;line-height:1">A</span>
+                  <span id="noteRteColorBar" style="display:block;height:3px;width:16px;border-radius:2px;background:#e53e3e"></span>
+                </button>
+                <div class="rte-color-popup hidden" id="noteRteColorPicker">
+                  <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();noteRteSetColor('#111827')"></div>
+                  <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();noteRteSetColor('#e53e3e')"></div>
+                  <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();noteRteSetColor('#dd6b20')"></div>
+                  <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();noteRteSetColor('#d69e2e')"></div>
+                  <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();noteRteSetColor('#38a169')"></div>
+                  <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();noteRteSetColor('#3182ce')"></div>
+                  <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();noteRteSetColor('#805ad5')"></div>
+                  <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();noteRteSetColor('#d53f8c')"></div>
+                  <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();noteRteSetColor('#718096')"></div>
+                  <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();noteRteSetColor('#a0aec0')"></div>
+                  <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();noteRteSetColor('#ffffff')"></div>
+                  <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();noteRteRemoveColor()">✕</div>
+                </div>
+              </div>
+              <div class="rte-divider"></div>
+              <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();noteRteAddLink()">🔗</button>
+              <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'noteContent')">😊</button>
+              <div class="rte-divider"></div>
+              <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('noteContent', this.value, this)">
+                <option value="">Size</option>
+                <option value="h1">H1</option>
+                <option value="h2">H2</option>
+                <option value="h3">H3</option>
+                <option value="p">Normal</option>
+              </select>
+              <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" onmousedown="event.preventDefault();rteClearFormat('noteContent')">T</button>
+            </div>
+            <div class="rte-editor" id="noteContent" contenteditable="true" data-placeholder="Write your note here…"
+                 onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
+                 onkeyup="noteRteUpdateToolbar()" onmouseup="noteRteUpdateToolbar()" onfocus="noteRteUpdateToolbar()" onclick="noteRteCloseColorPicker()" oninput="scheduleDraftSave('note')"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -8097,6 +8144,34 @@ const renderers = {
       if (url) { document.getElementById('commDesc').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
     }
 
+    /* ── Note RTE helpers ── */
+    function noteRteExec(cmd, val) { document.getElementById('noteContent').focus(); document.execCommand(cmd, false, val || null); }
+    function noteRteUpdateToolbar() {
+      const bold = document.queryCommandState('bold');
+      document.getElementById('noteRteBoldBtn')?.classList.toggle('active', bold);
+    }
+    function noteRteToggleColorPicker() {
+      document.getElementById('noteRteColorPicker').classList.toggle('hidden');
+    }
+    function noteRteCloseColorPicker() {
+      document.getElementById('noteRteColorPicker')?.classList.add('hidden');
+    }
+    function noteRteSetColor(color) {
+      document.getElementById('noteContent').focus();
+      document.execCommand('foreColor', false, color);
+      document.getElementById('noteRteColorBar').style.background = color;
+      noteRteCloseColorPicker();
+    }
+    function noteRteRemoveColor() {
+      document.getElementById('noteContent').focus();
+      document.execCommand('removeFormat', false, null);
+      noteRteCloseColorPicker();
+    }
+    function noteRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('noteContent').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
+    }
+
     /* ── Comm linked tasks ── */
     function commTasksRender() {
       if (!editingCommId) return;
@@ -8368,7 +8443,7 @@ const renderers = {
             <div class="task-title">${esc(n.title)}</div>
             <div class="task-meta">
               <span style="font-size:11px;color:var(--text-muted)">${formatTs(n.updatedAt)}</span>
-              ${n.content ? `<span style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${esc(n.content.slice(0,120))}${n.content.length>120?'…':''}</span>` : ''}
+              ${n.content ? `<span style="font-size:11px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:500px">${esc(stripHtml(n.content).slice(0,120))}${stripHtml(n.content).length>120?'…':''}</span>` : ''}
             </div>
           </div>
           <div class="task-actions">
@@ -8957,7 +9032,7 @@ const renderers = {
         data = {
           _id:     document.getElementById('noteId').value || null,
           title:   document.getElementById('noteTitle').value,
-          content: document.getElementById('noteContent').value,
+          content: document.getElementById('noteContent').innerHTML,
         };
       }
       if (!data) return;
@@ -9011,8 +9086,8 @@ const renderers = {
           if (d.notes) document.getElementById('followupNotes').innerHTML = d.notes;
           if (d.status) document.getElementById('followupStatus').value = d.status;
         } else if (type === 'note') {
-          if (d.title)   document.getElementById('noteTitle').value   = d.title;
-          if (d.content) document.getElementById('noteContent').value = d.content;
+          if (d.title)   document.getElementById('noteTitle').value      = d.title;
+          if (d.content) document.getElementById('noteContent').innerHTML = d.content;
         }
         _showDraftBadge(type, '♻ Draft restored');
       } catch(e) {}
@@ -9932,7 +10007,7 @@ const renderers = {
       document.getElementById('btnDeleteNote').style.display   = isNew ? 'none' : 'block';
       document.getElementById('noteId').value    = n?.id    || '';
       document.getElementById('noteTitle').value = n?.title || '';
-      document.getElementById('noteContent').value = n?.content || '';
+      document.getElementById('noteContent').innerHTML = n?.content || '';
       document.getElementById('noteTitle').style.borderColor = '';
       buildAssignOptions(document.getElementById('noteProjectId'), preId);
 
@@ -9961,7 +10036,7 @@ const renderers = {
       const note = {
         id, title,
         projectId: document.getElementById('noteProjectId').value,
-        content:   document.getElementById('noteContent').value.trim(),
+        content:   document.getElementById('noteContent').innerHTML.trim(),
         createdAt: existing?.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString()
       };
