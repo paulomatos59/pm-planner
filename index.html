@@ -1617,7 +1617,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.52</div>
+      <div class="sidebar-version">v1.9.53</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2271,6 +2271,16 @@
             <div class="rte-editor" id="projectDesc" contenteditable="true" data-placeholder="Goals, scope, context…"
                  onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
                  onkeyup="projDescRteUpdateToolbar()" onmouseup="projDescRteUpdateToolbar()" onfocus="projDescRteUpdateToolbar()" onclick="projDescRteCloseColorPicker()"></div>
+          </div>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label class="form-label">Start Date</label>
+            <input type="date" class="form-input" id="projectStartDate">
+          </div>
+          <div class="form-group">
+            <label class="form-label">End Date</label>
+            <input type="date" class="form-input" id="projectEndDate">
           </div>
         </div>
         <div class="form-row">
@@ -9719,6 +9729,8 @@ const renderers = {
           betSel.appendChild(opt);
         });
       }
+      document.getElementById('projectStartDate').value = p?.startDate || '';
+      document.getElementById('projectEndDate').value   = p?.endDate   || '';
       document.getElementById('projectStatus').value   = p?.status   || 'Active';
       document.getElementById('projectPriority').value = p?.priority || 'Medium';
       // Build priority rank options dynamically — disable ranks already taken by other projects
@@ -9797,6 +9809,8 @@ const renderers = {
         krId:        savedType !== 'personal' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
         betId:       (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectBetId').value || null) : (existing?.betId || undefined),
         subtype:     (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectSubtype').value || 'initiative') : undefined,
+        startDate:   document.getElementById('projectStartDate').value || null,
+        endDate:     document.getElementById('projectEndDate').value   || null,
         status:      document.getElementById('projectStatus').value,
         priority:    document.getElementById('projectPriority').value,
         priorityRank: newRank,
