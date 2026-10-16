@@ -321,6 +321,11 @@
     .gantt-bar.g-overdue { box-shadow: 0 0 0 2px var(--danger), 0 1px 4px rgba(0,0,0,0.15); }
     .gantt-bar-endtag { margin-left: auto; flex-shrink: 0; font-size: 9px; font-weight: 600; opacity: 0.85; padding-left: 5px; white-space: nowrap; }
     .gantt-bar-starttag { flex-shrink: 0; font-size: 9px; font-weight: 600; opacity: 0.85; padding-right: 4px; white-space: nowrap; }
+    .gantt-row-parent { background: var(--primary-light); border-bottom: 2px solid var(--border); }
+    .gantt-row-parent .gantt-task-lbl { font-weight: 700; font-size: 13px; color: var(--text); }
+    .gantt-bar-parent { height: 16px !important; top: 9px !important; border-radius: 8px !important; }
+    .gantt-row-child .gantt-task-lbl { padding-left: 28px; }
+    .gantt-group-hdr-child .gantt-group-name { padding-left: 28px; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
@@ -1617,7 +1622,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.53</div>
+      <div class="sidebar-version">v1.9.54</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7562,7 +7567,7 @@ const renderers = {
         const endTag = endClipped ? `<span class="gantt-bar-endtag">→ ${fmtD(t.dueDate)}</span>` : '';
         const labelSpan = rawLabel ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${rawLabel}</span>` : (startTag && endTag ? `<span style="flex:1"></span>` : '');
         const barContent = startTag + labelSpan + endTag;
-        return `<div class="gantt-row">
+        return `<div class="gantt-row gantt-row-child">
           <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${toffIcon}${esc(t.title)}</div>
           <div class="gantt-bars-cell" style="width:${totalW}px">
             ${backdrop()}
@@ -7580,7 +7585,7 @@ const renderers = {
       const commRows = visComms.map(c => {
         const x = clamp(xOf(c.date) + (projTimelineScale==='days'?Math.round(colPx/2):0), 4, totalW-14);
         const icon = CI[c.type] || '💬';
-        return `<div class="gantt-row">
+        return `<div class="gantt-row gantt-row-child">
           <div class="gantt-task-lbl" onclick="openCommModal('${c.id}')" title="${esc(c.title)}">${icon} ${esc(c.title)}</div>
           <div class="gantt-bars-cell" style="width:${totalW}px">
             ${backdrop()}
@@ -7588,19 +7593,42 @@ const renderers = {
           </div></div>`;
       }).join('');
 
+      // ── Parent (initiative / milestone) row ──
+      const typeIcon = p.type==='okr' ? '🎯' : (p.subtype==='milestone' ? '🏁' : '🚀');
+      const allDates = ptasks.flatMap(t => [t.startDate||t.dueDate, t.dueDate]).filter(Boolean).sort();
+      const parentFrom = p.startDate || (allDates.length ? allDates[0] : null);
+      const parentTo   = p.endDate   || (allDates.length ? allDates[allDates.length-1] : null);
+      const fmtD2 = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+      let parentBarHtml = '';
+      if (parentFrom && parentTo) {
+        const pxRaw = xOf(parentFrom);
+        const px1   = clamp(pxRaw, 0, totalW-2);
+        const pxEnd = xOf(parentTo) + (projTimelineScale==='days'?colPx:0);
+        const pRawW = clamp(pxEnd - px1 - 2, minBarW, totalW - px1);
+        const pStartClipped = pxRaw < -2;
+        const pEndClipped   = pxEnd > totalW + 2;
+        const pStartTag = pStartClipped ? `<span class="gantt-bar-starttag">← ${fmtD2(parentFrom)}</span>` : '';
+        const pEndTag   = pEndClipped   ? `<span class="gantt-bar-endtag">→ ${fmtD2(parentTo)}</span>` : '';
+        const pBarLabel = pRawW > 60 ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${esc(p.name)}</span>` : (pStartTag && pEndTag ? `<span style="flex:1"></span>` : '');
+        parentBarHtml = `<div class="gantt-bar gantt-bar-parent" style="left:${px1}px;width:${pRawW}px;background:${projColor}" title="${esc(p.name)} (${parentFrom} → ${parentTo})">${pStartTag}${pBarLabel}${pEndTag}</div>`;
+      }
+      const parentRow = `<div class="gantt-row gantt-row-parent">
+        <div class="gantt-task-lbl" onclick="openProjectModal('${pid}')" title="${esc(p.name)}">${typeIcon} ${esc(p.name)}</div>
+        <div class="gantt-bars-cell" style="width:${totalW}px">${backdrop()}${parentBarHtml}</div>
+      </div>`;
+
       // ── Assemble body ──
-      const hasItems = visTasks.length > 0 || visComms.length > 0;
-      let bodyRows = '';
-      if (!hasItems) {
-        bodyRows = `<div class="gantt-empty-row">No items with dates in this period.<br><small>Add start &amp; due dates to tasks and dates to comms to see them here.</small></div>`;
+      let bodyRows = parentRow;
+      if (visTasks.length === 0 && visComms.length === 0) {
+        bodyRows += `<div class="gantt-empty-row" style="padding-left:28px">No tasks or comms with dates in this period.<br><small>Add start &amp; due dates to tasks and dates to comms to see them here.</small></div>`;
       } else {
         if (visTasks.length > 0) bodyRows += `
-          <div class="gantt-group-hdr">
+          <div class="gantt-group-hdr gantt-group-hdr-child">
             <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${projColor};flex-shrink:0"></div>Tasks</div>
             <div class="gantt-group-band" style="background:linear-gradient(90deg,${projColor}18 0%,transparent 40%);width:${totalW}px"></div>
           </div>${taskRows}`;
         if (visComms.length > 0) bodyRows += `
-          <div class="gantt-group-hdr">
+          <div class="gantt-group-hdr gantt-group-hdr-child">
             <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:#7c3aed;flex-shrink:0"></div>Comms</div>
             <div class="gantt-group-band" style="background:linear-gradient(90deg,#7c3aed18 0%,transparent 40%);width:${totalW}px"></div>
           </div>${commRows}`;
