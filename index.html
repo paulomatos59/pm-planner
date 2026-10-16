@@ -320,6 +320,7 @@
     .gantt-bar.g-done { opacity: 0.4; }
     .gantt-bar.g-overdue { box-shadow: 0 0 0 2px var(--danger), 0 1px 4px rgba(0,0,0,0.15); }
     .gantt-bar-endtag { margin-left: auto; flex-shrink: 0; font-size: 9px; font-weight: 600; opacity: 0.85; padding-left: 5px; white-space: nowrap; }
+    .gantt-bar-starttag { flex-shrink: 0; font-size: 9px; font-weight: 600; opacity: 0.85; padding-right: 4px; white-space: nowrap; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
@@ -1616,7 +1617,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.49</div>
+      <div class="sidebar-version">v1.9.50</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4639,15 +4640,20 @@ const renderers = {
         }
         // Non-recurring: solid bar from startDate → dueDate
         const from = t.startDate || t.dueDate;
-        const x1   = clamp(xOf(from), 0, totalW - 2);
+        const xFromRaw = xOf(from);
+        const x1   = clamp(xFromRaw, 0, totalW - 2);
         const xEnd = xOf(t.dueDate) + (ganttScale==='days'||ganttScale==='hours'?colPx:0);
         const rawW = clamp(xEnd - x1 - 2, minBarW, totalW - x1);
         const od   = isOverdue(t);
         const color = t.status === 'Done' ? '#94a3b8' : projColor;
         const label = rawW > 44 ? esc(t.title) : '';
+        const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+        const startClipped = xFromRaw < -2;
         const endClipped = xEnd > totalW + 2;
-        const endTag = endClipped ? `<span class="gantt-bar-endtag">${new Date(t.dueDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
-        const barContent = label ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${label}</span>${endTag}` : endTag;
+        const startTag = startClipped ? `<span class="gantt-bar-starttag">← ${fmtD(from)}</span>` : '';
+        const endTag = endClipped ? `<span class="gantt-bar-endtag">→ ${fmtD(t.dueDate)}</span>` : '';
+        const labelSpan = label ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${label}</span>` : (startTag && endTag ? `<span style="flex:1"></span>` : '');
+        const barContent = startTag + labelSpan + endTag;
         return `
           <div class="gantt-row">
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">📋 ${esc(t.title)}</div>
@@ -4663,13 +4669,18 @@ const renderers = {
 
       function timeoffBar(t) {
         const from = t.startDate || t.dueDate;
-        const x1   = clamp(xOf(from), 0, totalW - 2);
+        const xFromRaw = xOf(from);
+        const x1   = clamp(xFromRaw, 0, totalW - 2);
         const xEnd = xOf(t.dueDate) + (ganttScale==='days'?colPx:0);
         const rawW = clamp(xEnd - x1 - 2, minBarW, totalW - x1);
         const label = rawW > 44 ? esc(t.title) : '';
+        const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+        const startClipped = xFromRaw < -2;
         const endClipped = xEnd > totalW + 2;
-        const endTag = endClipped ? `<span class="gantt-bar-endtag">${new Date(t.dueDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
-        const barContent = label ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${label}</span>${endTag}` : endTag;
+        const startTag = startClipped ? `<span class="gantt-bar-starttag">← ${fmtD(from)}</span>` : '';
+        const endTag = endClipped ? `<span class="gantt-bar-endtag">→ ${fmtD(t.dueDate)}</span>` : '';
+        const labelSpan = label ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${label}</span>` : (startTag && endTag ? `<span style="flex:1"></span>` : '');
+        const barContent = startTag + labelSpan + endTag;
         return `
           <div class="gantt-row">
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}</div>
@@ -7409,16 +7420,21 @@ const renderers = {
       const taskRows = visTasks.map(t => {
         const isToff = ['timeoff','corporate'].includes(t.taskType);
         const from  = t.startDate || t.dueDate;
-        const x1    = clamp(xOf(from), 0, totalW-2);
+        const xFromRaw = xOf(from);
+        const x1    = clamp(xFromRaw, 0, totalW-2);
         const xEnd  = xOf(t.dueDate) + (projTimelineScale==='days'?colPx:0);
         const rawW  = clamp(xEnd-x1-2, minBarW, totalW-x1);
         const od    = isOverdue(t);
         const bc    = t.status==='Done' ? '#94a3b8' : (isToff ? TOFF_COLOR : projColor);
         const toffIcon = isToff ? (t.taskType==='corporate'?'🏢 ':'🌴 ') : '';
         const rawLabel = rawW > 44 ? `${toffIcon}${esc(t.title)}` : '';
+        const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+        const startClipped = xFromRaw < -2;
         const endClipped = xEnd > totalW + 2;
-        const endTag = endClipped ? `<span class="gantt-bar-endtag">${new Date(t.dueDate+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>` : '';
-        const barContent = rawLabel ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${rawLabel}</span>${endTag}` : endTag;
+        const startTag = startClipped ? `<span class="gantt-bar-starttag">← ${fmtD(from)}</span>` : '';
+        const endTag = endClipped ? `<span class="gantt-bar-endtag">→ ${fmtD(t.dueDate)}</span>` : '';
+        const labelSpan = rawLabel ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${rawLabel}</span>` : (startTag && endTag ? `<span style="flex:1"></span>` : '');
+        const barContent = startTag + labelSpan + endTag;
         return `<div class="gantt-row">
           <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${toffIcon}${esc(t.title)}</div>
           <div class="gantt-bars-cell" style="width:${totalW}px">
