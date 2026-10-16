@@ -1622,7 +1622,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.55</div>
+      <div class="sidebar-version">v1.9.56</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -10063,30 +10063,20 @@ const renderers = {
       if (isOpen) {
         let rows = '';
 
-        // — Initiatives group —
-        const initiatives = projects.filter(p => p.type !== 'personal' && p.type !== 'okr' && p.subtype !== 'milestone' && p.status !== 'Archived');
-        if (initiatives.length) {
-          rows += '<div class="mpp-group">Initiatives</div>';
-          rows += initiatives.map(p => _mppCheckRow(containerId, p, selected, false)).join('');
-        }
-
-        // — KRs → Milestones hierarchy —
+        // — Bets / Initiatives → Milestones hierarchy —
+        const bets = projects.filter(p => p.type !== 'personal' && p.type !== 'okr' && p.subtype !== 'milestone' && p.status !== 'Archived');
         const milestones = projects.filter(p => p.subtype === 'milestone' && p.status !== 'Archived');
-        if (milestones.length) {
-          // Resolve KR ID: directly via m.krId, or indirectly via m.betId → bet.krId
-          const getMsKrId = m => m.krId || (m.betId ? (projects.find(b => b.id === m.betId)?.krId || null) : null);
-          const linkedKrIds = [...new Set(milestones.map(m => getMsKrId(m)).filter(Boolean))];
-          const krsWithMs = okrKeyResults.filter(kr => linkedKrIds.includes(kr.id));
-          krsWithMs.forEach(kr => {
-            const kMs = milestones.filter(m => getMsKrId(m) === kr.id);
-            rows += '<div class="mpp-subgroup">📊 '+esc(kr.title||kr.name||'KR')+'</div>';
-            rows += kMs.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
+        if (bets.length || milestones.length) {
+          bets.forEach(bet => {
+            rows += _mppCheckRow(containerId, bet, selected, false);
+            const betMs = milestones.filter(m => m.betId === bet.id);
+            if (betMs.length) rows += betMs.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
           });
-          // Unlinked milestones (no resolvable KR)
-          const unlinked = milestones.filter(m => { const k = getMsKrId(m); return !k || !okrKeyResults.find(kr => kr.id === k); });
-          if (unlinked.length) {
+          // Standalone milestones with no parent bet in the list
+          const standalone = milestones.filter(m => !m.betId || !bets.find(b => b.id === m.betId));
+          if (standalone.length) {
             rows += '<div class="mpp-subgroup">🏁 Milestones</div>';
-            rows += unlinked.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
+            rows += standalone.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
           }
         }
 
