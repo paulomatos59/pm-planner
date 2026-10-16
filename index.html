@@ -1614,7 +1614,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.44</div>
+      <div class="sidebar-version">v1.9.45</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1627,10 +1627,11 @@
       <div class="modal-header">
         <div style="display:flex;align-items:center;gap:14px;flex:1;min-width:0">
           <h2 class="modal-title" id="modalTitle">New Task</h2>
-          <div class="task-type-toggle" style="margin:0;flex-shrink:0">
-            <button class="task-type-btn active" id="typeBtnTask" onclick="setTaskType('task')">📋 Work Task</button>
-            <button class="task-type-btn" id="typeBtnTimeoff" onclick="setTaskType('timeoff')">🌴 Time Off / Event</button>
-          </div>
+          <select id="taskTypeSelect" class="filter-select" style="font-size:13px;font-weight:600;height:34px;min-width:160px;flex-shrink:0" onchange="setTaskType(this.value)">
+            <option value="task">📋 Work Task</option>
+            <option value="timeoff">🌴 Time Off</option>
+            <option value="corporate">🏢 Corporate Event</option>
+          </select>
         </div>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <span class="draft-badge" id="taskDraftBadge"></span>
@@ -3604,7 +3605,7 @@
     function updateHeader() {
       document.getElementById('headerDate').textContent =
         new Date().toLocaleDateString('en-US', { weekday:'long', year:'numeric', month:'long', day:'numeric' });
-      const overdue   = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).length;
+      const overdue   = tasks.filter(t => isOverdue(t) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId).length;
       const todayOpen = tasks.filter(t => (t.dueDate||'').slice(0,10) === todayStr() && t.status !== 'Done').length;
       const doneTdy   = tasks.filter(t => t.status === 'Done' && (t.dueDate||'').slice(0,10) === todayStr()).length;
       document.getElementById('headerStats').innerHTML =
@@ -3747,7 +3748,7 @@ const renderers = {
       const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
 
       const open          = tasks.filter(t => t.status !== 'Done');
-      const overdueList   = open.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId);
+      const overdueList   = open.filter(t => isOverdue(t) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
       const todayList     = open.filter(t => isTaskActiveOn(t, today));
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
@@ -3757,10 +3758,10 @@ const renderers = {
       // Planned (all, incl. done) & done counts for today and this week
       // Use .slice(0,10) to guard against dates stored with time components or whitespace
       const _isRecurDoneToday = t => !!(t.recurrence?.freq && t.completedOccurrences?.[today]);
-      const todayDone     = tasks.filter(t => t.taskType !== 'timeoff' && (t.status === 'Done' && (t.dueDate||'').slice(0,10) === today || _isRecurDoneToday(t)));
-      const todayPlanned  = tasks.filter(t => t.taskType !== 'timeoff' && (isTaskActiveOn(t, today) || t.status === 'Done' && (t.dueDate||'').slice(0,10) === today));
-      const weekDoneCount = tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
-      const weekPlanned   = tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
+      const todayDone     = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && (t.status === 'Done' && (t.dueDate||'').slice(0,10) === today || _isRecurDoneToday(t)));
+      const todayPlanned  = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && (isTaskActiveOn(t, today) || t.status === 'Done' && (t.dueDate||'').slice(0,10) === today));
+      const weekDoneCount = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
+      const weekPlanned   = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const focusNote     = localStorage.getItem('dp_focus') || '';
       const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal' && p.type !== 'okr');
 
@@ -3780,7 +3781,7 @@ const renderers = {
 
       // Top tasks for today: overdue first, then open today's, then done today's
       const todayDoneList = tasks.filter(t =>
-        t.taskType !== 'timeoff' && !t.parentId && (
+        !['timeoff','corporate'].includes(t.taskType) && !t.parentId && (
           (t.status === 'Done' && (t.dueDate||'').slice(0,10) === today) ||
           _isRecurDoneToday(t)
         )
@@ -3796,7 +3797,7 @@ const renderers = {
 
       // Upcoming (next 7 days, not today, not overdue) — tasks + comms
       const upcomingTasks = open
-        .filter(t => t.taskType !== 'timeoff' && t.dueDate && t.dueDate > today && t.dueDate <= sunStr)
+        .filter(t => !['timeoff','corporate'].includes(t.taskType) && t.dueDate && t.dueDate > today && t.dueDate <= sunStr)
         .map(t => ({ ...t, _kind: 'task' }));
 
       // Upcoming comms: one-off comms + recurring comm occurrences within the week
@@ -3858,7 +3859,7 @@ const renderers = {
 
       // Upcoming Events card: time-off entries
       const _timeoffEvents = tasks
-        .filter(t => t.taskType === 'timeoff' && (t.startDate || t.dueDate) >= today)
+        .filter(t => ['timeoff','corporate'].includes(t.taskType) && (t.startDate || t.dueDate) >= today)
         .map(t => ({ _type: 'timeoff', _date: t.startDate || t.dueDate, _t: t }))
         .sort((a,b) => a._date.localeCompare(b._date));
 
@@ -4005,7 +4006,7 @@ const renderers = {
             <div class="ss-label" style="margin-top:3px">This Week</div>
           </div>
           <div class="summary-stat s-success">
-            <div class="ss-value">${open.filter(t => t.taskType !== 'timeoff').length}</div>
+            <div class="ss-value">${open.filter(t => !['timeoff','corporate'].includes(t.taskType)).length}</div>
             <div class="ss-label">Open Tasks</div>
           </div>
           <div class="summary-stat ${overdueFus.length > 0 ? 's-warning' : 's-neutral'}" onclick="showView('followups')">
@@ -4183,9 +4184,9 @@ const renderers = {
                   }
                   return s + (c.duration ? parseFloat(c.duration)||0 : 0);
                 }, 0) : 0;
-                const taskTotalH = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
+                const taskTotalH = isWorkDay ? tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
                 const totalH = taskTotalH + commH;
-                const doneH  = isWorkDay ? tasks.filter(t => t.taskType !== 'timeoff' && t.status === 'Done' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
+                const doneH  = isWorkDay ? tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && t.status === 'Done' && t.dueDate === d.str && t.estimatedHours).reduce((s,t) => s+(t.estimatedHours||0),0) : 0;
                 const remH   = totalH - doneH;
                 const h      = cap.hoursPerDay;
                 const safe   = h * (1 - cap.bufferPct / 100);
@@ -4485,7 +4486,7 @@ const renderers = {
 
       // ── Task/timeoff filtering ──
       const workTasks = tasks.filter(t => {
-        if (t.taskType === 'timeoff' || (t.status === 'Done' && !t.dueDate)) return false;
+        if (['timeoff','corporate'].includes(t.taskType) || (t.status === 'Done' && !t.dueDate)) return false;
         // Recurring tasks: include if the recurrence is still active and started before window end
         if (t.recurrence && t.recurrence.freq && t.dueDate && t.dueDate <= winE) {
           return !t.recurrence.endDate || t.recurrence.endDate >= winS;
@@ -4494,7 +4495,7 @@ const renderers = {
         return from && t.dueDate && t.dueDate >= winS && from <= winE;
       });
       const timeoffs = tasks.filter(t => {
-        if (t.taskType !== 'timeoff') return false;
+        if (!['timeoff','corporate'].includes(t.taskType)) return false;
         const from = t.startDate || t.dueDate;
         return from && t.dueDate && t.dueDate >= winS && from <= winE;
       });
@@ -4950,7 +4951,7 @@ const renderers = {
                     }).join('')}
                   </div>
                   ${sectionProjects.map(p => {
-                    const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && t.taskType !== 'timeoff');
+                    const ptasks = tasks.filter(t => (t.projectId === p.id || (t.projectIds && t.projectIds.includes(p.id))) && !['timeoff','corporate'].includes(t.taskType));
                     return `<div class="kb2-row" style="grid-template-columns:${tpl}">
                       <div class="kb2-row-label">
                         <div class="kb2-row-dot" style="background:${esc(p.color||'#2563eb')}"></div>
@@ -5095,7 +5096,7 @@ const renderers = {
       }
 
       // ── Section 3: Activities ──
-      const open = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId);
+      const open = tasks.filter(t => t.status !== 'Done' && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
       const _actOrder = JSON.parse(localStorage.getItem('dp_priorities_act_order') || '[]');
       const sortedActivities = [...open].sort((a, b) => {
         const ai = _actOrder.indexOf(a.id), bi = _actOrder.indexOf(b.id);
@@ -5166,11 +5167,11 @@ const renderers = {
       const dateLabel = dObj.toLocaleDateString('en-US',{weekday:'long',month:'long',day:'numeric'});
 
       const overdueTasks  = isRealToday
-        ? tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b))
+        ? tasks.filter(t => isOverdue(t) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId).sort((a,b) => priorityOrder(a) - priorityOrder(b))
         : [];
-      const allTodayTasks = tasks.filter(t => isTaskActiveOn(t, today) && t.taskType !== 'timeoff' && !t.parentId);
+      const allTodayTasks = tasks.filter(t => isTaskActiveOn(t, today) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
       // Recurring-done-today: occurrence marked done, so also include them in "today done"
-      const recurDoneToday = tasks.filter(t => t.recurrence && t.recurrence.freq && !!(t.completedOccurrences?.[today]) && t.taskType !== 'timeoff' && !t.parentId && !allTodayTasks.includes(t));
+      const recurDoneToday = tasks.filter(t => t.recurrence && t.recurrence.freq && !!(t.completedOccurrences?.[today]) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId && !allTodayTasks.includes(t));
       const isEffectiveDone = t => t.recurrence ? !!(t.completedOccurrences?.[today]) : t.status === 'Done';
       const todayOpen = allTodayTasks.filter(t => !isEffectiveDone(t)).sort((a,b) => priorityOrder(a) - priorityOrder(b));
       const todayDone = [...allTodayTasks.filter(isEffectiveDone), ...recurDoneToday].sort((a,b) => priorityOrder(a) - priorityOrder(b));
@@ -5370,14 +5371,14 @@ const renderers = {
             const inMonth   = d.getMonth() === month;
             const isToday   = ds === todStr;
             // Work tasks: due on this day
-            const dayTasks  = tasks.filter(t => t.taskType !== 'timeoff' && (t.dueDate === ds || isRecurDueToday(t, ds))).sort((a,b) => priorityOrder(a) - priorityOrder(b));
+            const dayTasks  = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && (t.dueDate === ds || isRecurDueToday(t, ds))).sort((a,b) => priorityOrder(a) - priorityOrder(b));
             const dayCommsM = comms.filter(c => c.date === ds || isRecurCommDueToday(c, ds));
             const totalItems = dayTasks.length + dayCommsM.length;
             const visible   = dayTasks.slice(0, 2);
             const extra     = totalItems - visible.length - Math.min(dayCommsM.length, 1);
             // Time-off events: span includes this day (startDate <= ds <= dueDate)
             const timeoffs  = tasks.filter(t => {
-              if (t.taskType !== 'timeoff') return false;
+              if (!['timeoff','corporate'].includes(t.taskType)) return false;
               const from = t.startDate || t.dueDate;
               const to   = t.dueDate   || t.startDate;
               return from && to && ds >= from && ds <= to;
@@ -5460,12 +5461,13 @@ const renderers = {
       const filtered = tasks.filter(t => {
         if (t.parentId) return false;
         const tt = fs.taskType || 'task';
-        if (tt === 'task'    && t.taskType === 'timeoff') return false;
-        if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
+        if (tt === 'task'      && ['timeoff','corporate'].includes(t.taskType)) return false;
+        if (tt === 'timeoff'   && t.taskType !== 'timeoff') return false;
+        if (tt === 'corporate' && t.taskType !== 'corporate') return false;
         if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
                            !stripHtml(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
-        if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
-        if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
+        if (fs.category && !['timeoff','corporate'].includes(t.taskType) && t.category !== fs.category) return false;
+        if (fs.priority && !['timeoff','corporate'].includes(t.taskType) && t.priority !== fs.priority) return false;
         if (fs.statuses?.size && !fs.statuses.has(t.status)) return false;
         if (!_taskInRange(t, fromDate, toDate)) return false;
         if (taskHideDone && t.status === 'Done') return false;
@@ -5477,12 +5479,12 @@ const renderers = {
       tasks.filter(t => {
         if (t.parentId) return false;
         const tt = fs.taskType || 'task';
-        if (tt === 'task'    && t.taskType === 'timeoff') return false;
-        if (tt === 'timeoff' && t.taskType !== 'timeoff') return false;
+        if (tt === 'task'    && ['timeoff','corporate'].includes(t.taskType)) return false;
+        if (tt === 'timeoff' && !['timeoff','corporate'].includes(t.taskType)) return false;
         if (fs.search   && !t.title.toLowerCase().includes(fs.search.toLowerCase()) &&
                            !stripHtml(t.description||'').toLowerCase().includes(fs.search.toLowerCase())) return false;
-        if (fs.category && t.taskType !== 'timeoff' && t.category !== fs.category) return false;
-        if (fs.priority && t.taskType !== 'timeoff' && t.priority !== fs.priority) return false;
+        if (fs.category && !['timeoff','corporate'].includes(t.taskType) && t.category !== fs.category) return false;
+        if (fs.priority && !['timeoff','corporate'].includes(t.taskType) && t.priority !== fs.priority) return false;
         if (!_taskInRange(t, fromDate, toDate)) return false;
         return true;
       }).forEach(t => { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1; });
@@ -5530,9 +5532,10 @@ const renderers = {
         <div class="filter-bar">
           <input type="text" class="filter-input" id="filterSearch" placeholder="Search…" value="${esc(fs.search)}" oninput="applyFilters()">
           <select class="filter-select" id="filterTaskType" onchange="applyFilters()" style="min-width:150px">
-            <option value="task"    ${(fs.taskType||'task')==='task'    ?'selected':''}>📋 Work Tasks</option>
-            <option value="timeoff" ${(fs.taskType||'task')==='timeoff' ?'selected':''}>🌴 Time Off / Events</option>
-            <option value="all"     ${(fs.taskType||'task')==='all'     ?'selected':''}>All Types</option>
+            <option value="task"      ${(fs.taskType||'task')==='task'      ?'selected':''}>📋 Work Tasks</option>
+            <option value="timeoff"   ${(fs.taskType||'task')==='timeoff'   ?'selected':''}>🌴 Time Off</option>
+            <option value="corporate" ${(fs.taskType||'task')==='corporate' ?'selected':''}>🏢 Corporate Events</option>
+            <option value="all"       ${(fs.taskType||'task')==='all'       ?'selected':''}>All Types</option>
           </select>
           <select class="filter-select" id="filterCategory" onchange="applyFilters()">
             <option value="">All Categories</option>
@@ -5705,7 +5708,7 @@ const renderers = {
       const today = todayStr();
 
       // All eligible tasks
-      const allItems = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff' && !t.parentId);
+      const allItems = tasks.filter(t => t.status !== 'Done' && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
 
       // Reconcile backlogOrder: drop deleted IDs, append new tasks
       const validIds = new Set(allItems.map(t => t.id));
@@ -6010,7 +6013,7 @@ const renderers = {
        OVERDUE VIEW
     ============================== */
     function renderOverdue() {
-      const list = tasks.filter(t => isOverdue(t) && t.taskType !== 'timeoff' && !t.parentId).sort((a,b) => {
+      const list = tasks.filter(t => isOverdue(t) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId).sort((a,b) => {
         if (a.dueDate < b.dueDate) return -1;
         if (a.dueDate > b.dueDate) return 1;
         return priorityOrder(a) - priorityOrder(b);
@@ -7349,7 +7352,7 @@ const renderers = {
       }).sort((a,b) => (a.startDate||a.dueDate||'').localeCompare(b.startDate||b.dueDate||''));
 
       const taskRows = visTasks.map(t => {
-        const isToff = t.taskType === 'timeoff';
+        const isToff = ['timeoff','corporate'].includes(t.taskType);
         const from  = t.startDate || t.dueDate;
         const x1    = clamp(xOf(from), 0, totalW-2);
         const xEnd  = xOf(t.dueDate) + (projTimelineScale==='days'?colPx:0);
@@ -9043,7 +9046,7 @@ const renderers = {
       document.getElementById('taskDueDate').style.borderColor   = '';
       document.getElementById('taskDateError').style.display     = 'none';
       setTaskType(t?.taskType || 'task');
-      setRecurrenceToForm(t?.taskType === 'timeoff' ? null : (t?.recurrence || null));
+      setRecurrenceToForm(['timeoff','corporate'].includes(t?.taskType) ? null : (t?.recurrence || null));
 
       // Populate assign-to dropdown
       mppInit('taskProjPicker', t?.projectIds || (t?.projectId ? [t.projectId] : (preProjectId ? [preProjectId] : [])));
@@ -9051,7 +9054,7 @@ const renderers = {
       // ── Subtasks section ──
       const subsSection = document.getElementById('subtasksSection');
       const parentRow   = document.getElementById('parentTaskRow');
-      if (!isNew && t && t.taskType !== 'timeoff') {
+      if (!isNew && t && !['timeoff','corporate'].includes(t.taskType)) {
         subsSection.style.display = '';
         hideSubtaskInput();
         renderModalSubtasks(t.id);
@@ -9070,7 +9073,7 @@ const renderers = {
 
       // ── Occurrences section ──
       const occSec = document.getElementById('taskOccurrencesSection');
-      if (!isNew && t && t.recurrence && t.recurrence.freq && t.taskType !== 'timeoff') {
+      if (!isNew && t && t.recurrence && t.recurrence.freq && !['timeoff','corporate'].includes(t.taskType)) {
         occSec.style.display = '';
         _occHideDone.task = false;
         _occTab.task = 'upcoming';
@@ -9119,16 +9122,20 @@ const renderers = {
     }
 
     function setTaskType(type) {
-      const isTimeoff = type === 'timeoff';
-      document.getElementById('typeBtnTask').classList.toggle('active', !isTimeoff);
-      document.getElementById('typeBtnTimeoff').classList.toggle('active', isTimeoff);
-      document.getElementById('typeBtnTimeoff').classList.toggle('timeoff', isTimeoff);
-      document.getElementById('taskPriorityGroup').style.display = isTimeoff ? 'none' : '';
-      document.getElementById('workOnlyFields').style.display    = isTimeoff ? 'none' : '';
-      document.getElementById('titleLabel').textContent       = isTimeoff ? 'Event Name *' : 'Task Title *';
-      document.getElementById('startDateLabel').textContent   = isTimeoff ? 'From' : 'Start Date';
-      document.getElementById('dueDateLabel').textContent     = isTimeoff ? 'To' : 'Due Date';
-      document.querySelector('#taskTitle').placeholder        = isTimeoff ? 'e.g. Summer Vacation, Public Holiday…' : 'What needs to be done?';
+      const isTimeoff  = type === 'timeoff';
+      const isCorp     = type === 'corporate';
+      const isEvent    = isTimeoff || isCorp;
+      const sel = document.getElementById('taskTypeSelect');
+      if (sel && sel.value !== type) sel.value = type;
+      document.getElementById('taskPriorityGroup').style.display = isEvent ? 'none' : '';
+      document.getElementById('workOnlyFields').style.display    = isEvent ? 'none' : '';
+      document.getElementById('titleLabel').textContent       = isCorp ? 'Event Name *' : isTimeoff ? 'Event Name *' : 'Task Title *';
+      document.getElementById('startDateLabel').textContent   = isEvent ? 'From' : 'Start Date';
+      document.getElementById('dueDateLabel').textContent     = isEvent ? 'To'   : 'Due Date';
+      document.querySelector('#taskTitle').placeholder        = isCorp
+        ? 'e.g. All-Hands, Team Offsite, Company Meeting…'
+        : isTimeoff ? 'e.g. Summer Vacation, Public Holiday…'
+        : 'What needs to be done?';
     }
 
     function validateTaskDates() {
@@ -9157,7 +9164,7 @@ const renderers = {
       const existing = tasks.find(x => x.id === id);
       const task = {
         id, title,
-        taskType:       document.getElementById('typeBtnTimeoff').classList.contains('active') ? 'timeoff' : 'task',
+        taskType:       document.getElementById('taskTypeSelect').value || 'task',
         description:    document.getElementById('taskDesc').innerHTML.trim(),
         attachments:    rteGetAttachments(),
         category:       document.getElementById('taskCategory').value,
@@ -9668,7 +9675,7 @@ const renderers = {
       const current = selectedTaskId !== null ? selectedTaskId : sel.value;
       let html = `<option value="">— None —</option>`;
       if (projIds.length) {
-        const projectTasks = tasks.filter(t => projIds.includes(t.projectId) && t.taskType !== 'timeoff');
+        const projectTasks = tasks.filter(t => projIds.includes(t.projectId) && !['timeoff','corporate'].includes(t.taskType));
         if (projectTasks.length) {
           projectTasks.forEach(t => {
             const proj = projects.find(p => p.id === t.projectId);
@@ -9679,7 +9686,7 @@ const renderers = {
         }
       } else {
         // No project selected — show all non-done tasks
-        const allTasks = tasks.filter(t => t.status !== 'Done' && t.taskType !== 'timeoff');
+        const allTasks = tasks.filter(t => t.status !== 'Done' && !['timeoff','corporate'].includes(t.taskType));
         if (allTasks.length) {
           allTasks.forEach(t => {
             const proj = projects.find(p => p.id === t.projectId);
@@ -10388,7 +10395,7 @@ const renderers = {
       // Estimate: task estimated hours + Planned comm hours for this day
       // (includes recurring tasks/comms whose occurrence falls on this day, not just their anchor date)
       const taskEst = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.estimatedHours && (t.dueDate === dayStr || isRecurDueToday(t, dayStr)))
+        .filter(t => !['timeoff','corporate'].includes(t.taskType) && t.estimatedHours && (t.dueDate === dayStr || isRecurDueToday(t, dayStr)))
         .reduce((s, t) => s + (t.estimatedHours || 0), 0);
       const commEst = comms
         .filter(c => c.status !== 'Done' && c.duration && (c.date === dayStr || isRecurCommDueToday(c, dayStr)))
@@ -10397,7 +10404,7 @@ const renderers = {
 
       // Effective: workLog entries + Done comm hours for this day
       const taskLog = tasks
-        .filter(t => t.taskType !== 'timeoff' && t.workLog?.length)
+        .filter(t => !['timeoff','corporate'].includes(t.taskType) && t.workLog?.length)
         .reduce((s, t) => s + t.workLog
           .filter(e => e.date === dayStr)
           .reduce((a, e) => a + (e.hours || 0), 0), 0);
