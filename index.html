@@ -1614,7 +1614,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.45</div>
+      <div class="sidebar-version">v1.9.46</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -9239,6 +9239,13 @@ const renderers = {
         // re-open comm modal is already showing; just refresh task list
         setTimeout(commTasksRender, 0);
         return;
+      }
+      // If the saved task's type no longer matches the current All Tasks filter,
+      // widen the filter to 'all' so the task stays visible after the modal closes.
+      if (currentView === 'all' && filterState.taskType && filterState.taskType !== 'all') {
+        const matchesFilter = (filterState.taskType === 'task' && !['timeoff','corporate'].includes(task.taskType)) ||
+                              filterState.taskType === task.taskType;
+        if (!matchesFilter) filterState.taskType = 'all';
       }
       persistTasks();
       _notifyMainWindow();
