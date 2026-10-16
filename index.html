@@ -1617,7 +1617,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.51</div>
+      <div class="sidebar-version">v1.9.52</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2161,7 +2161,54 @@
         </div>
         <div class="form-group hidden" id="projectObjectiveGroup">
           <label class="form-label">Objective</label>
-          <textarea class="form-textarea" id="projectObjective" placeholder="What are we trying to achieve?…" rows="3"></textarea>
+          <div class="rte-wrapper">
+            <div class="rte-toolbar">
+              <button type="button" class="rte-btn" id="projObjRteBoldBtn" title="Bold" onmousedown="event.preventDefault();projObjRteExec('bold');projObjRteUpdateToolbar()"><b style="font-size:14px">B</b></button>
+              <div class="rte-divider"></div>
+              <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();projObjRteExec('insertUnorderedList')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projObjRteExec('insertOrderedList')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <div class="rte-divider"></div>
+              <div class="rte-color-wrap">
+                <button type="button" class="rte-btn" id="projObjRteColorBtn" title="Text color" onmousedown="event.preventDefault();projObjRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
+                  <span style="font-weight:700;font-size:13px;line-height:1">A</span>
+                  <span id="projObjRteColorBar" style="display:block;width:14px;height:3px;border-radius:2px;background:#e53e3e"></span>
+                </button>
+                <div class="rte-color-popup hidden" id="projObjRteColorPicker">
+                  <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();projObjRteSetColor('#111827')"></div>
+                  <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();projObjRteSetColor('#e53e3e')"></div>
+                  <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();projObjRteSetColor('#dd6b20')"></div>
+                  <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();projObjRteSetColor('#d69e2e')"></div>
+                  <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();projObjRteSetColor('#38a169')"></div>
+                  <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();projObjRteSetColor('#3182ce')"></div>
+                  <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();projObjRteSetColor('#805ad5')"></div>
+                  <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();projObjRteSetColor('#d53f8c')"></div>
+                  <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();projObjRteSetColor('#718096')"></div>
+                  <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();projObjRteSetColor('#a0aec0')"></div>
+                  <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();projObjRteSetColor('#ffffff')"></div>
+                  <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();projObjRteRemoveColor()">✕</div>
+                </div>
+              </div>
+              <div class="rte-divider"></div>
+              <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();projObjRteAddLink()">🔗</button>
+              <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'projectObjective')">😊</button>
+              <div class="rte-divider"></div>
+              <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('projectObjective', this.value, this)">
+                <option value="">Size</option>
+                <option value="h1">H1</option>
+                <option value="h2">H2</option>
+                <option value="h3">H3</option>
+                <option value="p">Normal</option>
+              </select>
+              <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" onmousedown="event.preventDefault();rteClearFormat('projectObjective')">T</button>
+            </div>
+            <div class="rte-editor" id="projectObjective" contenteditable="true" data-placeholder="What are we trying to achieve?…"
+                 onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
+                 onkeyup="projObjRteUpdateToolbar()" onmouseup="projObjRteUpdateToolbar()" onfocus="projObjRteUpdateToolbar()" onclick="projObjRteCloseColorPicker()"></div>
+          </div>
         </div>
         <div class="form-group hidden" id="projectKrGroup">
           <label class="form-label">Linked Key Result</label>
@@ -2177,7 +2224,54 @@
         </div>
         <div class="form-group">
           <label class="form-label">Description</label>
-          <textarea class="form-textarea" id="projectDesc" placeholder="Goals, scope, context…"></textarea>
+          <div class="rte-wrapper">
+            <div class="rte-toolbar">
+              <button type="button" class="rte-btn" id="projDescRteBoldBtn" title="Bold" onmousedown="event.preventDefault();projDescRteExec('bold');projDescRteUpdateToolbar()"><b style="font-size:14px">B</b></button>
+              <div class="rte-divider"></div>
+              <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();projDescRteExec('insertUnorderedList')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projDescRteExec('insertOrderedList')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <div class="rte-divider"></div>
+              <div class="rte-color-wrap">
+                <button type="button" class="rte-btn" id="projDescRteColorBtn" title="Text color" onmousedown="event.preventDefault();projDescRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
+                  <span style="font-weight:700;font-size:13px;line-height:1">A</span>
+                  <span id="projDescRteColorBar" style="display:block;width:14px;height:3px;border-radius:2px;background:#e53e3e"></span>
+                </button>
+                <div class="rte-color-popup hidden" id="projDescRteColorPicker">
+                  <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();projDescRteSetColor('#111827')"></div>
+                  <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();projDescRteSetColor('#e53e3e')"></div>
+                  <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();projDescRteSetColor('#dd6b20')"></div>
+                  <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();projDescRteSetColor('#d69e2e')"></div>
+                  <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();projDescRteSetColor('#38a169')"></div>
+                  <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();projDescRteSetColor('#3182ce')"></div>
+                  <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();projDescRteSetColor('#805ad5')"></div>
+                  <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();projDescRteSetColor('#d53f8c')"></div>
+                  <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();projDescRteSetColor('#718096')"></div>
+                  <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();projDescRteSetColor('#a0aec0')"></div>
+                  <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();projDescRteSetColor('#ffffff')"></div>
+                  <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();projDescRteRemoveColor()">✕</div>
+                </div>
+              </div>
+              <div class="rte-divider"></div>
+              <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();projDescRteAddLink()">🔗</button>
+              <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'projectDesc')">😊</button>
+              <div class="rte-divider"></div>
+              <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('projectDesc', this.value, this)">
+                <option value="">Size</option>
+                <option value="h1">H1</option>
+                <option value="h2">H2</option>
+                <option value="h3">H3</option>
+                <option value="p">Normal</option>
+              </select>
+              <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" onmousedown="event.preventDefault();rteClearFormat('projectDesc')">T</button>
+            </div>
+            <div class="rte-editor" id="projectDesc" contenteditable="true" data-placeholder="Goals, scope, context…"
+                 onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
+                 onkeyup="projDescRteUpdateToolbar()" onmouseup="projDescRteUpdateToolbar()" onfocus="projDescRteUpdateToolbar()" onclick="projDescRteCloseColorPicker()"></div>
+          </div>
         </div>
         <div class="form-row">
           <div class="form-group">
@@ -7221,6 +7315,29 @@ const renderers = {
               <option value="p">Normal</option>
             </select>
             <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" style="height:24px" onmousedown="event.preventDefault();rteClearFormat('projSummaryEditor')">T</button>
+            <div class="rte-divider" style="margin:0 3px"></div>
+            <div class="rte-color-wrap">
+              <button type="button" class="rte-btn" id="projSummRteColorBtn" title="Text color" onmousedown="event.preventDefault();projSummRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:24px">
+                <span style="font-weight:700;font-size:12px;line-height:1">A</span>
+                <span id="projSummRteColorBar" style="display:block;width:12px;height:2px;border-radius:2px;background:#e53e3e"></span>
+              </button>
+              <div class="rte-color-popup hidden" id="projSummRteColorPicker">
+                <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();projSummRteSetColor('#111827')"></div>
+                <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();projSummRteSetColor('#e53e3e')"></div>
+                <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();projSummRteSetColor('#dd6b20')"></div>
+                <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();projSummRteSetColor('#d69e2e')"></div>
+                <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();projSummRteSetColor('#38a169')"></div>
+                <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();projSummRteSetColor('#3182ce')"></div>
+                <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();projSummRteSetColor('#805ad5')"></div>
+                <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();projSummRteSetColor('#d53f8c')"></div>
+                <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();projSummRteSetColor('#718096')"></div>
+                <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();projSummRteSetColor('#a0aec0')"></div>
+                <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();projSummRteSetColor('#ffffff')"></div>
+                <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();projSummRteRemoveColor()">✕</div>
+              </div>
+            </div>
+            <button type="button" class="rte-btn" style="height:24px" title="Add link" onmousedown="event.preventDefault();projSummRteAddLink()">🔗</button>
+            <button type="button" class="rte-btn rte-emoji-toggle" style="height:24px" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'projSummaryEditor')">😊</button>
             <div style="flex:1"></div>
             <span class="draft-badge" id="projSummaryBadge" style="transition:opacity .4s;opacity:0"></span>
           </div>
@@ -8198,6 +8315,73 @@ const renderers = {
     function noteRteAddLink() {
       const url = prompt('Enter URL:');
       if (url) { document.getElementById('noteContent').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
+    }
+
+    /* ── Project Description RTE helpers ── */
+    function projDescRteExec(cmd, val) { document.getElementById('projectDesc').focus(); document.execCommand(cmd, false, val || null); }
+    function projDescRteUpdateToolbar() {
+      const bold = document.queryCommandState('bold');
+      document.getElementById('projDescRteBoldBtn')?.classList.toggle('active', bold);
+    }
+    function projDescRteToggleColorPicker() { document.getElementById('projDescRteColorPicker').classList.toggle('hidden'); }
+    function projDescRteCloseColorPicker() { document.getElementById('projDescRteColorPicker')?.classList.add('hidden'); }
+    function projDescRteSetColor(color) {
+      document.getElementById('projectDesc').focus();
+      document.execCommand('foreColor', false, color);
+      document.getElementById('projDescRteColorBar').style.background = color;
+      projDescRteCloseColorPicker();
+    }
+    function projDescRteRemoveColor() {
+      document.getElementById('projectDesc').focus();
+      document.execCommand('removeFormat', false, null);
+      projDescRteCloseColorPicker();
+    }
+    function projDescRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('projectDesc').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
+    }
+
+    /* ── Project Objective RTE helpers ── */
+    function projObjRteExec(cmd, val) { document.getElementById('projectObjective').focus(); document.execCommand(cmd, false, val || null); }
+    function projObjRteUpdateToolbar() {
+      const bold = document.queryCommandState('bold');
+      document.getElementById('projObjRteBoldBtn')?.classList.toggle('active', bold);
+    }
+    function projObjRteToggleColorPicker() { document.getElementById('projObjRteColorPicker').classList.toggle('hidden'); }
+    function projObjRteCloseColorPicker() { document.getElementById('projObjRteColorPicker')?.classList.add('hidden'); }
+    function projObjRteSetColor(color) {
+      document.getElementById('projectObjective').focus();
+      document.execCommand('foreColor', false, color);
+      document.getElementById('projObjRteColorBar').style.background = color;
+      projObjRteCloseColorPicker();
+    }
+    function projObjRteRemoveColor() {
+      document.getElementById('projectObjective').focus();
+      document.execCommand('removeFormat', false, null);
+      projObjRteCloseColorPicker();
+    }
+    function projObjRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('projectObjective').focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
+    }
+
+    /* ── Project Summary RTE helpers ── */
+    function projSummRteToggleColorPicker() { document.getElementById('projSummRteColorPicker').classList.toggle('hidden'); }
+    function projSummRteCloseColorPicker() { document.getElementById('projSummRteColorPicker')?.classList.add('hidden'); }
+    function projSummRteSetColor(color) {
+      document.getElementById('projSummaryEditor')?.focus();
+      document.execCommand('foreColor', false, color);
+      document.getElementById('projSummRteColorBar').style.background = color;
+      projSummRteCloseColorPicker();
+    }
+    function projSummRteRemoveColor() {
+      document.getElementById('projSummaryEditor')?.focus();
+      document.execCommand('removeFormat', false, null);
+      projSummRteCloseColorPicker();
+    }
+    function projSummRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('projSummaryEditor')?.focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
     }
 
     /* ── Comm linked tasks ── */
@@ -9492,11 +9676,11 @@ const renderers = {
       document.getElementById('projectId').value     = p?.id          || '';
       document.getElementById('projectType').value   = itemType;
       document.getElementById('projectName').value   = p?.name        || '';
-      document.getElementById('projectDesc').value   = p?.description || '';
+      document.getElementById('projectDesc').innerHTML   = p?.description || '';
       // Objective field — OKRs only
       const objGroup = document.getElementById('projectObjectiveGroup');
       if (objGroup) objGroup.classList.toggle('hidden', itemType !== 'okr');
-      document.getElementById('projectObjective').value = p?.objective || '';
+      document.getElementById('projectObjective').innerHTML = p?.objective || '';
       // KR selector — OKRs (Bets) AND Initiatives/Milestones
       const krGroup = document.getElementById('projectKrGroup');
       if (krGroup) {
@@ -9608,8 +9792,8 @@ const renderers = {
       const proj = {
         id, name,
         type:        savedType,
-        description: document.getElementById('projectDesc').value.trim(),
-        objective:   savedType === 'okr' ? (document.getElementById('projectObjective').value.trim()) : (existing?.objective || undefined),
+        description: document.getElementById('projectDesc').innerHTML.trim(),
+        objective:   savedType === 'okr' ? (document.getElementById('projectObjective').innerHTML.trim()) : (existing?.objective || undefined),
         krId:        savedType !== 'personal' ? (document.getElementById('projectKrId').value || null) : (existing?.krId || undefined),
         betId:       (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectBetId').value || null) : (existing?.betId || undefined),
         subtype:     (savedType !== 'okr' && savedType !== 'personal') ? (document.getElementById('projectSubtype').value || 'initiative') : undefined,
