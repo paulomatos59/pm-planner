@@ -1622,7 +1622,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.57</div>
+      <div class="sidebar-version">v1.9.58</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -10063,22 +10063,26 @@ const renderers = {
       if (isOpen) {
         let rows = '';
 
-        // — Bets / Initiatives → Milestones hierarchy —
-        const bets = projects.filter(p => p.type !== 'personal' && p.subtype !== 'milestone' && p.status !== 'Archived');
-        const milestones = projects.filter(p => p.subtype === 'milestone' && p.status !== 'Archived');
-        if (bets.length || milestones.length) {
-          bets.forEach(bet => {
+        // — Bets / Initiatives → Milestones, grouped by status —
+        const bets = projects.filter(p => p.type !== 'personal' && p.subtype !== 'milestone');
+        const milestones = projects.filter(p => p.subtype === 'milestone');
+        const STATUS_ORDER = ['Active','On Hold','Completed','Cancelled'];
+        STATUS_ORDER.forEach(status => {
+          const statusBets = bets.filter(b => b.status === status);
+          // Standalone milestones in this status whose bet is NOT in any status group
+          const standaloneMsThisStatus = milestones.filter(m => m.status === status && (!m.betId || !bets.find(b => b.id === m.betId)));
+          if (!statusBets.length && !standaloneMsThisStatus.length) return;
+          rows += '<div class="mpp-group">'+status+'</div>';
+          statusBets.forEach(bet => {
             rows += _mppCheckRow(containerId, bet, selected, false);
             const betMs = milestones.filter(m => m.betId === bet.id);
             if (betMs.length) rows += betMs.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
           });
-          // Standalone milestones with no parent bet in the list
-          const standalone = milestones.filter(m => !m.betId || !bets.find(b => b.id === m.betId));
-          if (standalone.length) {
+          if (standaloneMsThisStatus.length) {
             rows += '<div class="mpp-subgroup">🏁 Milestones</div>';
-            rows += standalone.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
+            rows += standaloneMsThisStatus.map(p => _mppCheckRow(containerId, p, selected, true)).join('');
           }
-        }
+        });
 
         // — Personal —
         const persProjs = projects.filter(p => p.type === 'personal');
