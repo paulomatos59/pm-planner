@@ -199,7 +199,7 @@
     .backlog-col { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
     .backlog-col-hdr { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg); gap: 8px; }
     .backlog-col-title { font-size: 13px; font-weight: 700; color: var(--text); }
-    .backlog-col-body { padding: 8px; display: flex; flex-direction: column; gap: 0; }
+    .backlog-col-body { padding: 4px 0; display: flex; flex-direction: column; gap: 0; }
     .backlog-col-empty { padding: 28px 14px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .task-card {
       background: var(--surface); border: 1px solid var(--border);
@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.60</div>
+      <div class="sidebar-version">v1.9.61</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5901,6 +5901,10 @@ const renderers = {
 
       const list = [...allItems].sort((a, b) => backlogOrder.indexOf(a.id) - backlogOrder.indexOf(b.id));
 
+      // Global rank map (#1 … #N across all columns)
+      const rankMap = {};
+      list.forEach((t, i) => { rankMap[t.id] = i + 1; });
+
       const now = new Date(); now.setHours(0,0,0,0);
       const dow = now.getDay();
       const mon = new Date(now); mon.setDate(now.getDate() - (dow===0?6:dow-1));
@@ -5917,7 +5921,11 @@ const renderers = {
 
       const mkCol = (icon, label, items) => {
         const body = items.length
-          ? items.map(t => `<div class="bl-item" draggable="true" data-tid="${t.id}">${taskCardWithSubs(t)}</div>`).join('')
+          ? items.map(t =>
+              `<div class="bl-item" draggable="true" data-tid="${t.id}">
+                <div class="bl-rank" title="Drag to reorder">#${rankMap[t.id]}</div>
+                <div class="bl-card">${taskCardWithSubs(t)}</div>
+              </div>`).join('')
           : `<div class="backlog-col-empty">No tasks</div>`;
         return `<div class="backlog-col">
           <div class="backlog-col-hdr">
