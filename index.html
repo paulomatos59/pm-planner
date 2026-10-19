@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.59</div>
+      <div class="sidebar-version">v1.9.60</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5917,7 +5917,7 @@ const renderers = {
 
       const mkCol = (icon, label, items) => {
         const body = items.length
-          ? items.map(t => taskCardWithSubs(t)).join('')
+          ? items.map(t => `<div class="bl-item" draggable="true" data-tid="${t.id}">${taskCardWithSubs(t)}</div>`).join('')
           : `<div class="backlog-col-empty">No tasks</div>`;
         return `<div class="backlog-col">
           <div class="backlog-col-hdr">
@@ -5970,6 +5970,7 @@ const renderers = {
         el.addEventListener('dragover', function(e) {
           e.preventDefault();
           if (!_blDragSrc || this === _blDragSrc) return;
+          if (this.closest('.backlog-col') !== _blDragSrc.closest('.backlog-col')) return;
           document.querySelectorAll('.bl-item').forEach(x => x.classList.remove('drag-above','drag-below'));
           const rect = this.getBoundingClientRect();
           if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
@@ -5987,6 +5988,7 @@ const renderers = {
           e.stopPropagation();
           this.classList.remove('drag-above','drag-below');
           if (!_blDragSrc || this === _blDragSrc) return;
+          if (this.closest('.backlog-col') !== _blDragSrc.closest('.backlog-col')) return;
 
           const fromId = _blDragSrc.dataset.tid;
           const toId   = this.dataset.tid;
