@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.63</div>
+      <div class="sidebar-version">v1.9.64</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3861,6 +3861,10 @@ const renderers = {
       if (view === 'backlog')      _setupBacklogDnd();
       if (view === 'okrs-list')   _setupOkrListDnd();
       if (view === 'priorities')  _setupPrioritiesDnD();
+      if (view === 'today') {
+        const fi = document.getElementById('focusInput');
+        if (fi) fi.value = localStorage.getItem('dp_focus') || '';
+      }
       updateHeader();
     }
 
