@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.62</div>
+      <div class="sidebar-version">v1.9.63</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5393,7 +5393,7 @@ const renderers = {
           <div class="morning-sub">What is your #1 priority today?</div>
           <input class="focus-input" type="text" id="focusInput"
             placeholder="My main focus today is…" value="${esc(focusNote)}"
-            onchange="localStorage.setItem('dp_focus', this.value)">
+            oninput="localStorage.setItem('dp_focus', this.value)">
         </div>` : ''}
         ${dayCapacityBar(today, 'today')}`;
 
