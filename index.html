@@ -193,6 +193,14 @@
     }
     .bl-rank:active { cursor: grabbing; }
     .bl-card { flex: 1; min-width: 0; }
+    /* Backlog 3-column layout */
+    .backlog-cols { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 16px; align-items: start; margin-top: 4px; }
+    @media (max-width: 900px) { .backlog-cols { grid-template-columns: 1fr; } }
+    .backlog-col { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+    .backlog-col-hdr { display: flex; align-items: center; justify-content: space-between; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg); gap: 8px; }
+    .backlog-col-title { font-size: 13px; font-weight: 700; color: var(--text); }
+    .backlog-col-body { padding: 8px; display: flex; flex-direction: column; gap: 0; }
+    .backlog-col-empty { padding: 28px 14px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .task-card {
       background: var(--surface); border: 1px solid var(--border);
       border-radius: 9px; padding: 11px 14px;
@@ -1622,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.58</div>
+      <div class="sidebar-version">v1.9.59</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5885,40 +5893,40 @@ const renderers = {
       // All eligible tasks
       const allItems = tasks.filter(t => t.status !== 'Done' && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
 
-      // Reconcile backlogOrder: drop deleted IDs, append new tasks
+      // Reconcile backlogOrder
       const validIds = new Set(allItems.map(t => t.id));
       backlogOrder = backlogOrder.filter(id => validIds.has(id));
       allItems.forEach(t => { if (!backlogOrder.includes(t.id)) backlogOrder.push(t.id); });
       localStorage.setItem('dp_backlog_order', JSON.stringify(backlogOrder));
 
-      // Sort by backlogOrder
       const list = [...allItems].sort((a, b) => backlogOrder.indexOf(a.id) - backlogOrder.indexOf(b.id));
 
-      // Global rank map (#1 … #N)
-      const rankMap = {};
-      list.forEach((t, i) => { rankMap[t.id] = i + 1; });
-
-      // Group: Overdue / Today / This Week / Upcoming / No Date
-      const groups = [
-        { key: 'overdue',  label: '🚨 Overdue',   items: [] },
-        { key: 'today',    label: '📅 Today',      items: [] },
-        { key: 'week',     label: '📆 This Week',  items: [] },
-        { key: 'upcoming', label: '🗓 Upcoming',   items: [] },
-        { key: 'nodate',   label: '📥 No Date',    items: [] },
-      ];
       const now = new Date(); now.setHours(0,0,0,0);
       const dow = now.getDay();
       const mon = new Date(now); mon.setDate(now.getDate() - (dow===0?6:dow-1));
       const sun = new Date(mon); sun.setDate(mon.getDate() + 6);
       const sunStr = `${sun.getFullYear()}-${pad(sun.getMonth()+1)}-${pad(sun.getDate())}`;
 
+      // 3 columns: Today (overdue + today), This Week, After this week (upcoming + no date)
+      const colToday = [], colWeek = [], colLater = [];
       list.forEach(t => {
-        if (isOverdue(t))                         groups[0].items.push(t);
-        else if (isTaskActiveOn(t, today))        groups[1].items.push(t);
-        else if (t.dueDate && t.dueDate <= sunStr) groups[2].items.push(t);
-        else if (t.dueDate)                       groups[3].items.push(t);
-        else                                      groups[4].items.push(t);
+        if      (isOverdue(t) || isTaskActiveOn(t, today))  colToday.push(t);
+        else if (t.dueDate && t.dueDate <= sunStr)           colWeek.push(t);
+        else                                                 colLater.push(t);
       });
+
+      const mkCol = (icon, label, items) => {
+        const body = items.length
+          ? items.map(t => taskCardWithSubs(t)).join('')
+          : `<div class="backlog-col-empty">No tasks</div>`;
+        return `<div class="backlog-col">
+          <div class="backlog-col-hdr">
+            <span class="backlog-col-title">${icon} ${label}</span>
+            <span class="section-count">${items.length}</span>
+          </div>
+          <div class="backlog-col-body">${body}</div>
+        </div>`;
+      };
 
       let html = `
         <div class="view-header">
@@ -5929,22 +5937,15 @@ const renderers = {
           <button class="btn btn-primary btn-sm" onclick="openTaskModal()">＋ New Task</button>
         </div>`;
 
-      const nonEmpty = groups.filter(g => g.items.length);
-      if (!nonEmpty.length) {
+      if (!list.length) {
         return html + `<div class="empty-state"><div class="icon">🎉</div><h3>Backlog is empty!</h3><p>All tasks are done.</p></div>`;
       }
 
-      nonEmpty.forEach(g => {
-        html += `<div class="section-header"><span class="section-title">${g.label}</span><span class="section-count">${g.items.length}</span></div>
-                 <div class="bl-group task-list">` +
-          g.items.map(t =>
-            `<div class="bl-item" draggable="true" data-tid="${t.id}">
-               <div class="bl-rank" title="Drag to reorder">#${rankMap[t.id]}</div>
-               <div class="bl-card">${taskCardWithSubs(t)}</div>
-             </div>`
-          ).join('') +
-          `</div>`;
-      });
+      html += `<div class="backlog-cols">
+        ${mkCol('📅','Today', colToday)}
+        ${mkCol('📆','This Week', colWeek)}
+        ${mkCol('🗓','After this week', colLater)}
+      </div>`;
       return html;
     }
 
