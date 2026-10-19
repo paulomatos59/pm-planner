@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.64</div>
+      <div class="sidebar-version">v1.9.65</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5907,8 +5907,9 @@ const renderers = {
           const occs = getAllOccurrences({ ...t, dueDate: anchor }, 'dueDate', farStr);
           const nextDate = occs.find(d => d >= today && !(t.completedOccurrences?.[d]));
           if (!nextDate) return;
-          // Push clone with dueDate = next occurrence (startDate cleared to avoid span logic)
-          allItems.push({ ...t, dueDate: nextDate, startDate: null });
+          // Push clone with dueDate = next occurrence (startDate/completedOccurrences cleared
+          // so taskCard doesn't render it as done based on a past completed occurrence)
+          allItems.push({ ...t, dueDate: nextDate, startDate: null, completedOccurrences: {} });
         } else {
           allItems.push(t);
         }
