@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.66</div>
+      <div class="sidebar-version">v1.9.67</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2741,6 +2741,7 @@
     let projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
     let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
     let projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
+    let focusNote    = localStorage.getItem('dp_focus') || '';
     let comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
     let knownContacts = JSON.parse(localStorage.getItem('dp_contacts_v1') || '[]');
 
@@ -3863,7 +3864,7 @@ const renderers = {
       if (view === 'priorities')  _setupPrioritiesDnD();
       if (view === 'today') {
         const fi = document.getElementById('focusInput');
-        if (fi) fi.value = localStorage.getItem('dp_focus') || '';
+        if (fi) fi.value = focusNote;
       }
       updateHeader();
     }
@@ -3933,7 +3934,6 @@ const renderers = {
       const todayPlanned  = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && (isTaskActiveOn(t, today) || t.status === 'Done' && (t.dueDate||'').slice(0,10) === today));
       const weekDoneCount = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && t.status === 'Done' && t.dueDate >= monStr && t.dueDate <= sunStr).length;
       const weekPlanned   = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && t.dueDate >= monStr && t.dueDate <= sunStr).length;
-      const focusNote     = localStorage.getItem('dp_focus') || '';
       const activeProjs   = projects.filter(p => p.status === 'Active' && p.type !== 'personal' && p.type !== 'okr');
 
       const hour = new Date().getHours();
@@ -5373,8 +5373,6 @@ const renderers = {
         if (da !== db) return da - db;
         return (a.startTime || '').localeCompare(b.startTime || '');
       });
-      const focusNote     = localStorage.getItem('dp_focus') || '';
-
       let html = `
         <div class="view-header">
           <div>
@@ -5397,7 +5395,7 @@ const renderers = {
           <div class="morning-sub">What is your #1 priority today?</div>
           <input class="focus-input" type="text" id="focusInput"
             placeholder="My main focus today is…" value="${esc(focusNote)}"
-            oninput="localStorage.setItem('dp_focus', this.value)">
+            oninput="focusNote=this.value;localStorage.setItem('dp_focus',this.value)">
         </div>` : ''}
         ${dayCapacityBar(today, 'today')}`;
 
@@ -10529,7 +10527,7 @@ const renderers = {
           followups    = data.followups    || [];
           projectNotes = data.projectNotes || [];
           persistTasks(); persistProjects(); persistFollowups(); persistNotes();
-          if (data.focus) localStorage.setItem('dp_focus', data.focus);
+          if (data.focus) { focusNote = data.focus; localStorage.setItem('dp_focus', data.focus); }
           event.target.value = '';
           showView('summary');
           alert('✅ Data imported successfully!');
@@ -10607,7 +10605,7 @@ const renderers = {
         localStorage.setItem('dp_projects_v1',  JSON.stringify(projects));
         localStorage.setItem('dp_followups_v1', JSON.stringify(followups));
         localStorage.setItem('dp_notes_v1',     JSON.stringify(projectNotes));
-        if (data.focus) localStorage.setItem('dp_focus', data.focus);
+        if (data.focus) { focusNote = data.focus; localStorage.setItem('dp_focus', data.focus); }
         setSyncChip('synced', 'Synced');
         return true;
       } catch(e) {
