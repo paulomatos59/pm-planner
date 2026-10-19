@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.61</div>
+      <div class="sidebar-version">v1.9.62</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5890,10 +5890,27 @@ const renderers = {
     function renderBacklog() {
       const today = todayStr();
 
-      // All eligible tasks
-      const allItems = tasks.filter(t => t.status !== 'Done' && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
+      // All eligible tasks — recurring tasks expand to their next undone occurrence
+      const allItems = [];
+      tasks.forEach(t => {
+        if (t.status === 'Done' || ['timeoff','corporate'].includes(t.taskType) || t.parentId) return;
+        if (t.recurrence?.freq) {
+          // Compute next undone occurrence >= today
+          const anchor = (t.startDate && t.startDate < (t.dueDate || '9999-99-99')) ? t.startDate : t.dueDate;
+          if (!anchor) return;
+          const far = new Date(today + 'T00:00:00'); far.setFullYear(far.getFullYear() + 2);
+          const farStr = far.toISOString().slice(0, 10);
+          const occs = getAllOccurrences({ ...t, dueDate: anchor }, 'dueDate', farStr);
+          const nextDate = occs.find(d => d >= today && !(t.completedOccurrences?.[d]));
+          if (!nextDate) return;
+          // Push clone with dueDate = next occurrence (startDate cleared to avoid span logic)
+          allItems.push({ ...t, dueDate: nextDate, startDate: null });
+        } else {
+          allItems.push(t);
+        }
+      });
 
-      // Reconcile backlogOrder
+      // Reconcile backlogOrder (used for column sort order)
       const validIds = new Set(allItems.map(t => t.id));
       backlogOrder = backlogOrder.filter(id => validIds.has(id));
       allItems.forEach(t => { if (!backlogOrder.includes(t.id)) backlogOrder.push(t.id); });
@@ -5901,9 +5918,18 @@ const renderers = {
 
       const list = [...allItems].sort((a, b) => backlogOrder.indexOf(a.id) - backlogOrder.indexOf(b.id));
 
-      // Global rank map (#1 … #N across all columns)
+      // Rank map mirrors Priorities view order (dp_priorities_act_order)
+      const _actOrder = JSON.parse(localStorage.getItem('dp_priorities_act_order') || '[]');
+      const _PORDER = { High: 0, Medium: 1, Low: 2, None: 3 };
+      const _sortDue = (a, b) => (a.dueDate||'9999') < (b.dueDate||'9999') ? -1 : (a.dueDate||'9999') > (b.dueDate||'9999') ? 1 : 0;
+      const rankList = [...allItems].sort((a, b) => {
+        const ai = _actOrder.indexOf(a.id), bi = _actOrder.indexOf(b.id);
+        if (ai >= 0 && bi >= 0) return ai - bi;
+        if (ai >= 0) return -1; if (bi >= 0) return 1;
+        return (_PORDER[a.priority||'None'] - _PORDER[b.priority||'None']) || _sortDue(a, b);
+      });
       const rankMap = {};
-      list.forEach((t, i) => { rankMap[t.id] = i + 1; });
+      rankList.forEach((t, i) => { rankMap[t.id] = i + 1; });
 
       const now = new Date(); now.setHours(0,0,0,0);
       const dow = now.getDay();
