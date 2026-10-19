@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.65</div>
+      <div class="sidebar-version">v1.9.66</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5949,6 +5949,16 @@ const renderers = {
         else if (t.dueDate && t.dueDate <= sunStr)           colWeek.push(t);
         else                                                 colLater.push(t);
       });
+
+      // Sort each column: soonest date first, then High → Medium → Low
+      const _colSort = (a, b) => {
+        const da = a.dueDate || '9999-99-99', db = b.dueDate || '9999-99-99';
+        if (da !== db) return da < db ? -1 : 1;
+        return (_PORDER[a.priority||'None'] - _PORDER[b.priority||'None']);
+      };
+      colToday.sort(_colSort);
+      colWeek.sort(_colSort);
+      colLater.sort(_colSort);
 
       const mkCol = (icon, label, items) => {
         const body = items.length
