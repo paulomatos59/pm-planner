@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.68</div>
+      <div class="sidebar-version">v1.9.69</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3863,8 +3863,10 @@ const renderers = {
       if (view === 'okrs-list')   _setupOkrListDnd();
       if (view === 'priorities')  _setupPrioritiesDnD();
       if (view === 'today') {
-        const fi = document.getElementById('focusInput');
-        if (fi) fi.value = focusNote;
+        setTimeout(() => {
+          const fi = document.getElementById('focusInput');
+          if (fi) fi.value = focusNote || localStorage.getItem('dp_focus') || '';
+        }, 0);
       }
       updateHeader();
     }
@@ -5393,9 +5395,12 @@ const renderers = {
         <div class="morning-card">
           <div class="morning-title">🌅 Daily Focus</div>
           <div class="morning-sub">What is your #1 priority today?</div>
-          <input class="focus-input" type="text" id="focusInput"
-            placeholder="My main focus today is…"
-            oninput="focusNote=this.value;localStorage.setItem('dp_focus',this.value)">
+          <div style="display:flex;align-items:center;gap:8px">
+            <input class="focus-input" type="text" id="focusInput"
+              placeholder="My main focus today is…" style="flex:1"
+              oninput="focusNote=this.value;localStorage.setItem('dp_focus',this.value);document.getElementById('focusSaved').style.opacity='1';setTimeout(()=>{const s=document.getElementById('focusSaved');if(s)s.style.opacity='0';},1500)">
+            <span id="focusSaved" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">✓ Saved</span>
+          </div>
         </div>` : ''}
         ${dayCapacityBar(today, 'today')}`;
 
@@ -10913,6 +10918,9 @@ const renderers = {
     /* ==============================
        BOOT
     ============================== */
+    // Persist focus note before page unloads (belt-and-suspenders safety net)
+    window.addEventListener('beforeunload', () => { localStorage.setItem('dp_focus', focusNote); });
+
     checkPopupMode();
     applySectionStates();
     if (!isPopupMode()) {
