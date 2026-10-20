@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.69</div>
+      <div class="sidebar-version">v1.9.70</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5398,7 +5398,8 @@ const renderers = {
           <div style="display:flex;align-items:center;gap:8px">
             <input class="focus-input" type="text" id="focusInput"
               placeholder="My main focus today is…" style="flex:1"
-              oninput="focusNote=this.value;localStorage.setItem('dp_focus',this.value);document.getElementById('focusSaved').style.opacity='1';setTimeout(()=>{const s=document.getElementById('focusSaved');if(s)s.style.opacity='0';},1500)">
+              oninput="focusNote=this.value">
+            <button class="btn btn-primary btn-sm" onclick="saveFocusNote()" style="white-space:nowrap">Save</button>
             <span id="focusSaved" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">✓ Saved</span>
           </div>
         </div>` : ''}
@@ -10918,6 +10919,14 @@ const renderers = {
     /* ==============================
        BOOT
     ============================== */
+    function saveFocusNote() {
+      const fi = document.getElementById('focusInput');
+      if (fi) focusNote = fi.value;
+      localStorage.setItem('dp_focus', focusNote);
+      const s = document.getElementById('focusSaved');
+      if (s) { s.style.opacity = '1'; setTimeout(() => { if (s) s.style.opacity = '0'; }, 1500); }
+    }
+
     // Persist focus note before page unloads (belt-and-suspenders safety net)
     window.addEventListener('beforeunload', () => { localStorage.setItem('dp_focus', focusNote); });
 
