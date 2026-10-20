@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.70</div>
+      <div class="sidebar-version">v1.9.71</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5398,7 +5398,7 @@ const renderers = {
           <div style="display:flex;align-items:center;gap:8px">
             <input class="focus-input" type="text" id="focusInput"
               placeholder="My main focus today is…" style="flex:1"
-              oninput="focusNote=this.value">
+              oninput="focusNote=this.value;localStorage.setItem('dp_focus',this.value)">
             <button class="btn btn-primary btn-sm" onclick="saveFocusNote()" style="white-space:nowrap">Save</button>
             <span id="focusSaved" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">✓ Saved</span>
           </div>
