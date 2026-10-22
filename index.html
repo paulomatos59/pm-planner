@@ -1630,7 +1630,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.71</div>
+      <div class="sidebar-version">v1.9.72</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8482,12 +8482,17 @@ const renderers = {
     function commTasksRender() {
       if (!editingCommId) return;
       const linked = tasks.filter(t => t.commId === editingCommId && !t.parentId);
+      // Open first (most recent date at top), then done (most recent date at top)
+      const byDateDesc = (a, b) => (b.dueDate || '').localeCompare(a.dueDate || '');
+      const open = linked.filter(t => t.status !== 'Done').sort(byDateDesc);
+      const done_list = linked.filter(t => t.status === 'Done').sort(byDateDesc);
+      const sorted = [...open, ...done_list];
       const label  = document.getElementById('commTaskCountLabel');
       const list   = document.getElementById('commTaskList');
       if (!label || !list) return;
       const done = linked.filter(t => t.status === 'Done').length;
       label.textContent = linked.length ? `${done}/${linked.length}` : '';
-      list.innerHTML = linked.map(t => `
+      list.innerHTML = sorted.map(t => `
         <div class="subtask-item-modal" id="cte-row-${t.id}">
           <div class="task-checkbox ${t.status==='Done'?'checked':''}" style="width:18px;height:18px;flex-shrink:0"
                onclick="commTaskToggle('${t.id}')"></div>
