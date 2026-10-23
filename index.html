@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.91</div>
+      <div class="sidebar-version">v1.9.92</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8015,29 +8015,52 @@ const renderers = {
 
       // ── Linked milestone rows ──
       const MS_COLOR = '#d97706';
-      const linkedMs = projects.filter(m => m.betId === pid && m.subtype === 'milestone');
-      const visMilestones = linkedMs.filter(m => {
-        const from = m.startDate || m.endDate;
-        const to   = m.endDate   || m.startDate;
-        return from && to && to >= winS && from <= winE;
-      }).sort((a,b) => ((a.startDate||a.endDate||'').localeCompare(b.startDate||b.endDate||'')));
+      // Include ALL linked milestones regardless of dates — filter only by window if dates exist
+      const linkedMs = projects.filter(m => m.betId === pid && m.subtype === 'milestone')
+        .sort((a,b) => ((a.startDate||a.endDate||'zzz').localeCompare(b.startDate||b.endDate||'zzz')));
 
-      const milestoneRows = visMilestones.map(m => {
-        const from = m.startDate || m.endDate;
-        const to   = m.endDate   || m.startDate;
+      const fmtDM = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+
+      const milestoneRows = linkedMs.map(m => {
+        const from = m.startDate || m.endDate || null;
+        const to   = m.endDate   || m.startDate || null;
+        const lbl  = `<div class="gantt-task-lbl" onclick="openProjectModal('${m.id}')" title="${esc(m.name)}">🏁 ${esc(m.name)}</div>`;
+
+        if (!from && !to) {
+          // No dates at all — show label + hint
+          return `<div class="gantt-row gantt-row-child">
+            ${lbl}
+            <div class="gantt-bars-cell" style="width:${totalW}px">
+              ${backdrop()}
+              <span style="font-size:11px;color:var(--text-muted);padding:0 10px;line-height:34px">No dates set</span>
+            </div></div>`;
+        }
+
+        if (from === to || (!from || !to)) {
+          // Single date — diamond marker
+          const date = from || to;
+          const x = clamp(xOf(date) + (projTimelineScale==='days'?Math.round(colPx/2):0), 4, totalW-14);
+          return `<div class="gantt-row gantt-row-child">
+            ${lbl}
+            <div class="gantt-bars-cell" style="width:${totalW}px">
+              ${backdrop()}
+              <div class="gantt-milestone" style="left:${x}px;background:${MS_COLOR}" onclick="openProjectModal('${m.id}')" title="${esc(m.name)} — ${date}"></div>
+            </div></div>`;
+        }
+
+        // Both dates — bar
         const xFromRaw = xOf(from);
         const x1   = clamp(xFromRaw, 0, totalW-2);
         const xEnd = xOf(to) + (projTimelineScale==='days'?colPx:0);
         const rawW = clamp(xEnd-x1-2, minBarW, totalW-x1);
-        const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
         const startClipped = xFromRaw < -2;
         const endClipped   = xEnd > totalW + 2;
-        const startTag  = startClipped ? `<span class="gantt-bar-starttag">← ${fmtD(from)}</span>` : '';
-        const endTag    = endClipped   ? `<span class="gantt-bar-endtag">→ ${fmtD(to)}</span>`   : '';
+        const startTag  = startClipped ? `<span class="gantt-bar-starttag">← ${fmtDM(from)}</span>` : '';
+        const endTag    = endClipped   ? `<span class="gantt-bar-endtag">→ ${fmtDM(to)}</span>`    : '';
         const rawLabel  = rawW > 44    ? `🏁 ${esc(m.name)}` : '';
         const labelSpan = rawLabel     ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${rawLabel}</span>` : (startTag&&endTag?`<span style="flex:1"></span>`:'');
         return `<div class="gantt-row gantt-row-child">
-          <div class="gantt-task-lbl" onclick="openProjectModal('${m.id}')" title="${esc(m.name)}">🏁 ${esc(m.name)}</div>
+          ${lbl}
           <div class="gantt-bars-cell" style="width:${totalW}px">
             ${backdrop()}
             <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${MS_COLOR};opacity:.9"
