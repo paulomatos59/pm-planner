@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.84</div>
+      <div class="sidebar-version">v1.9.85</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5483,11 +5483,11 @@ const renderers = {
             <button class="btn btn-primary" onclick="openTaskModalWithDate('${today}')">＋ New Task</button>
           </div>
         </div>
-        ${isRealToday ? `
+        ${!isRealToday ? _goalsBanner(_gDayKey(today), 'Goal of the Day') : `
         <div class="morning-card">
           <div class="morning-title">&#x1F3C6; Goal of the Day</div>
           ${(()=>{
-            const dk = _gDayKey(todayStr());
+            const dk = _gDayKey(today);
             const arr = _gArr(dk);
             const listHtml = arr.map(g => {
               const ach = g.status === 'Achieved';
@@ -5574,7 +5574,7 @@ const renderers = {
             <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
-        ${(()=>{ const wk=_gWeekKey(todayStr()); const gt=_gText(wk); const st=_gStatus(wk); const ach=st==='Achieved'; return gt ? `<div class="morning-card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:16px">🏆</span><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Week Goal</div><div style="font-size:14px;color:var(--text);margin-top:2px;${ach?'text-decoration:line-through;opacity:.6':''}">${esc(gt)}</div></div><button onclick="toggleGoalStatus('${wk}')" style="border:none;cursor:pointer;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'};white-space:nowrap">${ach?'✅ Achieved':'🔄 Open'}</button><button class="btn btn-secondary btn-sm" onclick="showView('goals')">Edit</button></div>` : ''; })()}
+        ${_goalsBanner(_gWeekKey(`${mon.getFullYear()}-${pad(mon.getMonth()+1)}-${pad(mon.getDate())}`), 'Week Goal')}
         <div class="week-grid">`;
 
       for (let i = 0; i < 7; i++) {
@@ -5659,7 +5659,7 @@ const renderers = {
             <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
-        ${(()=>{ const mk=_gMonthKey(todayStr()); const gt=_gText(mk); const st=_gStatus(mk); const ach=st==='Achieved'; return gt ? `<div class="morning-card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:16px">🏆</span><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Month Goal</div><div style="font-size:14px;color:var(--text);margin-top:2px;${ach?'text-decoration:line-through;opacity:.6':''}">${esc(gt)}</div></div><button onclick="toggleGoalStatus('${mk}')" style="border:none;cursor:pointer;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'};white-space:nowrap">${ach?'✅ Achieved':'🔄 Open'}</button><button class="btn btn-secondary btn-sm" onclick="showView('goals')">Edit</button></div>` : ''; })()}
+        ${_goalsBanner(_gMonthKey(`${year}-${pad(month+1)}-01`), 'Month Goal')}
         <div class="month-grid">
           ${dayNames.map(d => `<div class="month-dow-header">${d}</div>`).join('')}
           ${cells.map(d => {
@@ -6448,6 +6448,28 @@ const renderers = {
     function deleteGoal(key) {
       delete goals[key]; persistGoals();
       showView('goals');
+    }
+
+    // Reusable read-only banner showing all goals for a given key (used in week/month/daily views)
+    function _goalsBanner(key, label) {
+      const arr = _gArr(key);
+      if (!arr.length) return '';
+      const items = arr.map(g => {
+        const ach = g.status === 'Achieved';
+        return `<div style="display:flex;align-items:center;gap:8px;${arr.length>1?'margin-top:4px':''}">
+          ${arr.length > 1 ? `<span style="font-size:10px;opacity:.4;flex-shrink:0">•</span>` : ''}
+          <span style="font-size:14px;color:var(--text);${ach?'text-decoration:line-through;opacity:.6':''}">${esc(g.text)}</span>
+          <button onclick="toggleGoalStatus('${key}','${g.id}')" style="border:none;cursor:pointer;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'};white-space:nowrap;flex-shrink:0">${ach?'✅ Achieved':'🔄 Open'}</button>
+        </div>`;
+      }).join('');
+      return `<div class="morning-card" style="margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
+        <span style="font-size:16px;margin-top:2px">🏆</span>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">${label}</div>
+          <div style="margin-top:4px">${items}</div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="showView('goals')" style="flex-shrink:0">Edit</button>
+      </div>`;
     }
 
     /* ==============================
