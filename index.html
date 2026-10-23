@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.88</div>
+      <div class="sidebar-version">v1.9.89</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2148,6 +2148,73 @@
         </div>
       </div>
 
+    </div>
+  </div>
+
+  <!-- ── Report Modal ── -->
+  <div class="modal-overlay hidden" id="reportModal">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="reportModalTitle">New Report</h2>
+        <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
+          <button class="btn btn-danger btn-sm" id="reportBtnDelete" style="display:none" onclick="deleteReport()">Delete</button>
+          <button class="btn btn-secondary btn-sm" onclick="closeReportModal()">Cancel</button>
+          <button class="btn btn-primary btn-sm" onclick="saveReport()">Save Report</button>
+        </div>
+        <button class="btn-close" style="margin-left:12px" onclick="closeReportModal()">×</button>
+      </div>
+      <div class="modal-body modal-body-split">
+        <div class="modal-main-col">
+          <input type="hidden" id="reportId">
+          <div class="form-group">
+            <label class="form-label">Title <span style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-input" id="reportTitle" placeholder="e.g. Q3 Progress Report" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Report Period</label>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">
+              <div>
+                <label class="form-label" style="font-size:11px;opacity:.7">From</label>
+                <input type="date" class="form-input" id="reportPeriodFrom">
+              </div>
+              <div>
+                <label class="form-label" style="font-size:11px;opacity:.7">To</label>
+                <input type="date" class="form-input" id="reportPeriodTo">
+              </div>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Report Link</label>
+            <input type="url" class="form-input" id="reportLink" placeholder="https://…  (paste the URL where the report is stored)">
+          </div>
+          <div class="form-group">
+            <label class="form-label">Description / Notes</label>
+            <textarea class="form-input" id="reportNotes" rows="5" placeholder="Summary, key findings, decisions…" style="resize:vertical;font-size:13px"></textarea>
+          </div>
+        </div>
+        <div class="modal-sidebar-col">
+          <div class="form-group">
+            <label class="form-label">Status</label>
+            <select class="form-select" id="reportStatus">
+              <option value="Draft">📝 Draft</option>
+              <option value="Published">✅ Published</option>
+              <option value="Archived">📦 Archived</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Project</label>
+            <select class="form-select" id="reportProject">
+              <option value="">— None —</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label class="form-label">Personal</label>
+            <select class="form-select" id="reportPersonal">
+              <option value="">— None —</option>
+            </select>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 
@@ -2741,6 +2808,7 @@
     let tasks        = JSON.parse(localStorage.getItem('dp_tasks_v1')    || '[]');
     let projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
     let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
+    let reports      = JSON.parse(localStorage.getItem('dp_reports_v1')  || '[]');
     let projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
     let focusNote    = localStorage.getItem('dp_focus') || '';
     let goals = JSON.parse(localStorage.getItem('dp_goals') || '{}');
@@ -2937,6 +3005,7 @@
     function persistTasks()    { localStorage.setItem('dp_tasks_v1',    JSON.stringify(tasks));        scheduleGistSave(); scheduleAutoDownload(); }
     function persistProjects() { localStorage.setItem('dp_projects_v1', JSON.stringify(projects));     scheduleGistSave(); scheduleAutoDownload(); }
     function persistFollowups(){ localStorage.setItem('dp_followups_v1',JSON.stringify(followups));    scheduleGistSave(); scheduleAutoDownload(); }
+    function persistReports()  { localStorage.setItem('dp_reports_v1',  JSON.stringify(reports));      scheduleGistSave(); scheduleAutoDownload(); }
     function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); scheduleAutoDownload(); }
     function persistComms()    { localStorage.setItem('dp_comms_v1',    JSON.stringify(comms));        scheduleGistSave(); scheduleAutoDownload(); }
     function persistContacts() { localStorage.setItem('dp_contacts_v1', JSON.stringify(knownContacts)); }
@@ -7074,6 +7143,9 @@ const renderers = {
           <button class="tab-btn ${activeProjectTab==='timeline'?'active':''}" onclick="switchTab('timeline')">
             📅 Timeline
           </button>
+          <button class="tab-btn ${activeProjectTab==='reports'?'active':''}" onclick="switchTab('reports')">
+            📋 Reports <span class="tab-count">${reports.filter(r=>r.projectId===pid||r.personalId===pid).length||''}</span>
+          </button>
           ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='okrinfo'?'active':''}" onclick="switchTab('okrinfo')">🎯 OKRs</button>` : ''}
           ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='initiatives'?'active':''}" onclick="switchTab('initiatives')">🗂 I&M <span class="tab-count">${projects.filter(x=>x.betId===pid).length}</span></button>` : ''}
           ${activeProjectTab==='overview' ? `
@@ -7179,6 +7251,11 @@ const renderers = {
         html += renderProjectTimeline(pid, p, ptasks, pcomms);
       }
 
+      if (activeProjectTab === 'reports') {
+        const preports = reports.filter(r => r.projectId === pid);
+        html += renderReportsTab(preports, pid, 'project');
+      }
+
       return html;
     }
 
@@ -7280,6 +7357,9 @@ const renderers = {
           </button>
           <button class="tab-btn ${activeProjectTab==='timeline'?'active':''}" onclick="switchTab('timeline')">
             📅 Timeline
+          </button>
+          <button class="tab-btn ${activeProjectTab==='reports'?'active':''}" onclick="switchTab('reports')">
+            📋 Reports <span class="tab-count">${reports.filter(r=>r.projectId===pid||r.personalId===pid).length||''}</span>
           </button>
           ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='okrinfo'?'active':''}" onclick="switchTab('okrinfo')">🎯 OKRs</button>` : ''}
           ${p.type==='okr' ? `<button class="tab-btn ${activeProjectTab==='initiatives'?'active':''}" onclick="switchTab('initiatives')">🗂 I&M <span class="tab-count">${projects.filter(x=>x.betId===pid).length}</span></button>` : ''}
@@ -7384,6 +7464,11 @@ const renderers = {
 
       if (activeProjectTab === 'timeline') {
         html += renderProjectTimeline(pid, p, ptasks, pcomms);
+      }
+
+      if (activeProjectTab === 'reports') {
+        const preports = reports.filter(r => r.personalId === pid);
+        html += renderReportsTab(preports, pid, 'personal');
       }
 
       return html;
@@ -8608,6 +8693,116 @@ const renderers = {
       persistComms();
       closeCommModal();
       if (!isPopupMode()) showView(currentView);
+    }
+
+    /* ==============================
+       REPORTS
+    ============================== */
+    let editingReportId = null;
+
+    function openReportModal(id, pid, personalId) {
+      editingReportId = id || null;
+      const r = id ? reports.find(x => x.id === id) : null;
+      document.getElementById('reportId').value            = id || '';
+      document.getElementById('reportModalTitle').textContent = r ? 'Edit Report' : 'New Report';
+      document.getElementById('reportTitle').value         = r?.title         || '';
+      document.getElementById('reportPeriodFrom').value    = r?.periodFrom    || '';
+      document.getElementById('reportPeriodTo').value      = r?.periodTo      || '';
+      document.getElementById('reportLink').value          = r?.link          || '';
+      document.getElementById('reportNotes').value         = r?.notes         || '';
+      document.getElementById('reportStatus').value        = r?.status        || 'Draft';
+      // Project dropdown
+      const projSel = document.getElementById('reportProject');
+      projSel.innerHTML = '<option value="">— None —</option>' +
+        projects.filter(p => p.type !== 'personal').map(p =>
+          `<option value="${p.id}" ${(r?.projectId||pid) === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+        ).join('');
+      // Personal dropdown
+      const persSel = document.getElementById('reportPersonal');
+      persSel.innerHTML = '<option value="">— None —</option>' +
+        projects.filter(p => p.type === 'personal').map(p =>
+          `<option value="${p.id}" ${(r?.personalId||personalId) === p.id ? 'selected' : ''}>${esc(p.name)}</option>`
+        ).join('');
+      document.getElementById('reportBtnDelete').style.display = r ? 'inline-flex' : 'none';
+      document.getElementById('reportModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('reportTitle').focus(), 50);
+    }
+
+    function closeReportModal() {
+      document.getElementById('reportModal').classList.add('hidden');
+      editingReportId = null;
+    }
+
+    function saveReport() {
+      const title = document.getElementById('reportTitle').value.trim();
+      if (!title) { document.getElementById('reportTitle').focus(); return; }
+      const entry = {
+        id:         editingReportId || uid(),
+        title,
+        periodFrom: document.getElementById('reportPeriodFrom').value || '',
+        periodTo:   document.getElementById('reportPeriodTo').value   || '',
+        link:       document.getElementById('reportLink').value.trim() || '',
+        notes:      document.getElementById('reportNotes').value.trim() || '',
+        status:     document.getElementById('reportStatus').value     || 'Draft',
+        projectId:  document.getElementById('reportProject').value    || '',
+        personalId: document.getElementById('reportPersonal').value   || '',
+        createdAt:  editingReportId ? (reports.find(r => r.id === editingReportId)?.createdAt || new Date().toISOString()) : new Date().toISOString(),
+        updatedAt:  new Date().toISOString()
+      };
+      const idx = reports.findIndex(r => r.id === entry.id);
+      if (idx > -1) { reports[idx] = entry; } else { reports.push(entry); }
+      persistReports();
+      closeReportModal();
+      showView(currentView);
+    }
+
+    function deleteReport() {
+      if (!editingReportId) return;
+      if (!confirm('Delete this report?')) return;
+      reports = reports.filter(r => r.id !== editingReportId);
+      persistReports();
+      closeReportModal();
+      showView(currentView);
+    }
+
+    function reportCard(r) {
+      const proj = r.projectId ? projects.find(p => p.id === r.projectId) : null;
+      const pers = r.personalId ? projects.find(p => p.id === r.personalId) : null;
+      const period = r.periodFrom || r.periodTo
+        ? `${r.periodFrom ? new Date(r.periodFrom+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '?'} → ${r.periodTo ? new Date(r.periodTo+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}) : '?'}`
+        : null;
+      const stColor = r.status === 'Published' ? '#16a34a' : r.status === 'Archived' ? '#6b7280' : '#d97706';
+      const stBg    = r.status === 'Published' ? '#dcfce7' : r.status === 'Archived' ? '#f3f4f6' : '#fef3c7';
+      return `<div class="followup-card" onclick="openReportModal('${r.id}')">
+        <div style="display:flex;align-items:flex-start;gap:10px">
+          <span style="font-size:18px;flex-shrink:0">📊</span>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:14px;font-weight:600;color:var(--text)">${esc(r.title)}</div>
+            ${period ? `<div style="font-size:12px;color:var(--text-muted);margin-top:3px">📅 ${period}</div>` : ''}
+            ${r.link ? `<div style="font-size:12px;margin-top:3px"><a href="${esc(r.link)}" target="_blank" onclick="event.stopPropagation()" style="color:var(--primary);text-decoration:none">🔗 Open report ↗</a></div>` : ''}
+            ${(proj || pers) ? `<div style="font-size:11px;color:var(--text-muted);margin-top:3px">${proj?'🗂 '+esc(proj.name):''}${pers?'👤 '+esc(pers.name):''}</div>` : ''}
+          </div>
+          <span style="font-size:11px;font-weight:600;border-radius:20px;padding:2px 10px;background:${stBg};color:${stColor};white-space:nowrap;flex-shrink:0">${r.status}</span>
+        </div>
+      </div>`;
+    }
+
+    function renderReportsTab(preports, pid, type) {
+      const sorted = [...preports].sort((a,b) => (b.periodFrom||b.createdAt||'').localeCompare(a.periodFrom||a.createdAt||''));
+      const openFn = type === 'personal' ? `openReportModal(null,null,'${pid}')` : `openReportModal(null,'${pid}')`;
+      let html = `<div style="display:flex;justify-content:flex-end;margin-bottom:12px">
+        <button class="btn btn-primary btn-sm" onclick="${openFn}">＋ New Report</button>
+      </div>`;
+      if (sorted.length === 0) {
+        return html + `<div class="empty-state" style="padding:32px 0"><div class="icon">📊</div><h3>No reports yet</h3><p>Create reports to track progress and share status with stakeholders.</p></div>`;
+      }
+      const draft     = sorted.filter(r => r.status === 'Draft');
+      const published = sorted.filter(r => r.status === 'Published');
+      const archived  = sorted.filter(r => r.status === 'Archived');
+      if (published.length) html += `<div class="section-header"><span class="section-title">Published</span><span class="section-count">${published.length}</span></div><div class="followup-list">${published.map(reportCard).join('')}</div>`;
+      if (draft.length)     html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Draft</span><span class="section-count">${draft.length}</span></div><div class="followup-list">${draft.map(reportCard).join('')}</div>`;
+      if (archived.length)  html += `<div class="section-header" style="margin-top:16px"><span class="section-title">Archived</span><span class="section-count">${archived.length}</span></div><div class="followup-list">${archived.map(reportCard).join('')}</div>`;
+      return html;
     }
 
     /* ── Comm RTE helpers ── */
