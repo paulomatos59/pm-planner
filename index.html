@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.79</div>
+      <div class="sidebar-version">v1.9.80</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5678,6 +5678,7 @@ const renderers = {
               <div class="month-cell ${!inMonth ? 'other-month' : ''} ${isToday ? 'is-today' : ''}"
                    onclick="openTaskModalWithDate('${ds}')">
                 <div class="month-cell-num">${d.getDate()}</div>
+                ${dayCapacityBar(ds, 'month')}
                 ${timeoffs.map(t => {
                   const from = t.startDate || t.dueDate;
                   const to   = t.dueDate   || t.startDate;
@@ -5695,7 +5696,6 @@ const renderers = {
                        onclick="event.stopPropagation();openCommModal('${c.id}')"
                        title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`).join('')}
                 ${extra > 0 ? `<div class="month-more" onclick="event.stopPropagation();openTaskModalWithDate('${ds}')">+${extra} more</div>` : ''}
-                ${dayCapacityBar(ds, 'month')}
               </div>`;
           }).join('')}
         </div>`;
