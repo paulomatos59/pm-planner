@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.75</div>
+      <div class="sidebar-version">v1.9.76</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4188,17 +4188,18 @@ const renderers = {
               const mText = _gText(mKey);
               const badge = (text, key, label) => {
                 const ach = _gStatus(key) === 'Achieved';
-                return `<div class="summary-focus" style="cursor:pointer" onclick="showView('goals')" title="${label}">
-                  <span style="font-size:15px">${ach ? '✅' : '🏆'}</span>
-                  <div style="min-width:0">
-                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.7;margin-bottom:1px">${label}</div>
-                    <span style="${ach?'text-decoration:line-through;opacity:.7':''}">${esc(text)}</span>
+                return `<div class="summary-focus" style="cursor:pointer;display:flex;align-items:center;gap:7px" onclick="showView('goals')" title="${label}">
+                  <span style="font-size:14px;flex-shrink:0">🏆</span>
+                  <div style="min-width:0;flex:1">
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.65;margin-bottom:1px">${label}</div>
+                    <span style="font-size:13px;font-weight:600;${ach?'text-decoration:line-through;opacity:.6':''}">${esc(text)}</span>
                   </div>
+                  ${ach ? `<span style="font-size:14px;flex-shrink:0" title="Achieved">✅</span>` : ''}
                 </div>`;
               };
               const anyGoal = dText || wText || mText;
               return anyGoal
-                ? `<div style="display:flex;flex-direction:column;gap:6px;margin-top:6px">
+                ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
                     ${dText ? badge(dText, dKey, 'Today') : ''}
                     ${wText ? badge(wText, wKey, 'This Week') : ''}
                     ${mText ? badge(mText, mKey, 'This Month') : ''}
