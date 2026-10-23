@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.90</div>
+      <div class="sidebar-version">v1.9.91</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -8013,11 +8013,49 @@ const renderers = {
         <div class="gantt-bars-cell" style="width:${totalW}px">${backdrop()}${parentBarHtml}</div>
       </div>`;
 
+      // ── Linked milestone rows ──
+      const MS_COLOR = '#d97706';
+      const linkedMs = projects.filter(m => m.betId === pid && m.subtype === 'milestone');
+      const visMilestones = linkedMs.filter(m => {
+        const from = m.startDate || m.endDate;
+        const to   = m.endDate   || m.startDate;
+        return from && to && to >= winS && from <= winE;
+      }).sort((a,b) => ((a.startDate||a.endDate||'').localeCompare(b.startDate||b.endDate||'')));
+
+      const milestoneRows = visMilestones.map(m => {
+        const from = m.startDate || m.endDate;
+        const to   = m.endDate   || m.startDate;
+        const xFromRaw = xOf(from);
+        const x1   = clamp(xFromRaw, 0, totalW-2);
+        const xEnd = xOf(to) + (projTimelineScale==='days'?colPx:0);
+        const rawW = clamp(xEnd-x1-2, minBarW, totalW-x1);
+        const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+        const startClipped = xFromRaw < -2;
+        const endClipped   = xEnd > totalW + 2;
+        const startTag  = startClipped ? `<span class="gantt-bar-starttag">← ${fmtD(from)}</span>` : '';
+        const endTag    = endClipped   ? `<span class="gantt-bar-endtag">→ ${fmtD(to)}</span>`   : '';
+        const rawLabel  = rawW > 44    ? `🏁 ${esc(m.name)}` : '';
+        const labelSpan = rawLabel     ? `<span style="overflow:hidden;text-overflow:ellipsis;min-width:0;flex:1">${rawLabel}</span>` : (startTag&&endTag?`<span style="flex:1"></span>`:'');
+        return `<div class="gantt-row gantt-row-child">
+          <div class="gantt-task-lbl" onclick="openProjectModal('${m.id}')" title="${esc(m.name)}">🏁 ${esc(m.name)}</div>
+          <div class="gantt-bars-cell" style="width:${totalW}px">
+            ${backdrop()}
+            <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${MS_COLOR};opacity:.9"
+                 onclick="openProjectModal('${m.id}')"
+                 title="${esc(m.name)} (${from} → ${to})">${startTag}${labelSpan}${endTag}</div>
+          </div></div>`;
+      }).join('');
+
       // ── Assemble body ──
       let bodyRows = parentRow;
-      if (visTasks.length === 0 && visComms.length === 0) {
+      if (visTasks.length === 0 && visComms.length === 0 && visMilestones.length === 0) {
         bodyRows += `<div class="gantt-empty-row" style="padding-left:28px">No tasks or comms with dates in this period.<br><small>Add start &amp; due dates to tasks and dates to comms to see them here.</small></div>`;
       } else {
+        if (visMilestones.length > 0) bodyRows += `
+          <div class="gantt-group-hdr gantt-group-hdr-child">
+            <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${MS_COLOR};flex-shrink:0"></div>Milestones</div>
+            <div class="gantt-group-band" style="background:linear-gradient(90deg,${MS_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
+          </div>${milestoneRows}`;
         if (visTasks.length > 0) bodyRows += `
           <div class="gantt-group-hdr gantt-group-hdr-child">
             <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${projColor};flex-shrink:0"></div>Tasks</div>
@@ -8062,6 +8100,7 @@ const renderers = {
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#94a3b8"></div>Done</div>
           <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:var(--danger);opacity:.5"></div>Overdue</div>
           <div class="gantt-legend-item"><div style="width:12px;height:12px;background:#7c3aed;transform:rotate(45deg);border-radius:2px"></div>Comm</div>
+          <div class="gantt-legend-item"><div style="width:20px;height:8px;border-radius:3px;background:#d97706;opacity:.9"></div>Milestone</div>
           <div class="gantt-legend-item"><div style="width:2px;height:14px;background:var(--danger)"></div>Today</div>
         </div>`;
     }
