@@ -960,7 +960,7 @@
     }
     .summary-greeting { font-size: 21px; font-weight: 700; }
     .summary-date { font-size: 13px; opacity: 0.75; margin-top: 3px; }
-    .summary-focus { font-size: 13px; margin-top: 12px; background: rgba(255,255,255,0.18); display: inline-flex; align-items: center; gap: 6px; padding: 5px 14px; border-radius: 20px; }
+    .summary-focus { font-size: 13px; margin-top: 12px; background: rgba(255,255,255,0.18); display: inline-flex; align-items: flex-start; gap: 6px; padding: 5px 14px; border-radius: 20px; }
     .summary-focus span { font-weight: 600; }
     .summary-focus-empty { font-size: 13px; margin-top: 12px; opacity: 0.65; cursor: pointer; display: inline-block; }
     .summary-focus-empty:hover { opacity: 1; text-decoration: underline; }
@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.82</div>
+      <div class="sidebar-version">v1.9.83</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4223,7 +4223,7 @@ const renderers = {
               const dArr = _gArr(dKey); const wArr = _gArr(wKey); const mArr = _gArr(mKey);
               const anyGoal = dArr.length || wArr.length || mArr.length;
               return anyGoal
-                ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
+                ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px;align-items:flex-start">
                     ${groupBadge(dArr, 'Today')}
                     ${groupBadge(wArr, 'This Week')}
                     ${groupBadge(mArr, 'This Month')}
