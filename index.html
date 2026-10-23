@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.81</div>
+      <div class="sidebar-version">v1.9.82</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4202,24 +4202,31 @@ const renderers = {
             ${(()=>{
               const td = todayStr();
               const dKey = _gDayKey(td), wKey = _gWeekKey(td), mKey = _gMonthKey(td);
-              const badge = (g, label) => {
-                const ach = g.status === 'Achieved';
-                return `<div class="summary-focus" style="cursor:pointer;display:flex;align-items:center;gap:7px" onclick="showView('goals')" title="${label}">
-                  <span style="font-size:14px;flex-shrink:0">🏆</span>
-                  <div style="min-width:0;flex:1">
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.65;margin-bottom:1px">${label}</div>
-                    <span style="font-size:13px;font-weight:600;${ach?'text-decoration:line-through;opacity:.6':''}">${esc(g.text)}</span>
+              const groupBadge = (arr, label) => {
+                if (!arr.length) return '';
+                const items = arr.map(g => {
+                  const ach = g.status === 'Achieved';
+                  return `<div style="display:flex;align-items:center;gap:6px;margin-top:4px">
+                    <span style="font-size:10px;opacity:.5;flex-shrink:0">•</span>
+                    <span style="font-size:13px;font-weight:600;${ach?'text-decoration:line-through;opacity:.5':''}">${esc(g.text)}</span>
+                    ${ach ? `<span style="font-size:12px;flex-shrink:0">✅</span>` : ''}
+                  </div>`;
+                }).join('');
+                return `<div class="summary-focus" style="cursor:pointer" onclick="showView('goals')" title="${label}">
+                  <div style="display:flex;align-items:center;gap:7px;margin-bottom:2px">
+                    <span style="font-size:14px;flex-shrink:0">🏆</span>
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;opacity:.65">${label}</div>
                   </div>
-                  ${ach ? `<span style="font-size:14px;flex-shrink:0" title="Achieved">✅</span>` : ''}
+                  <div style="padding-left:4px">${items}</div>
                 </div>`;
               };
               const dArr = _gArr(dKey); const wArr = _gArr(wKey); const mArr = _gArr(mKey);
               const anyGoal = dArr.length || wArr.length || mArr.length;
               return anyGoal
                 ? `<div style="display:flex;flex-wrap:wrap;gap:8px;margin-top:8px">
-                    ${dArr.map(g => badge(g, 'Today')).join('')}
-                    ${wArr.map(g => badge(g, 'This Week')).join('')}
-                    ${mArr.map(g => badge(g, 'This Month')).join('')}
+                    ${groupBadge(dArr, 'Today')}
+                    ${groupBadge(wArr, 'This Week')}
+                    ${groupBadge(mArr, 'This Month')}
                   </div>`
                 : `<div class="summary-focus-empty" onclick="showView('goals')">＋ Set your goals →</div>`;
             })()}
