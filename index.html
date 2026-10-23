@@ -1522,6 +1522,7 @@
           <button class="nav-item" id="nav-today"   onclick="showView('today')">🗓 Daily</button>
           <button class="nav-item" id="nav-week"    onclick="showView('week')">📅 Weekly</button>
           <button class="nav-item" id="nav-month"   onclick="showView('month')">🗃 Monthly</button>
+          <button class="nav-item" id="nav-goals"   onclick="showView('goals')">🏆 Goals</button>
         </div>
       </div>
 
@@ -1630,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.72</div>
+      <div class="sidebar-version">v1.9.73</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2742,6 +2743,29 @@
     let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
     let projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
     let focusNote    = localStorage.getItem('dp_focus') || '';
+    let goals = JSON.parse(localStorage.getItem('dp_goals') || '{}');
+    function persistGoals() { localStorage.setItem('dp_goals', JSON.stringify(goals)); }
+
+    function _gDayKey(ds)   { return 'day:'   + ds; }
+    function _gWeekKey(ds)  {
+      const d = new Date(ds + 'T00:00:00'), dow = d.getDay();
+      const m = new Date(d); m.setDate(d.getDate() - (dow===0?6:dow-1));
+      return 'week:' + m.toISOString().slice(0,10);
+    }
+    function _gMonthKey(ds) { return 'month:' + ds.slice(0,7); }
+
+    function saveGoal(key, text) {
+      const t = (text||'').trim();
+      if (t) goals[key] = t; else delete goals[key];
+      persistGoals();
+    }
+
+    // One-time migration: move old dp_focus into today's day goal if no day goal yet
+    (function migrateOldFocus() {
+      const old = localStorage.getItem('dp_focus');
+      const dk  = _gDayKey(todayStr());
+      if (old && !goals[dk]) { goals[dk] = old; persistGoals(); }
+    })();
     let comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
     let knownContacts = JSON.parse(localStorage.getItem('dp_contacts_v1') || '[]');
 
@@ -3841,6 +3865,7 @@ const renderers = {
         month:            renderMonth,
         all:              renderAll,
         backlog:          renderBacklog,
+        goals:            renderGoals,
         overdue:          renderOverdue,
         okrs:             renderOkrs,
         'okrs-list':      renderOkrsList,
@@ -3864,8 +3889,8 @@ const renderers = {
       if (view === 'priorities')  _setupPrioritiesDnD();
       if (view === 'today') {
         setTimeout(() => {
-          const fi = document.getElementById('focusInput');
-          if (fi) fi.value = focusNote || localStorage.getItem('dp_focus') || '';
+          const fi = document.getElementById('goalDayInput');
+          if (fi) fi.value = goals[_gDayKey(todayStr())] || '';
         }, 0);
       }
       updateHeader();
@@ -4135,9 +4160,9 @@ const renderers = {
           <div>
             <div class="summary-greeting">${greeting}, Paulo 👋</div>
             <div class="summary-date">${now.toLocaleDateString('en-US',{weekday:'long',year:'numeric',month:'long',day:'numeric'})}</div>
-            ${focusNote
-              ? `<div class="summary-focus">🎯 <span>${esc(focusNote)}</span></div>`
-              : `<div class="summary-focus-empty" onclick="showView('today')">＋ Set your daily focus →</div>`}
+            ${(goals[_gDayKey(todayStr())] || focusNote)
+              ? `<div class="summary-focus">&#x1F3C6; <span>${esc(goals[_gDayKey(todayStr())] || focusNote)}</span></div>`
+              : `<div class="summary-focus-empty" onclick="showView('goals')">&#xFF0B; Set your goal for today &#x2192;</div>`}
           </div>
           <div class="tz-row" id="tzRow" style="margin-top:0;flex-shrink:0;justify-content:flex-end"></div>
           ${sprintBarHtml()}
@@ -5393,14 +5418,14 @@ const renderers = {
         </div>
         ${isRealToday ? `
         <div class="morning-card">
-          <div class="morning-title">🌅 Daily Focus</div>
-          <div class="morning-sub">What is your #1 priority today?</div>
-          <div style="display:flex;align-items:center;gap:8px">
-            <input class="focus-input" type="text" id="focusInput"
-              placeholder="My main focus today is…" style="flex:1"
-              oninput="focusNote=this.value;localStorage.setItem('dp_focus',this.value)">
-            <button class="btn btn-primary btn-sm" onclick="saveFocusNote()" style="white-space:nowrap">Save</button>
-            <span id="focusSaved" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">✓ Saved</span>
+          <div class="morning-title">&#x1F3C6; Goal of the Day</div>
+          <div class="morning-sub">What do you want to achieve today?</div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input class="focus-input" type="text" id="goalDayInput"
+              placeholder="Set your goal for today…" style="flex:1"
+              oninput="goals[_gDayKey(todayStr())]=this.value;persistGoals()">
+            <button class="btn btn-primary btn-sm" onclick="saveGoalFromInput('today-view',_gDayKey(todayStr()))" style="white-space:nowrap">Save</button>
+            <span id="goal-saved-today-view" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">&#x2713;</span>
           </div>
         </div>` : ''}
         ${dayCapacityBar(today, 'today')}`;
@@ -5471,6 +5496,7 @@ const renderers = {
             <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
+        ${(()=>{ const wk=_gWeekKey(todayStr()); const g=goals[wk]; return g ? `<div class="morning-card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:16px">&#x1F3C6;</span><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Week Goal</div><div style="font-size:14px;color:var(--text);margin-top:2px">${esc(g)}</div></div><button class="btn btn-secondary btn-sm" onclick="showView('goals')">Edit</button></div>` : ''; })()}
         <div class="week-grid">`;
 
       for (let i = 0; i < 7; i++) {
@@ -5555,6 +5581,7 @@ const renderers = {
             <button class="btn btn-primary" onclick="openTaskModal()">＋ New Task</button>
           </div>
         </div>
+        ${(()=>{ const mk=_gMonthKey(todayStr()); const g=goals[mk]; return g ? `<div class="morning-card" style="margin-bottom:16px;display:flex;align-items:center;gap:10px"><span style="font-size:16px">&#x1F3C6;</span><div style="flex:1;min-width:0"><div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Month Goal</div><div style="font-size:14px;color:var(--text);margin-top:2px">${esc(g)}</div></div><button class="btn btn-secondary btn-sm" onclick="showView('goals')">Edit</button></div>` : ''; })()}
         <div class="month-grid">
           ${dayNames.map(d => `<div class="month-dow-header">${d}</div>`).join('')}
           ${cells.map(d => {
@@ -6238,6 +6265,90 @@ const renderers = {
       }
 
       _setupTaskContainer('prioritiesActList', 'dp_priorities_act_order');
+    }
+
+    /* ==============================
+       GOALS VIEW
+    ============================== */
+    function renderGoals() {
+      const today = todayStr();
+      const dk = _gDayKey(today);
+      const wk = _gWeekKey(today);
+      const mk = _gMonthKey(today);
+
+      // Week label
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dow = now.getDay();
+      const mon = new Date(now); mon.setDate(now.getDate() - (dow===0?6:dow-1));
+      const sun = new Date(mon); sun.setDate(mon.getDate()+6);
+      const weekLabel = `${mon.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${sun.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
+      const monthLabel = now.toLocaleDateString('en-US',{month:'long',year:'numeric'});
+
+      const goalCard = (id, icon, title, subtitle, key, placeholder) => `
+        <div class="morning-card" style="margin-bottom:16px">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
+            <div class="morning-title">${icon} ${title}</div>
+            <span style="font-size:11px;color:var(--text-muted)">${subtitle}</span>
+          </div>
+          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+            <input class="focus-input" type="text" id="goal-input-${id}" style="flex:1"
+              placeholder="${placeholder}" value="${esc(goals[key]||'')}">
+            <button class="btn btn-primary btn-sm" onclick="saveGoalFromInput('${id}','${key}')">Save</button>
+            <span id="goal-saved-${id}" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">&#x2713;</span>
+          </div>
+        </div>`;
+
+      // Past goals
+      const pastEntries = Object.entries(goals)
+        .filter(([k]) => k !== dk && k !== wk && k !== mk)
+        .sort((a,b) => b[0].localeCompare(a[0]))
+        .slice(0, 30);
+
+      const pastHtml = pastEntries.length ? `
+        <div class="section-header" style="margin-top:24px;margin-bottom:12px">
+          <span class="section-title">Past Goals</span>
+        </div>
+        <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
+          ${pastEntries.map(([k,v],i) => {
+            const type  = k.startsWith('day:') ? '&#x1F4C5;' : k.startsWith('week:') ? '&#x1F4C6;' : '&#x1F5D3;';
+            const label = k.startsWith('day:')
+              ? new Date(k.slice(4)+'T00:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric',year:'numeric'})
+              : k.startsWith('week:')
+              ? 'Week of ' + new Date(k.slice(5)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})
+              : new Date(k.slice(6)+'-01T00:00:00').toLocaleDateString('en-US',{month:'long',year:'numeric'});
+            return `<div style="display:flex;gap:12px;align-items:flex-start;padding:10px 16px;${i>0?'border-top:1px solid var(--border)':''}">
+              <span style="font-size:14px;flex-shrink:0">${type}</span>
+              <div style="min-width:0;flex:1">
+                <div style="font-size:11px;color:var(--text-muted)">${esc(label)}</div>
+                <div style="font-size:13px;color:var(--text);margin-top:2px">${esc(v)}</div>
+              </div>
+              <button class="btn-icon" style="color:var(--danger);opacity:.6;flex-shrink:0" onclick="deleteGoal('${k}')">&#x2715;</button>
+            </div>`;
+          }).join('')}
+        </div>` : '';
+
+      return `
+        <div class="view-header">
+          <div><div class="view-title">&#x1F3C6; Goals</div><div class="view-subtitle">Set your focus for today, this week, and this month</div></div>
+        </div>
+        ${goalCard('day',   '&#x1F4C5;', 'Today\'s Goal',      today, dk, 'What do you want to achieve today?')}
+        ${goalCard('week',  '&#x1F4C6;', 'This Week\'s Goal',  weekLabel, wk, 'What\'s your focus this week?')}
+        ${goalCard('month', '&#x1F5D3;', 'This Month\'s Goal', monthLabel, mk, 'What do you want to accomplish this month?')}
+        ${pastHtml}`;
+    }
+
+    function saveGoalFromInput(id, key) {
+      const inp = document.getElementById('goal-input-' + id) || document.getElementById('goalDayInput');
+      if (!inp) return;
+      saveGoal(key, inp.value);
+      const s = document.getElementById('goal-saved-' + id);
+      if (s) { s.style.opacity='1'; setTimeout(()=>{ if(s) s.style.opacity='0'; },1500); }
+      if (currentView === 'today' || currentView === 'week' || currentView === 'month') showView(currentView);
+    }
+
+    function deleteGoal(key) {
+      delete goals[key]; persistGoals();
+      showView('goals');
     }
 
     /* ==============================
