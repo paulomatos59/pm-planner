@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.78</div>
+      <div class="sidebar-version">v1.9.79</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -11052,10 +11052,20 @@ const renderers = {
 
       if (mode === 'month') {
         if (estHours === 0 && logHours === 0)
-          return `<div class="cap-bar-month"><div style="width:0%"></div></div>`;
-        return `<div class="cap-bar-month" title="${title}" style="overflow:hidden;display:flex;height:100%">
-          <div style="width:${logPct}%;background:#2563eb;height:100%"></div>
-          <div style="width:${greenPct}%;background:${estColor};height:100%"></div>
+          return `<div class="cap-bar-wrap" style="flex-direction:column;align-items:stretch;gap:0;padding:2px 6px 4px">
+            <div class="cap-bar-track" style="overflow:hidden;display:flex"></div>
+          </div>`;
+        return `<div class="cap-bar-wrap" title="${title}" style="flex-direction:column;align-items:stretch;gap:0;padding:2px 6px 4px">
+          <div style="position:relative">
+            <div class="cap-bar-track" style="overflow:hidden;display:flex">
+              <div style="width:${logPct}%;background:#2563eb;height:100%;flex-shrink:0"></div>
+              <div style="width:${greenPct}%;background:${estColor};height:100%;flex-shrink:0"></div>
+            </div>
+          </div>
+          <div style="display:flex;justify-content:space-between;font-size:9px;color:var(--text-muted);margin-top:2px">
+            ${hasLog ? `<span style="color:#2563eb;font-weight:600">${logHours}h</span>` : '<span></span>'}
+            ${estHours > 0 ? `<span style="color:${estColor};font-weight:600">${estHours}h</span>` : '<span>–</span>'}
+          </div>
         </div>`;
       }
 
