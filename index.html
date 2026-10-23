@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.92</div>
+      <div class="sidebar-version">v1.9.93</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7107,12 +7107,19 @@ const renderers = {
 
       const openFu = pfu.filter(f => f.status !== 'Resolved').length;
 
+      const betParent = (p.subtype === 'milestone' && p.betId) ? projects.find(x => x.id === p.betId) : null;
+
       let html = `
         <button class="back-btn" onclick="showView(${p.type==='okr'?`'okrs-hierarchy'`:`'projects'`})">← Back to ${p.type==='okr'?'OKRs':'Initiatives & Milestones'}</button>
         <div class="project-detail-header">
           <div class="project-detail-stripe" style="background:${esc(p.color||'#2563eb')}"></div>
           <div class="project-detail-body">
             <div>
+              ${betParent ? `<div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:4px">
+                <button onclick="openProject('${betParent.id}')" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;font-weight:600;color:var(--primary);text-decoration:underline;text-underline-offset:2px;">${esc(betParent.name)}</button>
+                <span style="color:var(--text-muted)">›</span>
+                <span style="color:var(--text-muted);font-weight:400">Milestone</span>
+              </div>` : ''}
               <div class="project-detail-name">${esc(p.name)}</div>
               ${p.type === 'okr' && p.objective ? `<div class="project-detail-desc" style="font-style:italic;color:var(--primary)">🎯 ${esc(p.objective)}</div>` : ''}
               ${p.description ? `<div class="project-detail-desc">${esc(p.description)}</div>` : ''}
@@ -8071,10 +8078,10 @@ const renderers = {
 
       // ── Assemble body ──
       let bodyRows = parentRow;
-      if (visTasks.length === 0 && visComms.length === 0 && visMilestones.length === 0) {
+      if (visTasks.length === 0 && visComms.length === 0 && linkedMs.length === 0) {
         bodyRows += `<div class="gantt-empty-row" style="padding-left:28px">No tasks or comms with dates in this period.<br><small>Add start &amp; due dates to tasks and dates to comms to see them here.</small></div>`;
       } else {
-        if (visMilestones.length > 0) bodyRows += `
+        if (linkedMs.length > 0) bodyRows += `
           <div class="gantt-group-hdr gantt-group-hdr-child">
             <div class="gantt-group-name"><div style="width:9px;height:9px;border-radius:50%;background:${MS_COLOR};flex-shrink:0"></div>Milestones</div>
             <div class="gantt-group-band" style="background:linear-gradient(90deg,${MS_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
