@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.77</div>
+      <div class="sidebar-version">v1.9.78</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2754,36 +2754,55 @@
     }
     function _gMonthKey(ds) { return 'month:' + ds.slice(0,7); }
 
-    // Goals are stored as { text, status } objects; plain strings are legacy
-    function _gObj(key)    { const g = goals[key]; if (!g) return null; return typeof g === 'string' ? { text: g, status: 'Open' } : g; }
-    function _gText(key)   { const o = _gObj(key); return o ? (o.text || '') : ''; }
-    function _gStatus(key) { const o = _gObj(key); return o ? (o.status || 'Open') : 'Open'; }
+    // Goals stored as arrays of { id, text, status }; legacy single-object/string values are migrated
+    function _gid() { return Math.random().toString(36).slice(2,10); }
+    function _gArr(key) {
+      const g = goals[key];
+      if (!g) return [];
+      if (Array.isArray(g)) return g;
+      const obj = typeof g === 'string' ? { text: g, status: 'Open' } : (g || {});
+      return [{ id: _gid(), text: obj.text || '', status: obj.status || 'Open' }];
+    }
+    function _gText(key)   { const a = _gArr(key); return a.length ? a[0].text : ''; }
+    function _gStatus(key) { const a = _gArr(key); return a.length ? (a[0].status || 'Open') : 'Open'; }
 
-    function saveGoal(key, text, status) {
+    function addGoal(key, text) {
       const t = (text||'').trim();
-      if (t) {
-        const existing = _gObj(key);
-        goals[key] = { text: t, status: status || (existing?.status || 'Open') };
-      } else { delete goals[key]; }
+      if (!t) return;
+      goals[key] = [..._gArr(key), { id: _gid(), text: t, status: 'Open' }];
       persistGoals();
     }
 
-    function toggleGoalStatus(key) {
-      const o = _gObj(key);
-      if (!o) return;
-      goals[key] = { text: o.text, status: o.status === 'Achieved' ? 'Open' : 'Achieved' };
+    function toggleGoalStatus(key, goalId) {
+      const arr = _gArr(key);
+      const idx = arr.findIndex(g => g.id === goalId);
+      if (idx < 0) return;
+      arr[idx] = { ...arr[idx], status: arr[idx].status === 'Achieved' ? 'Open' : 'Achieved' };
+      goals[key] = arr;
       persistGoals();
       showView('goals');
     }
 
-    // One-time migration: move old dp_focus / plain-string goals into { text, status } format
+    function deleteGoalItem(key, goalId) {
+      const arr = _gArr(key).filter(g => g.id !== goalId);
+      if (arr.length) goals[key] = arr; else delete goals[key];
+      persistGoals();
+      showView('goals');
+    }
+
+    // One-time migration: move old dp_focus / single-object / plain-string goals into array format
     (function migrateOldFocus() {
       const old = localStorage.getItem('dp_focus');
       const dk  = _gDayKey(todayStr());
-      if (old && !goals[dk]) { goals[dk] = { text: old, status: 'Open' }; persistGoals(); }
-      // Migrate any remaining plain-string goal values
+      if (old && !goals[dk]) { goals[dk] = [{ id: _gid(), text: old, status: 'Open' }]; persistGoals(); }
       let changed = false;
-      Object.keys(goals).forEach(k => { if (typeof goals[k] === 'string') { goals[k] = { text: goals[k], status: 'Open' }; changed = true; } });
+      Object.keys(goals).forEach(k => {
+        if (!Array.isArray(goals[k])) {
+          const g = goals[k], obj = typeof g === 'string' ? { text: g, status: 'Open' } : (g || {});
+          goals[k] = [{ id: _gid(), text: obj.text || '', status: obj.status || 'Open' }];
+          changed = true;
+        }
+      });
       if (changed) persistGoals();
     })();
     let comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
@@ -3910,7 +3929,7 @@ const renderers = {
       if (view === 'today') {
         setTimeout(() => {
           const fi = document.getElementById('goalDayInput');
-          if (fi) fi.value = _gText(_gDayKey(todayStr()));
+          if (fi) fi.focus();
         }, 0);
       }
       updateHeader();
@@ -5462,14 +5481,25 @@ const renderers = {
         ${isRealToday ? `
         <div class="morning-card">
           <div class="morning-title">&#x1F3C6; Goal of the Day</div>
-          <div class="morning-sub">What do you want to achieve today?</div>
-          <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
-            <input class="focus-input" type="text" id="goalDayInput"
-              placeholder="Set your goal for today…" style="flex:1"
-              oninput="saveGoal(_gDayKey(todayStr()),this.value,_gStatus(_gDayKey(todayStr())))">
-            <button class="btn btn-primary btn-sm" onclick="saveGoalFromInput('today-view',_gDayKey(todayStr()))" style="white-space:nowrap">Save</button>
-            <span id="goal-saved-today-view" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">&#x2713;</span>
-          </div>
+          ${(()=>{
+            const dk = _gDayKey(todayStr());
+            const arr = _gArr(dk);
+            const listHtml = arr.map(g => {
+              const ach = g.status === 'Achieved';
+              return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
+                <span style="flex:1;font-size:13px;${ach?'text-decoration:line-through;opacity:.5':''}">${esc(g.text)}</span>
+                <button onclick="toggleGoalStatus('${dk}','${g.id}')" style="flex-shrink:0;border:none;cursor:pointer;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'}">${ach?'✅ Achieved':'🔄 Open'}</button>
+                <button onclick="deleteGoalItem('${dk}','${g.id}')" style="border:none;background:none;cursor:pointer;color:var(--danger);opacity:.5;font-size:13px;padding:0 2px">✕</button>
+              </div>`;
+            }).join('');
+            return `${listHtml ? `<div style="margin:8px 0 0">${listHtml}</div>` : '<div class="morning-sub">What do you want to achieve today?</div>'}
+            <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
+              <input class="focus-input" type="text" id="goalDayInput" placeholder="${arr.length?'Add another goal…':'Set your goal for today…'}" style="flex:1">
+              <button class="btn btn-primary btn-sm" onclick="addGoalFromInput('today-view','${dk}')" style="white-space:nowrap">Save</button>
+              <button class="btn btn-secondary btn-sm" onclick="addGoalFromInput('today-view','${dk}')" style="white-space:nowrap;padding:0 10px;font-size:16px;font-weight:700">+</button>
+              <span id="goal-saved-today-view" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">&#x2713;</span>
+            </div>`;
+          })()}
         </div>` : ''}
         ${dayCapacityBar(today, 'today')}`;
 
@@ -6326,27 +6356,28 @@ const renderers = {
       const weekLabel  = `${mon.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${sun.toLocaleDateString('en-US',{month:'short',day:'numeric'})}`;
       const monthLabel = now.toLocaleDateString('en-US',{month:'long',year:'numeric'});
 
-      const statusBadge = (key) => {
-        const st = _gStatus(key);
-        const achieved = st === 'Achieved';
-        return `<button onclick="toggleGoalStatus('${key}')" style="flex-shrink:0;border:none;cursor:pointer;border-radius:20px;padding:3px 10px;font-size:11px;font-weight:600;background:${achieved?'#dcfce7':'#fef9c3'};color:${achieved?'#16a34a':'#a16207'}">${achieved?'✅ Achieved':'🔄 Open'}</button>`;
-      };
-
       const goalCard = (id, icon, title, subtitle, key, placeholder) => {
-        const hasGoal = !!_gText(key);
+        const arr = _gArr(key);
+        const listHtml = arr.map(g => {
+          const ach = g.status === 'Achieved';
+          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+            <span style="flex:1;font-size:13px;${ach?'text-decoration:line-through;opacity:.5':''}">${esc(g.text)}</span>
+            <button onclick="toggleGoalStatus('${key}','${g.id}')" style="flex-shrink:0;border:none;cursor:pointer;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'}">${ach?'✅ Achieved':'🔄 Open'}</button>
+            <button onclick="deleteGoalItem('${key}','${g.id}')" style="border:none;background:none;cursor:pointer;color:var(--danger);opacity:.5;font-size:13px;padding:0 2px">✕</button>
+          </div>`;
+        }).join('');
         return `
         <div class="morning-card" style="margin-bottom:16px">
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px">
             <div class="morning-title">${icon} ${title}</div>
-            <div style="display:flex;align-items:center;gap:8px">
-              ${hasGoal ? statusBadge(key) : ''}
-              <span style="font-size:11px;color:var(--text-muted)">${subtitle}</span>
-            </div>
+            <span style="font-size:11px;color:var(--text-muted)">${subtitle}</span>
           </div>
+          ${listHtml ? `<div style="margin:8px 0 0">${listHtml}</div>` : ''}
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
             <input class="focus-input" type="text" id="goal-input-${id}" style="flex:1"
-              placeholder="${placeholder}" value="${esc(_gText(key))}">
-            <button class="btn btn-primary btn-sm" onclick="saveGoalFromInput('${id}','${key}')">Save</button>
+              placeholder="${arr.length ? 'Add another goal…' : placeholder}">
+            <button class="btn btn-primary btn-sm" onclick="addGoalFromInput('${id}','${key}')">Save</button>
+            <button class="btn btn-secondary btn-sm" onclick="addGoalFromInput('${id}','${key}')" style="padding:0 10px;font-size:16px;font-weight:700">+</button>
             <span id="goal-saved-${id}" style="font-size:11px;color:var(--success,#22c55e);transition:opacity .4s;opacity:0">✓</span>
           </div>
         </div>`;
@@ -6361,28 +6392,30 @@ const renderers = {
           : new Date(k.slice(6)+'-01T00:00:00').toLocaleDateString('en-US',{month:'long',year:'numeric'});
       const _goalType = k => k.startsWith('day:') ? 'Daily' : k.startsWith('week:') ? 'Weekly' : 'Monthly';
 
-      const allEntries = Object.keys(goals).sort((a,b) => b.localeCompare(a));
+      // Flatten all goals to individual items for history
+      const historyItems = [];
+      Object.keys(goals).sort((a,b) => b.localeCompare(a)).forEach(k => {
+        _gArr(k).forEach(g => historyItems.push({ key: k, goal: g }));
+      });
 
-      const historyHtml = allEntries.length ? `
+      const historyHtml = historyItems.length ? `
         <div class="section-header" style="margin-top:28px;margin-bottom:12px">
           <span class="section-title">Goals History</span>
-          <span class="section-count">${allEntries.length}</span>
+          <span class="section-count">${historyItems.length}</span>
         </div>
         <div style="background:var(--surface);border:1px solid var(--border);border-radius:10px;overflow:hidden">
           <div style="display:grid;grid-template-columns:1fr 2fr auto auto;gap:0;font-size:11px;font-weight:700;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px;padding:8px 16px;border-bottom:1px solid var(--border);background:var(--bg)">
             <span>Date</span><span>Goal</span><span style="text-align:center">Type</span><span style="text-align:center">Status</span>
           </div>
-          ${allEntries.map((k,i) => {
-            const obj = _gObj(k);
-            const st  = obj?.status || 'Open';
-            const achieved = st === 'Achieved';
+          ${historyItems.map(({key: k, goal: g}, i) => {
+            const achieved = g.status === 'Achieved';
             return `<div style="display:grid;grid-template-columns:1fr 2fr auto auto;gap:12px;align-items:center;padding:10px 16px;${i>0?'border-top:1px solid var(--border)':''}">
               <span style="font-size:12px;color:var(--text-muted)">${esc(_goalLabel(k))}</span>
-              <span style="font-size:13px;color:var(--text);${achieved?'text-decoration:line-through;opacity:.6':''}">${esc(obj?.text||'')}</span>
+              <span style="font-size:13px;color:var(--text);${achieved?'text-decoration:line-through;opacity:.6':''}">${esc(g.text||'')}</span>
               <span style="font-size:10px;background:var(--primary-light);color:var(--primary);border-radius:10px;padding:2px 8px;white-space:nowrap;text-align:center">${_goalType(k)}</span>
               <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
-                <button onclick="toggleGoalStatus('${k}')" style="border:none;cursor:pointer;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;background:${achieved?'#dcfce7':'#fef9c3'};color:${achieved?'#16a34a':'#a16207'};white-space:nowrap">${achieved?'✅ Achieved':'🔄 Open'}</button>
-                <button class="btn-icon" style="color:var(--danger);opacity:.6" onclick="deleteGoal('${k}')">✕</button>
+                <button onclick="toggleGoalStatus('${k}','${g.id}')" style="border:none;cursor:pointer;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;background:${achieved?'#dcfce7':'#fef9c3'};color:${achieved?'#16a34a':'#a16207'};white-space:nowrap">${achieved?'✅ Achieved':'🔄 Open'}</button>
+                <button class="btn-icon" style="color:var(--danger);opacity:.6" onclick="deleteGoalItem('${k}','${g.id}')">✕</button>
               </div>
             </div>`;
           }).join('')}
@@ -6398,14 +6431,16 @@ const renderers = {
         ${historyHtml}`;
     }
 
-    function saveGoalFromInput(id, key) {
+    function addGoalFromInput(id, key) {
       const inp = document.getElementById('goal-input-' + id) || document.getElementById('goalDayInput');
-      if (!inp) return;
-      saveGoal(key, inp.value);
+      if (!inp || !inp.value.trim()) return;
+      addGoal(key, inp.value);
+      inp.value = '';
       const s = document.getElementById('goal-saved-' + id);
       if (s) { s.style.opacity='1'; setTimeout(()=>{ if(s) s.style.opacity='0'; },1500); }
       if (currentView === 'today' || currentView === 'week' || currentView === 'month') showView(currentView);
-      else showView('goals'); // refresh to show status button
+      else showView('goals');
+      setTimeout(() => { const ni = document.getElementById('goal-input-' + id) || document.getElementById('goalDayInput'); if (ni) ni.focus(); }, 50);
     }
 
     function deleteGoal(key) {
