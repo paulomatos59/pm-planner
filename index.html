@@ -1631,7 +1631,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.83</div>
+      <div class="sidebar-version">v1.9.84</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5669,9 +5669,7 @@ const renderers = {
             // Work tasks: due on this day
             const dayTasks  = tasks.filter(t => !['timeoff','corporate'].includes(t.taskType) && (t.dueDate === ds || isRecurDueToday(t, ds))).sort((a,b) => priorityOrder(a) - priorityOrder(b));
             const dayCommsM = comms.filter(c => c.date === ds || isRecurCommDueToday(c, ds));
-            const totalItems = dayTasks.length + dayCommsM.length;
-            const visible   = dayTasks.slice(0, 2);
-            const extra     = totalItems - visible.length - Math.min(dayCommsM.length, 1);
+            const visible   = dayTasks;
             // Time-off events: span includes this day (startDate <= ds <= dueDate)
             const timeoffs  = tasks.filter(t => {
               if (!['timeoff','corporate'].includes(t.taskType)) return false;
@@ -5695,12 +5693,11 @@ const renderers = {
                   <div class="month-task-chip priority-${t.priority.toLowerCase()} ${t.status==='Done'?'done':''}"
                        onclick="event.stopPropagation();openTaskModal('${t.id}')"
                        title="${esc(t.title)}">${esc(t.title)}</div>`).join('')}
-                ${dayCommsM.slice(0,1).map(c => `
+                ${dayCommsM.map(c => `
                   <div class="month-task-chip ${c.status==='Done'?'done':''}"
                        style="background:${c.status==='Done'?'#f0fdf4':'#eff6ff'};color:${c.status==='Done'?'#15803d':'#1d4ed8'};border:none"
                        onclick="event.stopPropagation();openCommModal('${c.id}')"
                        title="${esc(c.title)}">${COMM_ICONS[c.type]||'💬'} ${esc(c.title)}</div>`).join('')}
-                ${extra > 0 ? `<div class="month-more" onclick="event.stopPropagation();openTaskModalWithDate('${ds}')">+${extra} more</div>` : ''}
               </div>`;
           }).join('')}
         </div>`;
