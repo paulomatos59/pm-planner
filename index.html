@@ -1644,7 +1644,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.94</div>
+      <div class="sidebar-version">v1.9.95</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3468,11 +3468,11 @@
       if (!sel.rangeCount) return;
       const range = sel.getRangeAt(0);
 
-      // Find node in DOM
+      // Find nearest element node
       let node = range.commonAncestorContainer;
       while (node && node.nodeType !== 1) node = node.parentNode;
 
-      // If already inside a check item → unwrap it back to <p>
+      // If already inside a check item → unwrap back to <p>
       const existing = node ? node.closest('.rte-check-item') : null;
       if (existing) {
         const textEl = existing.querySelector('.rte-check-text');
@@ -3486,17 +3486,47 @@
         return;
       }
 
-      // Find top-level block inside editor
+      // Find the closest block-level element within the editor (works for nested li too)
+      const BLOCK = new Set(['P','DIV','LI','H1','H2','H3','H4','H5','H6','BLOCKQUOTE','PRE']);
       let block = node;
-      while (block && block.parentNode !== editor) block = block.parentNode;
+      while (block && block !== editor) {
+        if (BLOCK.has(block.tagName)) break;
+        block = block.parentNode;
+      }
+      // Fallback: top-level editor child
+      if (!block || block === editor) {
+        block = node;
+        while (block && block.parentNode !== editor) block = block.parentNode;
+      }
 
       const item = _makeCheckItem('');
       const textSpan = item.querySelector('.rte-check-text');
 
       if (block && block !== editor) {
-        const inner = block.innerHTML ? block.innerHTML.replace(/​/g,'') : '';
+        const inner = (block.innerHTML || '').replace(/​/g, '');
         textSpan.innerHTML = inner || '&#8203;';
-        block.replaceWith(item);
+        // If block is an <li>, insert check item adjacent to the list rather than inside it
+        if (block.tagName === 'LI') {
+          const list = block.closest('ul, ol');
+          // Split the list around this item
+          const allLi = Array.from(list.children);
+          const idx = allLi.indexOf(block);
+          const before = allLi.slice(0, idx);
+          const after  = allLi.slice(idx + 1);
+          const listTag = list.tagName.toLowerCase();
+          const makeList = items => {
+            const l = document.createElement(listTag);
+            items.forEach(li => l.appendChild(li.cloneNode(true)));
+            return l;
+          };
+          const parent = list.parentNode;
+          if (before.length) parent.insertBefore(makeList(before), list);
+          parent.insertBefore(item, list);
+          if (after.length) parent.insertBefore(makeList(after), list);
+          parent.removeChild(list);
+        } else {
+          block.replaceWith(item);
+        }
       } else {
         textSpan.innerHTML = '&#8203;';
         range.deleteContents();
@@ -3504,7 +3534,7 @@
         if (!item.nextSibling) { const p = document.createElement('p'); p.innerHTML='&#8203;'; item.after(p); }
       }
 
-      // Place cursor
+      // Place cursor in text span
       const r = document.createRange();
       r.selectNodeContents(textSpan); r.collapse(false);
       sel.removeAllRanges(); sel.addRange(r);
