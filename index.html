@@ -1675,7 +1675,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.10.6</div>
+      <div class="sidebar-version">v1.10.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3074,7 +3074,30 @@
     let editingProjId    = null;
     let editingFuId      = null;
     let editingNoteId    = null;
-    let filterState        = { search: '', category: '', priority: '', statuses: new Set(), taskType: 'task' };
+    function _loadFilterState() {
+      try {
+        const s = JSON.parse(localStorage.getItem('dp_filter_state') || '{}');
+        return {
+          search:   s.search   || '',
+          category: s.category || '',
+          priority: s.priority || '',
+          statuses: new Set(Array.isArray(s.statuses) ? s.statuses : []),
+          taskType: s.taskType || 'task'
+        };
+      } catch(e) { return { search:'', category:'', priority:'', statuses: new Set(), taskType:'task' }; }
+    }
+    function _saveFilterState() {
+      try {
+        localStorage.setItem('dp_filter_state', JSON.stringify({
+          search:   filterState.search,
+          category: filterState.category,
+          priority: filterState.priority,
+          statuses: [...(filterState.statuses || [])],
+          taskType: filterState.taskType
+        }));
+      } catch(e) {}
+    }
+    let filterState        = _loadFilterState();
     let statusFilterOpen   = false;
     let backlogOrder       = JSON.parse(localStorage.getItem('dp_backlog_order') || '[]');
     let okrListOrder       = JSON.parse(localStorage.getItem('dp_okrlist_order') || '[]');
@@ -4228,7 +4251,7 @@
     ============================== */
     function showView(view, resetFilters = false) {
       currentView = view;
-      if (resetFilters) { filterState = { search:'', category:'', priority:'', statuses: new Set(), taskType:'task' }; statusFilterOpen = false; }
+      if (resetFilters) { filterState = { search:'', category:'', priority:'', statuses: new Set(), taskType:'task' }; statusFilterOpen = false; _saveFilterState(); }
       closeSidebar(); // auto-close on mobile when navigating
 
       document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
@@ -6280,6 +6303,7 @@ const renderers = {
         // statuses Set is managed separately via toggleStatusFilter
       };
       const _searchVal = filterState.search;
+      _saveFilterState();
       document.getElementById('mainContent').innerHTML = renderAll();
       const _inp = document.getElementById('filterSearch');
       if (_inp) { _inp.focus(); _inp.setSelectionRange(_searchVal.length, _searchVal.length); }
