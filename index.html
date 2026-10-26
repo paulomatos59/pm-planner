@@ -1675,7 +1675,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.10.8</div>
+      <div class="sidebar-version">v1.10.9</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6296,17 +6296,24 @@ const renderers = {
     function applyFilters() {
       filterState = {
         ...filterState,
-        search:   document.getElementById('filterSearch')?.value   || '',
         taskType: document.getElementById('filterTaskType')?.value || 'task',
         category: document.getElementById('filterCategory')?.value || '',
         priority: document.getElementById('filterPriority')?.value || '',
         // statuses Set is managed separately via toggleStatusFilter
       };
-      const _searchVal = filterState.search;
+      // Only update search text when on All Tasks (search view drives globalSearchQuery separately)
+      if (currentView !== 'search') {
+        filterState.search = document.getElementById('filterSearch')?.value || '';
+      }
       _saveFilterState();
-      document.getElementById('mainContent').innerHTML = renderAll();
-      const _inp = document.getElementById('filterSearch');
-      if (_inp) { _inp.focus(); _inp.setSelectionRange(_searchVal.length, _searchVal.length); }
+      if (currentView === 'search') {
+        document.getElementById('mainContent').innerHTML = renderGlobalSearch();
+      } else {
+        const _searchVal = filterState.search;
+        document.getElementById('mainContent').innerHTML = renderAll();
+        const _inp = document.getElementById('filterSearch');
+        if (_inp) { _inp.focus(); _inp.setSelectionRange(_searchVal.length, _searchVal.length); }
+      }
     }
     function setTaskTimeTab(tab) {
       taskTimeTab = tab;
@@ -6983,6 +6990,40 @@ const renderers = {
         const inp = document.getElementById('globalSearchInput');
         if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
       }, 30);
+
+      const fs = filterState;
+      const { from: fromDate, to: toDate } = _taskWindowDates();
+
+      // Status counts for dropdown
+      const statusCounts = {};
+      tasks.filter(t => {
+        if (t.parentId) return false;
+        const tt = fs.taskType || 'task';
+        if (tt === 'task' && ['timeoff','corporate'].includes(t.taskType)) return false;
+        if (!_taskInRange(t, fromDate, toDate)) return false;
+        return true;
+      }).forEach(t => { statusCounts[t.status] = (statusCounts[t.status] || 0) + 1; });
+
+      const timeTabs = [
+        { key:'today', label:'Today' },
+        { key:'week',  label:'This Week' },
+        { key:'month', label:'This Month' },
+        { key:'all',   label:'All' },
+        { key:'custom',label:'📅 Custom' }
+      ].map(t =>
+        `<button class="comm-time-tab ${taskTimeTab===t.key?'active':''}" onclick="_gsSetTimeTab('${t.key}')">${t.label}</button>`
+      ).join('');
+
+      const customRangeHtml = taskTimeTab === 'custom' ? `
+        <div class="comm-custom-range">
+          <label>From</label><input type="date" value="${taskDateFrom}" onchange="_gsSetCustomRange('from',this.value)">
+          <label>To</label><input type="date" value="${taskDateTo}" onchange="_gsSetCustomRange('to',this.value)">
+        </div>` : '';
+
+      const taskSortFieldBtn = `<button class="comm-filter-chip${taskSortField==='startDate'?' active':''}" onclick="toggleTaskSortField('search')">${taskSortField==='dueDate'?'📅 Due Date':'🗓 Start Date'}</button>`;
+      const taskSortBtn      = `<button class="comm-filter-chip${taskSortDir==='desc'?' active':''}" onclick="toggleTaskSortDir('search')">${taskSortDir==='asc'?'↑ Oldest First':'↓ Newest First'}</button>`;
+      const taskHideDoneBtn  = `<button class="comm-filter-chip${taskHideDone?' active':''}" onclick="_gsToggleHideDone()">${taskHideDone?'✓ Hiding Done':'👁 Show Done'}</button>`;
+
       const gsFilterChips = [
         { key:'all',       label:'All' },
         { key:'tasks',     label:'📋 Tasks' },
@@ -6992,28 +7033,69 @@ const renderers = {
         { key:'notes',     label:'📝 Notes' },
         { key:'goals',     label:'🏆 Goals' },
       ].map(c => `<button class="comm-filter-chip${gsTypeFilter===c.key?' active':''}" onclick="gsTypeFilter='${c.key}';_gsRender()">${c.label}</button>`).join('');
+
       return `
         <div class="view-header">
           <div><div class="view-title">🔍 Search</div><div class="view-subtitle">Search across all content</div></div>
         </div>
-        <div style="margin-bottom:12px">
-          <input type="text" id="globalSearchInput" class="form-input"
-            placeholder="Search tasks, meetings, projects, notes, follow-ups…"
-            style="font-size:15px;padding:12px 14px"
-            oninput="globalSearchQuery=this.value;_gsRender()"
-            value="${esc(globalSearchQuery)}">
+        <div class="comm-time-tabs">${timeTabs}</div>
+        ${customRangeHtml}
+        <div class="filter-bar">
+          <input type="text" class="filter-input" id="globalSearchInput" placeholder="Search…"
+            value="${esc(globalSearchQuery)}" oninput="globalSearchQuery=this.value;_gsRender()">
+          <select class="filter-select" id="filterTaskType" onchange="applyFilters()" style="min-width:150px">
+            <option value="task"      ${(fs.taskType||'task')==='task'      ?'selected':''}>📋 Work Tasks</option>
+            <option value="timeoff"   ${(fs.taskType||'task')==='timeoff'   ?'selected':''}>🌴 Time Off</option>
+            <option value="corporate" ${(fs.taskType||'task')==='corporate' ?'selected':''}>🏢 Corporate Events</option>
+            <option value="all"       ${(fs.taskType||'task')==='all'       ?'selected':''}>All Types</option>
+          </select>
+          <select class="filter-select" id="filterCategory" onchange="applyFilters()">
+            <option value="">All Categories</option>
+            <option value="Project"   ${fs.category==='Project'   ?'selected':''}>🚀 Project</option>
+            <option value="Meeting"   ${fs.category==='Meeting'   ?'selected':''}>🤝 Meeting</option>
+            <option value="Admin"     ${fs.category==='Admin'     ?'selected':''}>⚙️ Admin</option>
+            <option value="Follow-up" ${fs.category==='Follow-up' ?'selected':''}>📌 Follow-up</option>
+            <option value="Personal"  ${fs.category==='Personal'  ?'selected':''}>👤 Personal</option>
+          </select>
+          <select class="filter-select" id="filterPriority" onchange="applyFilters()">
+            <option value="">All Priorities</option>
+            <option value="High"   ${fs.priority==='High'   ?'selected':''}>🔴 High</option>
+            <option value="Medium" ${fs.priority==='Medium' ?'selected':''}>🟡 Medium</option>
+            <option value="Low"    ${fs.priority==='Low'    ?'selected':''}>🟢 Low</option>
+          </select>
+          <div style="position:relative">
+            ${statusFilterOpen ? `<div onclick="statusFilterOpen=false;applyFilters()" style="position:fixed;inset:0;z-index:199"></div>` : ''}
+            <button onclick="event.stopPropagation();statusFilterOpen=!statusFilterOpen;applyFilters()"
+              class="filter-select" style="cursor:pointer;display:flex;align-items:center;gap:5px;white-space:nowrap;background:${fs.statuses?.size?'var(--primary-light)':'var(--surface)'};color:${fs.statuses?.size?'var(--primary)':'var(--text)'}">
+              ${fs.statuses?.size
+                ? (fs.statuses.size===1 ? [...fs.statuses][0].replace('Todo','To Do') : `${fs.statuses.size} Statuses`)
+                : 'All Statuses'} ▾
+            </button>
+            ${statusFilterOpen ? `<div onclick="event.stopPropagation()" style="position:absolute;top:calc(100%+4px);left:0;z-index:200;background:var(--surface);border:1px solid var(--border);border-radius:8px;padding:6px 4px;min-width:148px;box-shadow:0 4px 16px rgba(0,0,0,.15)">
+              ${[['Todo','To Do'],['In Progress','In Progress'],['Done','Done'],['Delayed','Delayed'],['Blocked','Blocked']].map(([val,lbl])=>`
+                <label style="display:flex;align-items:center;gap:8px;padding:5px 10px;cursor:pointer;border-radius:5px;font-size:12px;${fs.statuses.has(val)?'background:var(--primary-light);color:var(--primary);font-weight:600':''}">
+                  <input type="checkbox" ${fs.statuses.has(val)?'checked':''} onchange="toggleStatusFilter('${val}')">
+                  <span style="flex:1">${lbl}</span>
+                  <span style="font-size:10px;color:${fs.statuses.has(val)?'var(--primary)':'var(--text-muted)'};min-width:18px;text-align:right">${statusCounts[val]||0}</span>
+                </label>`).join('')}
+              <div style="border-top:1px solid var(--border);margin:4px 6px 2px">
+                <button onclick="filterState.statuses=new Set();applyFilters()" style="width:100%;margin-top:4px;font-size:10px;color:var(--text-muted);background:none;border:none;cursor:pointer;padding:3px 0;text-align:center">Clear all</button>
+              </div>
+            </div>` : ''}
+          </div>
+          <span style="margin-left:auto;display:flex;gap:6px">${taskSortFieldBtn}${taskSortBtn}${taskHideDoneBtn}</span>
         </div>
-        <div class="comm-time-tabs" style="margin-bottom:16px">${gsFilterChips}</div>
+        <div class="comm-time-tabs" style="margin-bottom:12px">${gsFilterChips}</div>
         <div id="gsResults">${_gsResultsHtml(globalSearchQuery)}</div>`;
     }
+
+    function _gsSetTimeTab(tab) { taskTimeTab = tab; showView('search'); }
+    function _gsSetCustomRange(field, val) { if (field==='from') taskDateFrom=val; else taskDateTo=val; showView('search'); }
+    function _gsToggleHideDone() { taskHideDone = !taskHideDone; showView('search'); }
 
     function _gsRender() {
       const el = document.getElementById('gsResults');
       if (el) el.innerHTML = _gsResultsHtml(globalSearchQuery);
-      // update chip active states
-      document.querySelectorAll('.gs-chip').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.key === gsTypeFilter);
-      });
     }
 
     function _gsResultsHtml(q) {
@@ -7024,19 +7106,38 @@ const renderers = {
       const sections = [];
 
       const gf = gsTypeFilter || 'all';
+      const fs = filterState;
+      const { from: fromDate, to: toDate } = _taskWindowDates();
 
-      // Tasks
+      // Tasks — apply filterState same as All Tasks view
       if (gf === 'all' || gf === 'tasks') {
-        const mTasks = tasks.filter(t => match(t.title) || match(t.description));
+        const mTasks = tasks.filter(t => {
+          if (t.parentId) return false;
+          if (!match(t.title) && !match(stripHtml(t.description||''))) return false;
+          const tt = fs.taskType || 'task';
+          if (tt === 'task'      && ['timeoff','corporate'].includes(t.taskType)) return false;
+          if (tt === 'timeoff'   && t.taskType !== 'timeoff') return false;
+          if (tt === 'corporate' && t.taskType !== 'corporate') return false;
+          if (fs.category && !['timeoff','corporate'].includes(t.taskType) && t.category !== fs.category) return false;
+          if (fs.priority && !['timeoff','corporate'].includes(t.taskType) && t.priority !== fs.priority) return false;
+          if (fs.statuses?.size && !fs.statuses.has(t.status)) return false;
+          if (taskTimeTab !== 'all' && !_taskInRange(t, fromDate, toDate)) return false;
+          if (taskHideDone && t.status === 'Done') return false;
+          return true;
+        });
         if (mTasks.length) sections.push({ title:'Tasks', icon:'📋', items: mTasks.map(t => {
           const proj = projects.find(p => p.id === t.projectId);
           return { icon:'📋', title: t.title, sub: [t.status, proj?.name].filter(Boolean).join(' · '), action:`openTaskModal('${t.id}')` };
         })});
       }
 
-      // Comms
+      // Comms — respect category filter if set to Meeting/comm types
       if (gf === 'all' || gf === 'comms') {
-        const mComms = comms.filter(c => match(c.title) || match(c.notes) || match(c.participants));
+        const mComms = comms.filter(c => {
+          if (!match(c.title) && !match(c.notes) && !match(c.participants)) return false;
+          if (fs.category === 'Meeting' && c.type !== 'Meeting') return false;
+          return true;
+        });
         if (mComms.length) sections.push({ title:'Meetings & Comms', icon:'💬', items: mComms.map(c => ({
           icon: c.type==='Meeting'?'🤝':'💬', title: c.title,
           sub: [c.date, c.type].filter(Boolean).join(' · '),
