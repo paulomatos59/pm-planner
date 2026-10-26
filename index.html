@@ -1674,7 +1674,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.10.4</div>
+      <div class="sidebar-version">v1.10.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2978,6 +2978,7 @@
     let activePersonalId = null;
     let activeProjectTab   = 'overview';
     let projectsViewMode   = localStorage.getItem('dp_projects_view') || 'grid';
+    let projectsSubFilter  = 'all'; // 'all' | 'initiatives' | 'milestones'
     let activeOkrId        = null;
     let okrObjectives    = JSON.parse(localStorage.getItem('dp_okr_objectives') || '[]');
     let okrKeyResults    = JSON.parse(localStorage.getItem('dp_okr_keyresults')  || '[]');
@@ -6882,8 +6883,29 @@ const renderers = {
     }
 
     function renderProjects() {
-      const workProjects = projects.filter(p => p.type !== 'personal' && p.type !== 'okr');
-      const isList       = projectsViewMode === 'list';
+      const allWork = projects.filter(p => p.type !== 'personal' && p.type !== 'okr');
+      const workProjects = projectsSubFilter === 'milestones'
+        ? allWork.filter(p => p.subtype === 'milestone')
+        : projectsSubFilter === 'initiatives'
+          ? allWork.filter(p => p.subtype !== 'milestone')
+          : allWork;
+      const isList = projectsViewMode === 'list';
+
+      const viewTitle = projectsSubFilter === 'milestones' ? 'Milestones'
+                      : projectsSubFilter === 'initiatives' ? 'Initiatives'
+                      : 'Initiatives & Milestones';
+      const newBtn = projectsSubFilter === 'milestones'
+        ? `<button class="btn btn-primary" onclick="openProjectModal(null,null,'milestone')">＋ New Milestone</button>`
+        : `<button class="btn btn-primary" onclick="openProjectModal()">＋ New Initiative</button>`;
+
+      // Tab filter pills
+      const pill = (label, val) => `<button onclick="projectsSubFilter='${val}';showView('projects')"
+        style="padding:3px 10px;border-radius:12px;border:1px solid var(--border);font-size:11px;cursor:pointer;
+               background:${projectsSubFilter===val?'var(--primary)':'var(--surface)'};
+               color:${projectsSubFilter===val?'#fff':'var(--text-muted)'}">${label}</button>`;
+      const pills = `<div style="display:flex;gap:6px;margin-bottom:12px">
+        ${pill('All', 'all')}${pill('Initiatives', 'initiatives')}${pill('Milestones', 'milestones')}
+      </div>`;
 
       const toggle = `
         <div class="view-toggle">
@@ -6893,12 +6915,12 @@ const renderers = {
 
       let html = `
         <div class="view-header">
-          <div><div class="view-title">Initiatives & Milestones</div><div class="view-subtitle">${workProjects.length} item${workProjects.length!==1?'s':''}</div></div>
-          <div style="display:flex;gap:8px;align-items:center">${toggle}<button class="btn btn-primary" onclick="openProjectModal()">＋ New Initiative</button></div>
-        </div>`;
+          <div><div class="view-title">${viewTitle}</div><div class="view-subtitle">${workProjects.length} item${workProjects.length!==1?'s':''}</div></div>
+          <div style="display:flex;gap:8px;align-items:center">${toggle}${newBtn}</div>
+        </div>${pills}`;
 
       if (workProjects.length === 0) {
-        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No initiatives or milestones yet</h3><p>Create one to organise tasks, follow-ups, and notes in one place.</p></div>`;
+        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No ${viewTitle.toLowerCase()} yet</h3><p>Create one to organise tasks, follow-ups, and notes in one place.</p></div>`;
       }
 
       const renderGroup = (items) => isList
@@ -11228,7 +11250,7 @@ const renderers = {
         let html = activeInits.length
           ? activeInits.map(projBtn).join('')
           : `<div class="sidebar-no-projects">No active initiatives</div>`;
-        html += `<button class="sidebar-view-all" id="nav-projects" onclick="showView('projects')">→ All initiatives & milestones</button>`;
+        html += `<button class="sidebar-view-all" id="nav-projects" onclick="projectsSubFilter='initiatives';showView('projects')">→ All initiatives</button>`;
         ciEl.innerHTML = html;
       }
 
@@ -11236,7 +11258,7 @@ const renderers = {
         let html = activeMs.length
           ? activeMs.map(projBtn).join('')
           : `<div class="sidebar-no-projects">No active milestones</div>`;
-        html += `<button class="sidebar-view-all" onclick="showView('projects')">→ All initiatives & milestones</button>`;
+        html += `<button class="sidebar-view-all" onclick="projectsSubFilter='milestones';showView('projects')">→ All milestones</button>`;
         cmEl.innerHTML = html;
       }
 
