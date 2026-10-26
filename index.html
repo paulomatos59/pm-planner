@@ -663,12 +663,20 @@
     .rte-editor .rte-check-item[data-checked="true"] .rte-check-box::after { content:'✓'; font-size:10px; line-height:1; }
     .rte-editor .rte-check-item[data-checked="true"] .rte-check-text { text-decoration:line-through; opacity:.5; }
     .rte-editor .rte-check-text { flex:1; min-width:0; outline:none; }
-    /* Checkbox-inside-list-item (keeps the bullet) */
-    .rte-editor li[data-checked] { display:flex; align-items:flex-start; gap:6px; }
-    .rte-editor li[data-checked] .rte-check-box { margin-top:3px; flex-shrink:0; }
-    .rte-editor li[data-checked="true"] > .rte-check-box { background:var(--primary); border-color:var(--primary); color:#fff; }
-    .rte-editor li[data-checked="true"] > .rte-check-box::after { content:'✓'; font-size:10px; line-height:1; }
-    .rte-editor li[data-checked="true"] > :not(.rte-check-box) { text-decoration:line-through; opacity:.5; }
+    /* Checkbox-inside-list-item (keeps the bullet, survives indent) */
+    .rte-editor li[data-checked] { position:relative; padding-left:20px !important; }
+    .rte-editor li[data-checked]::before {
+      content:''; position:absolute; left:0; top:3px;
+      width:13px; height:13px; border:1.5px solid var(--text-muted);
+      border-radius:3px; background:var(--surface); cursor:pointer;
+      box-sizing:border-box; transition:background .12s,border-color .12s;
+    }
+    .rte-editor li[data-checked="true"]::before { background:var(--primary); border-color:var(--primary); }
+    .rte-editor li[data-checked="true"]::after {
+      content:'✓'; position:absolute; left:1px; top:2px;
+      font-size:9px; color:#fff; line-height:1; pointer-events:none;
+    }
+    .rte-editor li[data-checked="true"] { text-decoration:line-through; opacity:.5; }
     .rte-color-wrap { position: relative; }
     .rte-color-popup {
       position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
@@ -1650,7 +1658,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.97</div>
+      <div class="sidebar-version">v1.9.98</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3522,9 +3530,6 @@
       // If already inside a check item → unwrap back to normal
       const existingLi = node ? node.closest('li[data-checked]') : null;
       if (existingLi) {
-        // Remove the checkbox span and data attribute
-        const box = existingLi.querySelector('.rte-check-box');
-        if (box) box.remove();
         delete existingLi.dataset.checked;
         editor.dispatchEvent(new Event('input', { bubbles: true }));
         return;
@@ -3560,19 +3565,8 @@
 
       if (block && block !== editor) {
         if (block.tagName === 'LI') {
-          // Keep the bullet — just inject a checkbox span at the start of the <li>
-          const box = document.createElement('span');
-          box.className = 'rte-check-box';
-          box.contentEditable = 'false';
-          box.setAttribute('onmousedown', 'event.preventDefault();rteToggleCheck(this)');
+          // Keep the bullet — CSS ::before handles the checkbox, no span needed
           block.dataset.checked = 'false';
-          block.insertBefore(box, block.firstChild);
-          // Place cursor after the box
-          const r = document.createRange();
-          const target = box.nextSibling || block;
-          if (target.nodeType === 3) { r.setStart(target, 0); r.collapse(true); }
-          else { r.setStartAfter(box); r.collapse(true); }
-          sel.removeAllRanges(); sel.addRange(r);
           editor.dispatchEvent(new Event('input', { bubbles: true }));
           return;
         }
@@ -3624,6 +3618,20 @@
       }
       editor.dispatchEvent(new Event('input', { bubbles: true }));
     }, true);
+
+    // Toggle li[data-checked] checkbox via click on its ::before pseudo-element area
+    document.addEventListener('click', function(e) {
+      const li = e.target.closest && e.target.closest('li[data-checked]');
+      if (!li) return;
+      const editor = li.closest('.rte-editor');
+      if (!editor) return;
+      const rect = li.getBoundingClientRect();
+      if (e.clientX - rect.left < 22) {
+        e.preventDefault();
+        li.dataset.checked = li.dataset.checked === 'true' ? 'false' : 'true';
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+      }
+    });
 
     // ── RTE image drag-and-drop (shared by all .rte-editor elements) ──
     function _rteInsertImageFile(file, targetEl) {
