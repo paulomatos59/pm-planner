@@ -650,6 +650,19 @@
     .rte-editor img { max-width: 100%; height: auto; border-radius: 6px; margin: 4px 0; display: block; cursor: pointer; box-shadow: 0 1px 4px rgba(0,0,0,.12); transition: outline 0.1s; }
     .rte-editor img:hover { outline: 2px solid rgba(37,99,235,0.35); outline-offset: 1px; }
     .rte-editor.rte-drag-over { outline: 2px dashed var(--primary); background: var(--primary-light); }
+    /* Checklist items */
+    .rte-editor .rte-check-item { display:flex; align-items:flex-start; gap:7px; margin:2px 0; padding:1px 0; }
+    .rte-editor .rte-check-box {
+      display:inline-flex; align-items:center; justify-content:center;
+      width:15px; height:15px; min-width:15px; border:1.5px solid var(--text-muted);
+      border-radius:3px; cursor:pointer; margin-top:3px;
+      background:var(--surface); user-select:none; flex-shrink:0;
+      transition:background .12s,border-color .12s; font-size:10px; color:transparent;
+    }
+    .rte-editor .rte-check-item[data-checked="true"] .rte-check-box { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .rte-editor .rte-check-item[data-checked="true"] .rte-check-box::after { content:'✓'; font-size:10px; line-height:1; }
+    .rte-editor .rte-check-item[data-checked="true"] .rte-check-text { text-decoration:line-through; opacity:.5; }
+    .rte-editor .rte-check-text { flex:1; min-width:0; outline:none; }
     .rte-color-wrap { position: relative; }
     .rte-color-popup {
       position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
@@ -1631,7 +1644,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.93</div>
+      <div class="sidebar-version">v1.9.94</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1729,6 +1742,9 @@
                 </button>
                 <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();rteExec('insertOrderedList')">
                   <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+                </button>
+                <button type="button" class="rte-btn" title="Checklist" onmousedown="event.preventDefault();rteInsertChecklist('taskDesc')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
                 </button>
                 <div class="rte-divider"></div>
                 <div class="rte-color-wrap">
@@ -2004,6 +2020,9 @@
                 <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();commRteExec('insertOrderedList')">
                   <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
                 </button>
+                <button type="button" class="rte-btn" title="Checklist" onmousedown="event.preventDefault();rteInsertChecklist('commDesc')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
+                </button>
                 <div class="rte-divider"></div>
                 <div class="rte-color-wrap">
                   <button type="button" class="rte-btn" id="commRteColorBtn" title="Text color" onmousedown="event.preventDefault();commRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
@@ -2252,6 +2271,9 @@
               <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projObjRteExec('insertOrderedList')">
                 <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
               </button>
+              <button type="button" class="rte-btn" title="Checklist" onmousedown="event.preventDefault();rteInsertChecklist('projectObjective')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
+              </button>
               <div class="rte-divider"></div>
               <div class="rte-color-wrap">
                 <button type="button" class="rte-btn" id="projObjRteColorBtn" title="Text color" onmousedown="event.preventDefault();projObjRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
@@ -2314,6 +2336,9 @@
               </button>
               <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projDescRteExec('insertOrderedList')">
                 <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <button type="button" class="rte-btn" title="Checklist" onmousedown="event.preventDefault();rteInsertChecklist('projectDesc')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
               </button>
               <div class="rte-divider"></div>
               <div class="rte-color-wrap">
@@ -2511,6 +2536,9 @@
                 <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();fuRteExec('insertOrderedList')">
                   <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
                 </button>
+                <button type="button" class="rte-btn" title="Checklist" onmousedown="event.preventDefault();rteInsertChecklist('followupNotes')">
+                  <svg width="15" height="13" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
+                </button>
                 <div class="rte-divider"></div>
                 <div class="rte-color-wrap">
                   <button type="button" class="rte-btn" id="fuRteColorBtn" title="Text color" onmousedown="event.preventDefault();fuRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:28px">
@@ -2624,6 +2652,9 @@
               </button>
               <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();noteRteExec('insertOrderedList')">
                 <svg width="15" height="13" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+              </button>
+              <button type="button" class="rte-btn" title="Checklist" onmousedown="event.preventDefault();rteInsertChecklist('noteContent')">
+                <svg width="15" height="13" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
               </button>
               <div class="rte-divider"></div>
               <div class="rte-color-wrap">
@@ -3403,6 +3434,114 @@
         document.execCommand(e.shiftKey ? 'outdent' : 'indent');
       }
     }
+
+    // ── Checklist ──
+    function _makeCheckItem(innerHtml) {
+      const item = document.createElement('div');
+      item.className = 'rte-check-item';
+      item.dataset.checked = 'false';
+      const box = document.createElement('span');
+      box.className = 'rte-check-box';
+      box.contentEditable = 'false';
+      box.setAttribute('onmousedown', 'event.preventDefault();rteToggleCheck(this)');
+      const text = document.createElement('span');
+      text.className = 'rte-check-text';
+      text.innerHTML = innerHtml || '&#8203;';
+      item.appendChild(box);
+      item.appendChild(text);
+      return item;
+    }
+
+    function rteToggleCheck(boxEl) {
+      const item = boxEl.closest('.rte-check-item');
+      if (!item) return;
+      item.dataset.checked = item.dataset.checked === 'true' ? 'false' : 'true';
+      // Trigger save
+      item.closest('.rte-editor')?.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    function rteInsertChecklist(editorId) {
+      const editor = document.getElementById(editorId);
+      if (!editor) return;
+      editor.focus();
+      const sel = window.getSelection();
+      if (!sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+
+      // Find node in DOM
+      let node = range.commonAncestorContainer;
+      while (node && node.nodeType !== 1) node = node.parentNode;
+
+      // If already inside a check item → unwrap it back to <p>
+      const existing = node ? node.closest('.rte-check-item') : null;
+      if (existing) {
+        const textEl = existing.querySelector('.rte-check-text');
+        const p = document.createElement('p');
+        p.innerHTML = textEl ? (textEl.innerHTML.replace(/​/g,'') || '&#8203;') : '&#8203;';
+        existing.replaceWith(p);
+        const r = document.createRange();
+        r.selectNodeContents(p); r.collapse(false);
+        sel.removeAllRanges(); sel.addRange(r);
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
+
+      // Find top-level block inside editor
+      let block = node;
+      while (block && block.parentNode !== editor) block = block.parentNode;
+
+      const item = _makeCheckItem('');
+      const textSpan = item.querySelector('.rte-check-text');
+
+      if (block && block !== editor) {
+        const inner = block.innerHTML ? block.innerHTML.replace(/​/g,'') : '';
+        textSpan.innerHTML = inner || '&#8203;';
+        block.replaceWith(item);
+      } else {
+        textSpan.innerHTML = '&#8203;';
+        range.deleteContents();
+        range.insertNode(item);
+        if (!item.nextSibling) { const p = document.createElement('p'); p.innerHTML='&#8203;'; item.after(p); }
+      }
+
+      // Place cursor
+      const r = document.createRange();
+      r.selectNodeContents(textSpan); r.collapse(false);
+      sel.removeAllRanges(); sel.addRange(r);
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Handle Enter inside checklist items (global, works for all editors)
+    document.addEventListener('keydown', function(e) {
+      if (e.key !== 'Enter') return;
+      const editor = e.target.closest ? e.target.closest('.rte-editor') : null;
+      if (!editor) return;
+      const sel = window.getSelection();
+      if (!sel || !sel.rangeCount) return;
+      const range = sel.getRangeAt(0);
+      let node = range.commonAncestorContainer;
+      while (node && node.nodeType !== 1) node = node.parentNode;
+      const checkItem = node ? node.closest('.rte-check-item') : null;
+      if (!checkItem) return;
+      e.preventDefault();
+      const textEl = checkItem.querySelector('.rte-check-text');
+      const isEmpty = !textEl || textEl.textContent.replace(/​/g,'').trim() === '';
+      if (isEmpty) {
+        // Exit checklist → normal paragraph
+        const p = document.createElement('p'); p.innerHTML = '&#8203;';
+        checkItem.replaceWith(p);
+        const r = document.createRange(); r.selectNodeContents(p); r.collapse(false);
+        sel.removeAllRanges(); sel.addRange(r);
+      } else {
+        // New check item
+        const newItem = _makeCheckItem('');
+        checkItem.after(newItem);
+        const newText = newItem.querySelector('.rte-check-text');
+        const r = document.createRange(); r.selectNodeContents(newText); r.collapse(true);
+        sel.removeAllRanges(); sel.addRange(r);
+      }
+      editor.dispatchEvent(new Event('input', { bubbles: true }));
+    }, true);
 
     // ── RTE image drag-and-drop (shared by all .rte-editor elements) ──
     function _rteInsertImageFile(file, targetEl) {
@@ -7723,6 +7862,9 @@ const renderers = {
             </button>
             <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();projRteExec('insertOrderedList')" style="height:24px">
               <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+            </button>
+            <button type="button" class="rte-btn" title="Checklist" style="height:24px" onmousedown="event.preventDefault();rteInsertChecklist('projSummaryEditor')">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
             </button>
             <div class="rte-divider" style="margin:0 3px"></div>
             <select class="rte-size-select" title="Text size" style="height:22px;font-size:10px" onmousedown="rteSaveSel()" onchange="rteApplySize('projSummaryEditor', this.value, this)">
