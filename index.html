@@ -663,6 +663,12 @@
     .rte-editor .rte-check-item[data-checked="true"] .rte-check-box::after { content:'✓'; font-size:10px; line-height:1; }
     .rte-editor .rte-check-item[data-checked="true"] .rte-check-text { text-decoration:line-through; opacity:.5; }
     .rte-editor .rte-check-text { flex:1; min-width:0; outline:none; }
+    /* Checkbox-inside-list-item (keeps the bullet) */
+    .rte-editor li[data-checked] { display:flex; align-items:flex-start; gap:6px; }
+    .rte-editor li[data-checked] .rte-check-box { margin-top:3px; flex-shrink:0; }
+    .rte-editor li[data-checked="true"] > .rte-check-box { background:var(--primary); border-color:var(--primary); color:#fff; }
+    .rte-editor li[data-checked="true"] > .rte-check-box::after { content:'✓'; font-size:10px; line-height:1; }
+    .rte-editor li[data-checked="true"] > :not(.rte-check-box) { text-decoration:line-through; opacity:.5; }
     .rte-color-wrap { position: relative; }
     .rte-color-popup {
       position: absolute; top: calc(100% + 4px); left: 0; z-index: 300;
@@ -1644,7 +1650,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.95</div>
+      <div class="sidebar-version">v1.9.96</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3453,10 +3459,9 @@
     }
 
     function rteToggleCheck(boxEl) {
-      const item = boxEl.closest('.rte-check-item');
+      const item = boxEl.closest('.rte-check-item, li[data-checked]');
       if (!item) return;
       item.dataset.checked = item.dataset.checked === 'true' ? 'false' : 'true';
-      // Trigger save
       item.closest('.rte-editor')?.dispatchEvent(new Event('input', { bubbles: true }));
     }
 
@@ -3472,7 +3477,16 @@
       let node = range.commonAncestorContainer;
       while (node && node.nodeType !== 1) node = node.parentNode;
 
-      // If already inside a check item → unwrap back to <p>
+      // If already inside a check item → unwrap back to normal
+      const existingLi = node ? node.closest('li[data-checked]') : null;
+      if (existingLi) {
+        // Remove the checkbox span and data attribute
+        const box = existingLi.querySelector('.rte-check-box');
+        if (box) box.remove();
+        delete existingLi.dataset.checked;
+        editor.dispatchEvent(new Event('input', { bubbles: true }));
+        return;
+      }
       const existing = node ? node.closest('.rte-check-item') : null;
       if (existing) {
         const textEl = existing.querySelector('.rte-check-text');
@@ -3503,30 +3517,26 @@
       const textSpan = item.querySelector('.rte-check-text');
 
       if (block && block !== editor) {
+        if (block.tagName === 'LI') {
+          // Keep the bullet — just inject a checkbox span at the start of the <li>
+          const box = document.createElement('span');
+          box.className = 'rte-check-box';
+          box.contentEditable = 'false';
+          box.setAttribute('onmousedown', 'event.preventDefault();rteToggleCheck(this)');
+          block.dataset.checked = 'false';
+          block.insertBefore(box, block.firstChild);
+          // Place cursor after the box
+          const r = document.createRange();
+          const target = box.nextSibling || block;
+          if (target.nodeType === 3) { r.setStart(target, 0); r.collapse(true); }
+          else { r.setStartAfter(box); r.collapse(true); }
+          sel.removeAllRanges(); sel.addRange(r);
+          editor.dispatchEvent(new Event('input', { bubbles: true }));
+          return;
+        }
         const inner = (block.innerHTML || '').replace(/​/g, '');
         textSpan.innerHTML = inner || '&#8203;';
-        // If block is an <li>, insert check item adjacent to the list rather than inside it
-        if (block.tagName === 'LI') {
-          const list = block.closest('ul, ol');
-          // Split the list around this item
-          const allLi = Array.from(list.children);
-          const idx = allLi.indexOf(block);
-          const before = allLi.slice(0, idx);
-          const after  = allLi.slice(idx + 1);
-          const listTag = list.tagName.toLowerCase();
-          const makeList = items => {
-            const l = document.createElement(listTag);
-            items.forEach(li => l.appendChild(li.cloneNode(true)));
-            return l;
-          };
-          const parent = list.parentNode;
-          if (before.length) parent.insertBefore(makeList(before), list);
-          parent.insertBefore(item, list);
-          if (after.length) parent.insertBefore(makeList(after), list);
-          parent.removeChild(list);
-        } else {
-          block.replaceWith(item);
-        }
+        block.replaceWith(item);
       } else {
         textSpan.innerHTML = '&#8203;';
         range.deleteContents();
