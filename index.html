@@ -1675,7 +1675,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.10.7</div>
+      <div class="sidebar-version">v1.10.8</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6976,29 +6976,44 @@ const renderers = {
        GLOBAL SEARCH VIEW
     ============================== */
     let globalSearchQuery = '';
+    let gsTypeFilter = 'all'; // 'all' | 'tasks' | 'comms' | 'projects' | 'followups' | 'notes' | 'goals'
 
     function renderGlobalSearch() {
       setTimeout(() => {
         const inp = document.getElementById('globalSearchInput');
         if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); }
       }, 30);
+      const gsFilterChips = [
+        { key:'all',       label:'All' },
+        { key:'tasks',     label:'📋 Tasks' },
+        { key:'comms',     label:'🤝 Meetings' },
+        { key:'projects',  label:'🗂 Projects' },
+        { key:'followups', label:'📌 Follow-ups' },
+        { key:'notes',     label:'📝 Notes' },
+        { key:'goals',     label:'🏆 Goals' },
+      ].map(c => `<button class="comm-filter-chip${gsTypeFilter===c.key?' active':''}" onclick="gsTypeFilter='${c.key}';_gsRender()">${c.label}</button>`).join('');
       return `
         <div class="view-header">
           <div><div class="view-title">🔍 Search</div><div class="view-subtitle">Search across all content</div></div>
         </div>
-        <div style="margin-bottom:20px">
+        <div style="margin-bottom:12px">
           <input type="text" id="globalSearchInput" class="form-input"
             placeholder="Search tasks, meetings, projects, notes, follow-ups…"
             style="font-size:15px;padding:12px 14px"
             oninput="globalSearchQuery=this.value;_gsRender()"
             value="${esc(globalSearchQuery)}">
         </div>
+        <div class="comm-time-tabs" style="margin-bottom:16px">${gsFilterChips}</div>
         <div id="gsResults">${_gsResultsHtml(globalSearchQuery)}</div>`;
     }
 
     function _gsRender() {
       const el = document.getElementById('gsResults');
       if (el) el.innerHTML = _gsResultsHtml(globalSearchQuery);
+      // update chip active states
+      document.querySelectorAll('.gs-chip').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.key === gsTypeFilter);
+      });
     }
 
     function _gsResultsHtml(q) {
@@ -7008,52 +7023,66 @@ const renderers = {
       const match = s => (s || '').toLowerCase().includes(lq);
       const sections = [];
 
+      const gf = gsTypeFilter || 'all';
+
       // Tasks
-      const mTasks = tasks.filter(t => match(t.title) || match(t.description));
-      if (mTasks.length) sections.push({ title:'Tasks', icon:'📋', items: mTasks.map(t => {
-        const proj = projects.find(p => p.id === t.projectId);
-        return { icon:'📋', title: t.title, sub: [t.status, proj?.name].filter(Boolean).join(' · '), action:`openTaskModal('${t.id}')` };
-      })});
+      if (gf === 'all' || gf === 'tasks') {
+        const mTasks = tasks.filter(t => match(t.title) || match(t.description));
+        if (mTasks.length) sections.push({ title:'Tasks', icon:'📋', items: mTasks.map(t => {
+          const proj = projects.find(p => p.id === t.projectId);
+          return { icon:'📋', title: t.title, sub: [t.status, proj?.name].filter(Boolean).join(' · '), action:`openTaskModal('${t.id}')` };
+        })});
+      }
 
       // Comms
-      const mComms = comms.filter(c => match(c.title) || match(c.notes) || match(c.participants));
-      if (mComms.length) sections.push({ title:'Meetings & Comms', icon:'💬', items: mComms.map(c => ({
-        icon: c.type==='Meeting'?'🤝':'💬', title: c.title,
-        sub: [c.date, c.type].filter(Boolean).join(' · '),
-        action: `openCommModal('${c.id}')`
-      }))});
+      if (gf === 'all' || gf === 'comms') {
+        const mComms = comms.filter(c => match(c.title) || match(c.notes) || match(c.participants));
+        if (mComms.length) sections.push({ title:'Meetings & Comms', icon:'💬', items: mComms.map(c => ({
+          icon: c.type==='Meeting'?'🤝':'💬', title: c.title,
+          sub: [c.date, c.type].filter(Boolean).join(' · '),
+          action: `openCommModal('${c.id}')`
+        }))});
+      }
 
       // Projects / Initiatives / Milestones / BETs / Personal
-      const mProjs = projects.filter(p => match(p.name) || match(p.description) || match(p.objective));
-      if (mProjs.length) sections.push({ title:'Projects & Initiatives', icon:'🗂', items: mProjs.map(p => ({
-        icon: p.type==='okr'?'🎯': p.type==='personal'?'🏠': p.subtype==='milestone'?'🏁':'🗂',
-        title: p.name,
-        sub: [p.status, p.type==='okr'?'BET': p.subtype==='milestone'?'Milestone': p.type==='personal'?'Personal':'Initiative'].join(' · '),
-        action: p.type==='okr'?`openOkr('${p.id}')`: p.type==='personal'?`openPersonalItem('${p.id}')`:`openProject('${p.id}')`
-      }))});
+      if (gf === 'all' || gf === 'projects') {
+        const mProjs = projects.filter(p => match(p.name) || match(p.description) || match(p.objective));
+        if (mProjs.length) sections.push({ title:'Projects & Initiatives', icon:'🗂', items: mProjs.map(p => ({
+          icon: p.type==='okr'?'🎯': p.type==='personal'?'🏠': p.subtype==='milestone'?'🏁':'🗂',
+          title: p.name,
+          sub: [p.status, p.type==='okr'?'BET': p.subtype==='milestone'?'Milestone': p.type==='personal'?'Personal':'Initiative'].join(' · '),
+          action: p.type==='okr'?`openOkr('${p.id}')`: p.type==='personal'?`openPersonalItem('${p.id}')`:`openProject('${p.id}')`
+        }))});
+      }
 
       // Follow-ups
-      const mFu = followups.filter(f => match(f.topic) || match(f.notes));
-      if (mFu.length) sections.push({ title:'Follow-ups', icon:'📌', items: mFu.map(f => {
-        const proj = projects.find(p => p.id === f.projectId);
-        return { icon:'📌', title: f.topic, sub:[f.status, proj?.name].filter(Boolean).join(' · '), action:`openFollowupModal('${f.id}')` };
-      })});
+      if (gf === 'all' || gf === 'followups') {
+        const mFu = followups.filter(f => match(f.topic) || match(f.notes));
+        if (mFu.length) sections.push({ title:'Follow-ups', icon:'📌', items: mFu.map(f => {
+          const proj = projects.find(p => p.id === f.projectId);
+          return { icon:'📌', title: f.topic, sub:[f.status, proj?.name].filter(Boolean).join(' · '), action:`openFollowupModal('${f.id}')` };
+        })});
+      }
 
       // Notes
-      const mNotes = projectNotes.filter(n => match(n.title) || match(n.content));
-      if (mNotes.length) sections.push({ title:'Notes', icon:'📝', items: mNotes.map(n => {
-        const proj = projects.find(p => p.id === n.projectId);
-        return { icon:'📝', title: n.title, sub: proj?.name || '', action:`openNoteModal('${n.id}')` };
-      })});
+      if (gf === 'all' || gf === 'notes') {
+        const mNotes = projectNotes.filter(n => match(n.title) || match(n.content));
+        if (mNotes.length) sections.push({ title:'Notes', icon:'📝', items: mNotes.map(n => {
+          const proj = projects.find(p => p.id === n.projectId);
+          return { icon:'📝', title: n.title, sub: proj?.name || '', action:`openNoteModal('${n.id}')` };
+        })});
+      }
 
       // Goals
-      const goalEntries = Object.entries(goals).flatMap(([key, val]) => {
-        return _gArr(key).filter(g => match(g.text)).map(g => {
-          const label = key.startsWith('day:') ? 'Day: '+key.slice(4) : key.startsWith('week:') ? 'Week: '+key.slice(5) : 'Month: '+key.slice(6);
-          return { icon:'🏆', title: g.text, sub: label + (g.status==='Achieved'?' · ✅ Achieved':''), action:`showView('goals')` };
+      if (gf === 'all' || gf === 'goals') {
+        const goalEntries = Object.entries(goals).flatMap(([key, val]) => {
+          return _gArr(key).filter(g => match(g.text)).map(g => {
+            const label = key.startsWith('day:') ? 'Day: '+key.slice(4) : key.startsWith('week:') ? 'Week: '+key.slice(5) : 'Month: '+key.slice(6);
+            return { icon:'🏆', title: g.text, sub: label + (g.status==='Achieved'?' · ✅ Achieved':''), action:`showView('goals')` };
+          });
         });
-      });
-      if (goalEntries.length) sections.push({ title:'Goals', icon:'🏆', items: goalEntries });
+        if (goalEntries.length) sections.push({ title:'Goals', icon:'🏆', items: goalEntries });
+      }
 
       if (!sections.length) return `<div style="text-align:center;padding:48px 0;color:var(--text-muted);font-size:14px">No results found for "<strong>${esc(q)}</strong>"</div>`;
 
