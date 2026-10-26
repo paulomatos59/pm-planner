@@ -1658,7 +1658,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.9.98</div>
+      <div class="sidebar-version">v1.9.99</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3504,8 +3504,33 @@
 
     function rteIndent(editorId, dir) {
       const el = document.getElementById(editorId);
-      if (el) el.focus();
+      if (!el) return;
+      el.focus();
+
+      // Save checked state before indent/outdent restructures the DOM
+      const sel = window.getSelection();
+      let savedChecked = null;
+      if (sel && sel.rangeCount) {
+        let n = sel.getRangeAt(0).commonAncestorContainer;
+        while (n && n.nodeType !== 1) n = n.parentNode;
+        const li = n ? n.closest('li[data-checked]') : null;
+        if (li) savedChecked = li.dataset.checked;
+      }
+
       document.execCommand(dir, false, null);
+
+      // After the DOM change, find the new <li> at the cursor and restore data-checked
+      if (savedChecked !== null) {
+        const sel2 = window.getSelection();
+        if (sel2 && sel2.rangeCount) {
+          let n2 = sel2.getRangeAt(0).commonAncestorContainer;
+          while (n2 && n2.nodeType !== 1) n2 = n2.parentNode;
+          const newLi = n2 ? n2.closest('li') : null;
+          if (newLi && !('checked' in newLi.dataset)) {
+            newLi.dataset.checked = savedChecked;
+          }
+        }
+      }
     }
 
     function rteToggleCheck(boxEl) {
