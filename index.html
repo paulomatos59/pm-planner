@@ -1676,7 +1676,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.4</div>
+      <div class="sidebar-version">v1.11.5</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1903,11 +1903,11 @@
           <!-- Dates -->
           <div class="form-group">
             <label class="form-label" id="startDateLabel">Start Date</label>
-            <input type="date" class="form-input" id="taskStartDate" onchange="validateTaskDates()">
+            <input type="date" class="form-input" id="taskStartDate" onchange="validateTaskDates('start')">
           </div>
           <div class="form-group">
             <label class="form-label" id="dueDateLabel">Due Date</label>
-            <input type="date" class="form-input" id="taskDueDate" onchange="validateTaskDates()">
+            <input type="date" class="form-input" id="taskDueDate" onchange="validateTaskDates('due')">
           </div>
           <div id="taskDateError" style="display:none;color:var(--danger);font-size:12px;margin-top:-8px;margin-bottom:8px">
             ⚠ Start date cannot be after the due date.
@@ -10879,17 +10879,21 @@ const renderers = {
         : 'What needs to be done?';
     }
 
-    function validateTaskDates() {
-      const start = document.getElementById('taskStartDate').value;
-      const due   = document.getElementById('taskDueDate').value;
-      const err   = document.getElementById('taskDateError');
+    function validateTaskDates(changed) {
       const startEl = document.getElementById('taskStartDate');
       const dueEl   = document.getElementById('taskDueDate');
-      const invalid = start && due && start > due;
-      err.style.display       = invalid ? 'block' : 'none';
-      startEl.style.borderColor = invalid ? 'var(--danger)' : '';
-      dueEl.style.borderColor   = invalid ? 'var(--danger)' : '';
-      return !invalid;
+      const start = startEl.value;
+      const due   = dueEl.value;
+      // Auto-correct: when start is set after due, snap due to start date
+      if (start && due && start > due) {
+        if (changed === 'start') dueEl.value = start;
+        else startEl.value = due;
+      }
+      // Clear any error styling — conflict is auto-resolved
+      document.getElementById('taskDateError').style.display = 'none';
+      startEl.style.borderColor = '';
+      dueEl.style.borderColor   = '';
+      return true;
     }
 
     function saveTask() {
