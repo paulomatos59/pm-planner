@@ -1675,7 +1675,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.0</div>
+      <div class="sidebar-version">v1.11.1</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2958,9 +2958,14 @@
 
     // One-time migration: move old dp_focus / single-object / plain-string goals into array format
     (function migrateOldFocus() {
-      const old = localStorage.getItem('dp_focus');
-      const dk  = _gDayKey(todayStr());
-      if (old && !goals[dk]) { goals[dk] = [{ id: _gid(), text: old, status: 'Open' }]; persistGoals(); }
+      // dp_focus → daily goal: only run once (flag prevents re-running on each new day)
+      if (!localStorage.getItem('dp_focus_migrated')) {
+        const old = localStorage.getItem('dp_focus');
+        const dk  = _gDayKey(todayStr());
+        if (old && !goals[dk]) { goals[dk] = [{ id: _gid(), text: old, status: 'Open' }]; persistGoals(); }
+        localStorage.setItem('dp_focus_migrated', '1');
+      }
+      // Array format migration: always runs to fix any remaining non-array entries
       let changed = false;
       Object.keys(goals).forEach(k => {
         if (!Array.isArray(goals[k])) {
