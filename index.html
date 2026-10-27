@@ -1675,7 +1675,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.10.9</div>
+      <div class="sidebar-version">v1.11.0</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6754,9 +6754,10 @@ const renderers = {
         const arr = _gArr(key);
         const listHtml = arr.map(g => {
           const ach = g.status === 'Achieved';
-          return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
+          return `<div id="goal-row-${g.id}" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
             <span style="flex:1;font-size:13px;${ach?'text-decoration:line-through;opacity:.5':''}">${esc(g.text)}</span>
             <button onclick="toggleGoalStatus('${key}','${g.id}')" style="flex-shrink:0;border:none;cursor:pointer;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'}">${ach?'✅ Achieved':'🔄 Open'}</button>
+            <button onclick="startEditGoal('${key}','${g.id}')" style="border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;opacity:.5" title="Edit">✏</button>
             <button onclick="deleteGoalItem('${key}','${g.id}')" style="border:none;background:none;cursor:pointer;color:var(--danger);opacity:.5;font-size:13px;padding:0 2px">✕</button>
           </div>`;
         }).join('');
@@ -6811,8 +6812,9 @@ const renderers = {
               <span style="font-size:12px;color:var(--text-muted)">${esc(_goalLabel(k))}</span>
               <span style="font-size:13px;color:var(--text);${achieved?'text-decoration:line-through;opacity:.6':''}">${esc(g.text||'')}</span>
               <span style="font-size:10px;background:var(--primary-light);color:var(--primary);border-radius:10px;padding:2px 8px;white-space:nowrap;text-align:center">${_goalType(k)}</span>
-              <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
+              <div id="goal-row-${g.id}" style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
                 <button onclick="toggleGoalStatus('${k}','${g.id}')" style="border:none;cursor:pointer;border-radius:20px;padding:2px 8px;font-size:10px;font-weight:600;background:${achieved?'#dcfce7':'#fef9c3'};color:${achieved?'#16a34a':'#a16207'};white-space:nowrap">${achieved?'✅ Achieved':'🔄 Open'}</button>
+                <button onclick="startEditGoal('${k}','${g.id}')" style="border:none;background:none;cursor:pointer;font-size:12px;padding:0 2px;opacity:.5" title="Edit">✏</button>
                 <button class="btn-icon" style="color:var(--danger);opacity:.6" onclick="deleteGoalItem('${k}','${g.id}')">✕</button>
               </div>
             </div>`;
@@ -6839,6 +6841,36 @@ const renderers = {
       if (currentView === 'today' || currentView === 'week' || currentView === 'month') showView(currentView);
       else showView('goals');
       setTimeout(() => { const ni = document.getElementById('goal-input-' + id) || document.getElementById('goalDayInput'); if (ni) ni.focus(); }, 50);
+    }
+
+    function startEditGoal(key, id) {
+      const row = document.getElementById('goal-row-' + id);
+      if (!row) return;
+      const arr = _gArr(key);
+      const g = arr.find(x => x.id === id);
+      if (!g) return;
+      row.innerHTML = `
+        <input type="text" class="focus-input" id="goal-edit-${id}"
+          value="${esc(g.text)}" style="flex:1;font-size:13px"
+          onkeydown="if(event.key==='Enter')saveGoalEdit('${key}','${id}');if(event.key==='Escape')showView('goals')">
+        <button class="btn btn-primary btn-sm" onclick="saveGoalEdit('${key}','${id}')">Save</button>
+        <button class="btn btn-secondary btn-sm" onclick="showView('goals')">Cancel</button>`;
+      const inp = document.getElementById('goal-edit-' + id);
+      if (inp) { inp.focus(); inp.select(); }
+    }
+
+    function saveGoalEdit(key, id) {
+      const inp = document.getElementById('goal-edit-' + id);
+      if (!inp) return;
+      const newText = inp.value.trim();
+      if (!newText) return;
+      const arr = _gArr(key);
+      const idx = arr.findIndex(x => x.id === id);
+      if (idx < 0) return;
+      arr[idx] = { ...arr[idx], text: newText };
+      goals[key] = arr;
+      persistGoals();
+      showView('goals');
     }
 
     function deleteGoal(key) {
