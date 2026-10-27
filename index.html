@@ -1492,6 +1492,7 @@
     <div style="display:flex;align-items:center;gap:8px">
       <div class="header-stats" id="headerStats"></div>
       <span class="sync-chip sync-off" id="syncChip" onclick="openSettingsModal()" title="Cloud sync settings">☁ Sync</span>
+      <span class="sync-chip" onclick="openCalendarImportModal()" title="Import events from Outlook Calendar Sync" style="background:#eff6ff;color:#1d4ed8;border-color:#bfdbfe">📥 Import</span>
       <div style="position:relative">
         <button class="header-icon-btn" id="settingsMenuBtn" onclick="toggleSettingsMenu(event)">⚙ Settings ▾</button>
         <div class="settings-menu hidden" id="settingsMenu">
@@ -1675,7 +1676,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.3</div>
+      <div class="sidebar-version">v1.11.4</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2846,6 +2847,25 @@
       <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border);margin-top:14px">
         <button class="btn btn-secondary" onclick="closeCalSyncModal()">Cancel</button>
         <button class="btn btn-primary" id="calSyncImportBtn" onclick="_calSyncImport()">Import Selected</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar Import Modal -->
+  <div class="modal-overlay hidden" id="calendarImportModal" onclick="if(event.target===this)closeCalendarImportModal()">
+    <div class="modal" style="max-width:480px;width:92%">
+      <div class="modal-header">
+        <h2 class="modal-title">📥 Import from Calendar Sync</h2>
+        <button class="modal-close" onclick="closeCalendarImportModal()">✕</button>
+      </div>
+      <div class="modal-body" style="padding:16px">
+        <p style="font-size:13px;color:var(--text-muted);margin-bottom:10px">Paste the JSON copied from the Outlook Calendar Sync artifact:</p>
+        <textarea id="calImportTA" placeholder='[{"id":"...","subject":"Meeting",...}]' style="width:100%;height:120px;font-size:11px;font-family:monospace;border:1px solid var(--border);border-radius:6px;padding:8px;resize:vertical;outline:none"></textarea>
+        <p id="calImportError" style="font-size:12px;color:#dc2626;margin-top:6px;display:none"></p>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:12px 16px;border-top:1px solid var(--border)">
+        <button class="btn btn-secondary" onclick="closeCalendarImportModal()">Cancel</button>
+        <button class="btn btn-primary" onclick="submitCalendarImport()">Import Events</button>
       </div>
     </div>
   </div>
@@ -9410,6 +9430,37 @@ const renderers = {
        OUTLOOK CALENDAR SYNC
     ============================== */
     let _calSyncEvents = []; // raw events passed by Claude
+
+    // ── Calendar Import Modal (📥 Import button) ──────────────────────────
+    function openCalendarImportModal() {
+      document.getElementById('calImportTA').value = '';
+      document.getElementById('calImportError').style.display = 'none';
+      document.getElementById('calendarImportModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('calImportTA').focus(), 50);
+    }
+    function closeCalendarImportModal() {
+      document.getElementById('calendarImportModal').classList.add('hidden');
+    }
+    function submitCalendarImport() {
+      const raw = document.getElementById('calImportTA').value.trim();
+      const errEl = document.getElementById('calImportError');
+      errEl.style.display = 'none';
+      if (!raw) { errEl.textContent = 'Please paste the JSON first.'; errEl.style.display = 'block'; return; }
+      // Accept either a bare JSON array or the openCalendarSyncModal(...) wrapper
+      let json = raw;
+      const wrapped = raw.match(/openCalendarSyncModal\s*\(\s*([\s\S]*)\s*\)\s*;?\s*$/);
+      if (wrapped) json = wrapped[1];
+      // Strip markdown code fences if present
+      const fenced = json.match(/```(?:json)?\s*([\s\S]*?)```/);
+      if (fenced) json = fenced[1].trim();
+      let events;
+      try { events = JSON.parse(json); } catch(e) {
+        errEl.textContent = 'Invalid JSON: ' + e.message; errEl.style.display = 'block'; return;
+      }
+      if (!Array.isArray(events)) { errEl.textContent = 'Expected a JSON array of events.'; errEl.style.display = 'block'; return; }
+      closeCalendarImportModal();
+      openCalendarSyncModal(events);
+    }
 
     // Entry point: Claude calls this with an array of outlook event objects
     function openCalendarSyncModal(events) {
