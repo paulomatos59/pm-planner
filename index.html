@@ -1675,7 +1675,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.2</div>
+      <div class="sidebar-version">v1.11.3</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2807,6 +2807,45 @@
       <div class="modal-footer">
         <button class="btn btn-secondary" onclick="closeCapacityModal()">Cancel</button>
         <button class="btn btn-primary" onclick="saveCapacitySettings()">Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Calendar Sync Modal -->
+  <div class="modal-overlay hidden" id="calSyncModal">
+    <div class="modal" style="max-width:640px;width:95vw">
+      <div class="modal-header">
+        <h2 class="modal-title">🗓 Sync from Outlook Calendar</h2>
+        <button class="btn-close" onclick="closeCalSyncModal()">×</button>
+      </div>
+      <div class="modal-body" style="padding-bottom:0">
+        <!-- Filters -->
+        <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:14px;background:var(--bg);padding:12px 14px;border-radius:8px;border:1px solid var(--border)">
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="calSyncFilterInvited" onchange="_calSyncApplyFilters()">
+            <span>Exclude events I was <strong>invited to</strong> (not my meeting)</span>
+          </label>
+          <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+            <input type="checkbox" id="calSyncFilterSolo" onchange="_calSyncApplyFilters()">
+            <span>Exclude <strong>solo events</strong> (only me as attendee)</span>
+          </label>
+        </div>
+        <!-- Select all / count -->
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <div style="font-size:12px;color:var(--text-muted)">
+            <span id="calSyncSelectedCount">0</span> selected · <span id="calSyncDupCount" style="color:var(--warning)"></span>
+          </div>
+          <div style="display:flex;gap:10px;font-size:12px">
+            <button onclick="_calSyncSelectAll(true)"  style="border:none;background:none;cursor:pointer;color:var(--primary);font-size:12px">Select all</button>
+            <button onclick="_calSyncSelectAll(false)" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:12px">Deselect all</button>
+          </div>
+        </div>
+        <!-- Event list -->
+        <div id="calSyncList" style="max-height:360px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"></div>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:flex-end;padding:14px 20px;border-top:1px solid var(--border);margin-top:14px">
+        <button class="btn btn-secondary" onclick="closeCalSyncModal()">Cancel</button>
+        <button class="btn btn-primary" id="calSyncImportBtn" onclick="_calSyncImport()">Import Selected</button>
       </div>
     </div>
   </div>
@@ -8972,7 +9011,10 @@ const renderers = {
             <div class="view-title">💬 Comms</div>
             <div class="view-subtitle">${comms.length} record${comms.length !== 1 ? 's' : ''}</div>
           </div>
-          <button class="btn btn-primary" onclick="openCommModal()">＋ New Comm</button>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-secondary" onclick="openCalSyncModal()" title="Sync from Outlook Calendar">🗓 Sync Calendar</button>
+            <button class="btn btn-primary" onclick="openCommModal()">＋ New Comm</button>
+          </div>
         </div>
         <div class="comm-time-tabs">${timeTabs}</div>
         ${customRangeHtml}
@@ -9362,6 +9404,149 @@ const renderers = {
       persistComms();
       closeCommModal();
       if (!isPopupMode()) showView(currentView);
+    }
+
+    /* ==============================
+       OUTLOOK CALENDAR SYNC
+    ============================== */
+    let _calSyncEvents = []; // raw events passed by Claude
+
+    // Entry point: Claude calls this with an array of outlook event objects
+    function openCalendarSyncModal(events) {
+      _calSyncEvents = (events || []).map(ev => ({
+        ...ev,
+        _selected: true,
+        _isDuplicate: comms.some(c => c.outlookEventId && c.outlookEventId === ev.id)
+      }));
+      document.getElementById('calSyncFilterInvited').checked = false;
+      document.getElementById('calSyncFilterSolo').checked    = false;
+      _calSyncApplyFilters();
+      document.getElementById('calSyncModal').classList.remove('hidden');
+    }
+
+    function closeCalSyncModal() {
+      document.getElementById('calSyncModal').classList.add('hidden');
+    }
+
+    function _calSyncApplyFilters() {
+      const hideInvited = document.getElementById('calSyncFilterInvited').checked;
+      const hideSolo    = document.getElementById('calSyncFilterSolo').checked;
+      // Auto-deselect filtered events (don't remove, just uncheck)
+      _calSyncEvents.forEach(ev => {
+        if (ev._isDuplicate) { ev._selected = false; return; }
+        if (hideInvited && !ev.isOrganizer) ev._selected = false;
+        else if (hideSolo && ev.isSolo) ev._selected = false;
+        else ev._selected = true;
+      });
+      _calSyncRenderList();
+    }
+
+    function _calSyncRenderList() {
+      const hideInvited = document.getElementById('calSyncFilterInvited').checked;
+      const hideSolo    = document.getElementById('calSyncFilterSolo').checked;
+      const list = document.getElementById('calSyncList');
+      const dupCount = _calSyncEvents.filter(e => e._isDuplicate).length;
+
+      document.getElementById('calSyncDupCount').textContent =
+        dupCount ? `${dupCount} already imported (skipped)` : '';
+
+      if (!_calSyncEvents.length) {
+        list.innerHTML = '<div style="padding:32px;text-align:center;color:var(--text-muted);font-size:14px">No events to show</div>';
+        return;
+      }
+
+      list.innerHTML = _calSyncEvents.map((ev, i) => {
+        const isFiltered = (hideInvited && !ev.isOrganizer) || (hideSolo && ev.isSolo);
+        const isDup = ev._isDuplicate;
+        const dim = isDup || (isFiltered && !ev._selected);
+
+        let badge = '';
+        if (!ev.isOrganizer) badge = `<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fef9c3;color:#a16207;font-weight:600">Invited</span>`;
+        else if (ev.isSolo)  badge = `<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border);font-weight:600">Solo</span>`;
+
+        const dupBadge = isDup ? `<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:#fee2e2;color:#dc2626;font-weight:600">Already imported</span>` : '';
+
+        const attendeesStr = ev.attendees && ev.attendees.length
+          ? `<span style="font-size:11px;color:var(--text-muted)">${ev.attendees.length} attendee${ev.attendees.length!==1?'s':''}</span>` : '';
+
+        return `<label style="display:flex;align-items:flex-start;gap:10px;padding:10px 14px;${i>0?'border-top:1px solid var(--border)':''}${dim?';opacity:.45':''}${isDup?';background:var(--bg)':''};cursor:${isDup?'not-allowed':'pointer'}">
+          <input type="checkbox" ${ev._selected?'checked':''} ${isDup?'disabled':''} onchange="_calSyncToggle(${i},this.checked)" style="margin-top:3px;flex-shrink:0">
+          <div style="flex:1;min-width:0">
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap">
+              <span style="font-weight:600;font-size:13px">${esc(ev.subject)}</span>
+              ${badge}${dupBadge}
+            </div>
+            <div style="font-size:11px;color:var(--text-muted);margin-top:2px">
+              ${ev.date} ${ev.startTime}–${ev.endTime}
+              ${ev.organizer ? '· ' + esc(ev.organizer) : ''}
+              ${attendeesStr ? '· ' + attendeesStr : ''}
+            </div>
+          </div>
+        </label>`;
+      }).join('');
+
+      const selectedCount = _calSyncEvents.filter(e => e._selected && !e._isDuplicate).length;
+      document.getElementById('calSyncSelectedCount').textContent = selectedCount;
+      document.getElementById('calSyncImportBtn').textContent = `Import Selected (${selectedCount})`;
+    }
+
+    function _calSyncToggle(idx, checked) {
+      _calSyncEvents[idx]._selected = checked;
+      const selectedCount = _calSyncEvents.filter(e => e._selected && !e._isDuplicate).length;
+      document.getElementById('calSyncSelectedCount').textContent = selectedCount;
+      document.getElementById('calSyncImportBtn').textContent = `Import Selected (${selectedCount})`;
+    }
+
+    function _calSyncSelectAll(val) {
+      _calSyncEvents.forEach(ev => { if (!ev._isDuplicate) ev._selected = val; });
+      _calSyncRenderList();
+    }
+
+    function _calSyncImport() {
+      const toImport = _calSyncEvents.filter(e => e._selected && !e._isDuplicate);
+      if (!toImport.length) { closeCalSyncModal(); return; }
+
+      toImport.forEach(ev => {
+        const entry = {
+          id:             uid(),
+          outlookEventId: ev.id,
+          title:          ev.subject,
+          status:         'Planned',
+          date:           ev.date,
+          startTime:      ev.startTime,
+          endTime:        ev.endTime,
+          duration:       commTimeDuration(ev.startTime, ev.endTime) || '',
+          organizer:      ev.organizer || '',
+          participants:   ev.participants || '',
+          type:           'Meeting',
+          projectId:      '',
+          projectIds:     [],
+          personalId:     '',
+          notes:          ev.location ? `<p>📍 ${esc(ev.location)}</p>` : '',
+          recurrence:     null,
+          completedOccurrences:   {},
+          notDoneOccurrences:     {},
+          notAttendedOccurrences: {},
+          dateOverrides:          {},
+          createdAt:      new Date().toISOString(),
+          updatedAt:      new Date().toISOString()
+        };
+        comms.push(entry);
+        if (ev.organizer) registerContacts(ev.organizer);
+        if (ev.participants) registerContacts(ev.participants);
+      });
+
+      persistComms();
+      closeCalSyncModal();
+      showView(currentView);
+      setTimeout(() => {
+        const msg = `✓ Imported ${toImport.length} event${toImport.length!==1?'s':''} from Outlook`;
+        const toast = document.createElement('div');
+        toast.textContent = msg;
+        toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:#1e3a5f;color:#fff;padding:10px 20px;border-radius:24px;font-size:13px;font-weight:600;z-index:9999;box-shadow:0 4px 16px rgba(0,0,0,.2)';
+        document.body.appendChild(toast);
+        setTimeout(() => toast.remove(), 3000);
+      }, 100);
     }
 
     /* ==============================
@@ -11622,7 +11807,7 @@ const renderers = {
     });
 
     // Close modals on backdrop click
-    ['taskModal','projectModal','followupModal','noteModal','settingsModal','capacityModal'].forEach(id => {
+    ['taskModal','projectModal','followupModal','noteModal','settingsModal','capacityModal','calSyncModal'].forEach(id => {
       document.getElementById(id).addEventListener('click', e => {
         if (e.target === e.currentTarget) {
           closeTaskModal(); closeProjectModal(); closeFollowupModal(); closeNoteModal();
