@@ -13259,7 +13259,6 @@ const renderers = {
       // Let browser settle focus before DOM manipulation
       setTimeout(() => {
         const a = document.createElement('a');
-        a.href = 'javascript:void(0)';
         a.dataset.dpRef = type + ':' + id;
         a.className = 'dp-int-ref';
         a.title = 'Go to: ' + title;
