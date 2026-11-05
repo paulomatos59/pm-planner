@@ -11759,6 +11759,8 @@ const renderers = {
     // Global handler: make links inside any RTE editor clickable
     document.addEventListener('click', function(e) {
       const a = e.target.closest('a');
+      // Skip internal reference links — handled by the dp-ref delegated handler
+      if (a && a.dataset.dpRef) return;
       if (a && a.href && a.closest('.rte-editor')) {
         e.preventDefault();
         e.stopPropagation();
