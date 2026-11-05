@@ -631,6 +631,15 @@
     .rte-size-select:hover { border-color: var(--primary); }
     .rte-clear-btn { font-size: 12px; font-weight: 700; color: var(--text-muted); position: relative; }
     .rte-clear-btn::after { content: '×'; position: absolute; top: -2px; right: 1px; font-size: 9px; font-weight: 900; color: var(--danger); line-height: 1; }
+    /* Internal reference links inserted into RTE editors */
+    a[data-dp-ref] { color: var(--primary); text-decoration: underline; cursor: pointer; background: rgba(37,99,235,.07); padding: 1px 3px; border-radius: 3px; font-weight: 500; }
+    a[data-dp-ref]:hover { background: rgba(37,99,235,.14); }
+    /* Internal reference picker */
+    .int-ref-group { padding: 6px 14px 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--text-muted); background: var(--surface); position: sticky; top: 0; border-bottom: 1px solid var(--border); }
+    .int-ref-item { padding: 9px 16px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background .1s; display: flex; flex-direction: column; gap: 2px; }
+    .int-ref-item:hover { background: var(--bg); }
+    .int-ref-item-title { font-size: 13px; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .int-ref-item-sub { font-size: 11px; color: var(--text-muted); }
     .rte-editor {
       padding: 10px 12px; min-height: 180px; max-height: 360px; overflow-y: auto;
       outline: none; font-size: 14px; font-family: inherit; color: var(--text);
@@ -1693,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.10</div>
+      <div class="sidebar-version">v1.11.11</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1824,6 +1833,7 @@
                 </div>
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();rteAddLink()">🔗</button>
+                <button type="button" class="rte-btn" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('taskDesc')">📌</button>
                 <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'taskDesc')">😊</button>
                 <label class="rte-btn" title="Attach file" style="cursor:pointer" onmousedown="event.preventDefault()">
                   📎<input type="file" id="rteFileInput" style="display:none" onchange="rteAttachFile(this)" multiple>
@@ -2107,6 +2117,7 @@
                 </div>
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();commRteAddLink()">🔗</button>
+                <button type="button" class="rte-btn" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('commDesc')">📌</button>
                 <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'commDesc')">😊</button>
                 <div class="rte-divider"></div>
                 <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('commDesc', this.value, this)">
@@ -2364,6 +2375,7 @@
               </div>
               <div class="rte-divider"></div>
               <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();projObjRteAddLink()">🔗</button>
+              <button type="button" class="rte-btn" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('projectObjective')">📌</button>
               <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'projectObjective')">😊</button>
               <div class="rte-divider"></div>
               <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('projectObjective', this.value, this)">
@@ -2436,6 +2448,7 @@
               </div>
               <div class="rte-divider"></div>
               <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();projDescRteAddLink()">🔗</button>
+              <button type="button" class="rte-btn" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('projectDesc')">📌</button>
               <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'projectDesc')">😊</button>
               <div class="rte-divider"></div>
               <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('projectDesc', this.value, this)">
@@ -2641,6 +2654,7 @@
                 </div>
                 <div class="rte-divider"></div>
                 <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();fuRteAddLink()">🔗</button>
+                <button type="button" class="rte-btn" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('followupNotes')">📌</button>
                 <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'followupNotes')">😊</button>
                 <div class="rte-divider"></div>
                 <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('followupNotes', this.value, this)">
@@ -2764,6 +2778,7 @@
               </div>
               <div class="rte-divider"></div>
               <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();noteRteAddLink()">🔗</button>
+              <button type="button" class="rte-btn" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('noteContent')">📌</button>
               <button type="button" class="rte-btn rte-emoji-toggle" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'noteContent')">😊</button>
               <div class="rte-divider"></div>
               <select class="rte-size-select" title="Text size" onmousedown="rteSaveSel()" onchange="rteApplySize('noteContent', this.value, this)">
@@ -2888,6 +2903,20 @@
   </div>
 
   <!-- Knowledge Base Topic Modal -->
+  <!-- Internal Reference Picker -->
+  <div class="modal-overlay hidden" id="internalRefModal" onclick="if(event.target===this)closeInternalRefPicker()">
+    <div class="modal" style="max-width:480px;width:95vw;padding:0;overflow:hidden;border-radius:12px">
+      <div class="modal-header" style="padding:12px 16px">
+        <h2 class="modal-title">📌 Insert Internal Reference</h2>
+        <button class="btn-close" onclick="closeInternalRefPicker()">×</button>
+      </div>
+      <div style="padding:10px 16px;border-bottom:1px solid var(--border)">
+        <input type="text" class="form-input" id="internalRefSearch" placeholder="Search pages…" oninput="_internalRefRender(this.value)" style="margin:0">
+      </div>
+      <div id="internalRefList" style="max-height:400px;overflow-y:auto"></div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="kbTopicModal" onclick="if(event.target===this)closeKbTopicModal()">
     <div class="modal" style="max-width:600px;width:95vw">
       <div class="modal-header">
@@ -8486,6 +8515,7 @@ const renderers = {
               </div>
             </div>
             <button type="button" class="rte-btn" style="height:24px" title="Add link" onmousedown="event.preventDefault();projSummRteAddLink()">🔗</button>
+            <button type="button" class="rte-btn" style="height:24px" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('projSummaryEditor')">📌</button>
             <button type="button" class="rte-btn rte-emoji-toggle" style="height:24px" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'projSummaryEditor')">😊</button>
             <div style="flex:1"></div>
             <span class="draft-badge" id="projSummaryBadge" style="transition:opacity .4s;opacity:0"></span>
@@ -12660,6 +12690,7 @@ const renderers = {
               </div>
             </div>
             <button type="button" class="rte-btn" style="height:24px" title="Add link" onmousedown="event.preventDefault();kbRteAddLink()">🔗</button>
+            <button type="button" class="rte-btn" style="height:24px" title="Insert internal reference" onmousedown="event.preventDefault();openInternalRefPicker('kbNotesEditor')">📌</button>
             <button type="button" class="rte-btn rte-emoji-toggle" style="height:24px" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'kbNotesEditor')">😊</button>
             <div style="flex:1"></div>
             <span class="draft-badge" id="kbNotesBadge" style="transition:opacity .4s;opacity:0"></span>
@@ -13143,6 +13174,107 @@ const renderers = {
       document.addEventListener('scroll', updatePos, true);
       window.addEventListener('resize', updatePos);
     }
+
+    // ── Internal Reference Picker ─────────────────────────────────────────────
+    let _internalRefEditorId = null;
+    let _internalRefRange    = null;
+
+    function openInternalRefPicker(editorId) {
+      _internalRefEditorId = editorId;
+      // Capture selection BEFORE focus shifts (onmousedown keeps editor focused)
+      const sel = window.getSelection();
+      _internalRefRange = (sel && sel.rangeCount > 0) ? sel.getRangeAt(0).cloneRange() : null;
+      document.getElementById('internalRefSearch').value = '';
+      _internalRefRender('');
+      document.getElementById('internalRefModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('internalRefSearch')?.focus(), 50);
+    }
+
+    function closeInternalRefPicker() {
+      document.getElementById('internalRefModal').classList.add('hidden');
+      _internalRefRange = null;
+    }
+
+    function _internalRefRender(query) {
+      const q = (query || '').toLowerCase().trim();
+      const groups = [];
+
+      // Projects: initiatives & milestones
+      const work = (projects || []).filter(p => p.type !== 'personal' && p.type !== 'okr' && (!q || p.name.toLowerCase().includes(q)));
+      if (work.length) groups.push({ label: '🗂 Initiatives & Milestones', items: work.map(p => ({
+        type: 'project', id: p.id,
+        icon: p.subtype === 'milestone' ? '🏁' : '🗂',
+        title: p.name,
+        sub: p.status || ''
+      }))});
+
+      // KB Topics
+      const kb = (kbTopics || []).filter(t => !q || t.title.toLowerCase().includes(q) || (t.category||'').toLowerCase().includes(q));
+      if (kb.length) groups.push({ label: '📚 Knowledge Base', items: kb.map(t => {
+        const parent = t.parentId ? (kbTopics||[]).find(x => x.id === t.parentId) : null;
+        return { type: 'kb', id: t.id, icon: '📚', title: t.title,
+                 sub: parent ? '↳ ' + parent.title : (t.category || '') };
+      })});
+
+      // Personal
+      const per = (projects || []).filter(p => p.type === 'personal' && (!q || p.name.toLowerCase().includes(q)));
+      if (per.length) groups.push({ label: '🏠 Personal', items: per.map(p => ({
+        type: 'project', id: p.id, icon: '🏠', title: p.name, sub: p.status || ''
+      }))});
+
+      // OKRs
+      const okrProj = (projects || []).filter(p => p.type === 'okr' && (!q || p.name.toLowerCase().includes(q)));
+      if (okrProj.length) groups.push({ label: '🎯 OKRs', items: okrProj.map(p => ({
+        type: 'project', id: p.id, icon: '🎯', title: p.name, sub: p.status || ''
+      }))});
+
+      if (groups.length === 0) {
+        document.getElementById('internalRefList').innerHTML =
+          '<div style="text-align:center;color:var(--text-muted);padding:32px 20px;font-size:13px">No results</div>';
+        return;
+      }
+
+      document.getElementById('internalRefList').innerHTML = groups.map(g => `
+        <div class="int-ref-group">${g.label}</div>
+        ${g.items.map(item => `
+          <div class="int-ref-item" onclick="insertInternalRef('${item.type}','${item.id}',${JSON.stringify(item.title)})">
+            <div class="int-ref-item-title">${item.icon} ${esc(item.title)}</div>
+            ${item.sub ? `<div class="int-ref-item-sub">${esc(item.sub)}</div>` : ''}
+          </div>`).join('')}`).join('');
+    }
+
+    function insertInternalRef(type, id, title) {
+      document.getElementById('internalRefModal').classList.add('hidden');
+      const el = document.getElementById(_internalRefEditorId);
+      if (!el) { _internalRefRange = null; return; }
+      el.focus();
+      if (_internalRefRange) {
+        try {
+          const sel = window.getSelection();
+          sel.removeAllRanges();
+          sel.addRange(_internalRefRange);
+        } catch(e) {}
+      }
+      const safeTitle = title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+      document.execCommand('insertHTML', false,
+        `<a href="javascript:void(0)" data-dp-ref="${type}:${id}" class="dp-int-ref" title="Go to: ${safeTitle}">${safeTitle}</a>&nbsp;`
+      );
+      _internalRefRange = null;
+      el.dispatchEvent(new Event('input', { bubbles: true }));
+    }
+
+    // Navigate when clicking an internal reference link (delegated handler)
+    document.addEventListener('click', e => {
+      const a = e.target.closest('[data-dp-ref]');
+      if (!a) return;
+      e.preventDefault();
+      const parts = (a.dataset.dpRef || '').split(':');
+      if (parts.length < 2) return;
+      const refType = parts[0];
+      const refId   = parts.slice(1).join(':');
+      if (refType === 'kb')      { openKbDetail(refId); }
+      else if (refType === 'project') { openProject(refId); }
+    });
 
     // Build picker on load
     document.addEventListener('DOMContentLoaded', () => {
