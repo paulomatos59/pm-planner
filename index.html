@@ -1693,7 +1693,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.9</div>
+      <div class="sidebar-version">v1.11.10</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -12416,6 +12416,7 @@ const renderers = {
        KNOWLEDGE BASE
     ============================== */
     let _kbEditId      = null; // null = new, string = existing id
+    let _kbNewParentId = null; // parentId to assign when creating a new sub-topic
     let activeKbTopicId = null;
     let activeKbTab     = 'overview';
 
@@ -12434,6 +12435,7 @@ const renderers = {
       const categories = [...new Set(kbTopics.map(t => t.category).filter(Boolean))].sort();
 
       const filtered = kbTopics.filter(t => {
+        if (t.parentId) return false; // sub-topics not shown in main list
         if (catFilter && t.category !== catFilter) return false;
         if (search) {
           const hay = [t.title, t.category, t.summary, t.notes, ...(t.tags||[])].join(' ').toLowerCase();
@@ -12450,7 +12452,7 @@ const renderers = {
         <div class="view-header">
           <div>
             <div class="view-title">📚 Knowledge Base</div>
-            <div class="view-subtitle">${kbTopics.length} topic${kbTopics.length!==1?'s':''}</div>
+            <div class="view-subtitle">${kbTopics.filter(t=>!t.parentId).length} topic${kbTopics.filter(t=>!t.parentId).length!==1?'s':''}</div>
           </div>
           <button class="btn btn-primary" onclick="openKbTopicModal()">＋ New Topic</button>
         </div>
@@ -12494,9 +12496,10 @@ const renderers = {
     }
 
     function kbListRow(t) {
-      const color    = _kbCatColor(t.category);
-      const linkCount = (t.links||[]).length;
-      const tagChips  = (t.tags||[]).slice(0,4).map(tag =>
+      const color      = _kbCatColor(t.category);
+      const linkCount  = (t.links||[]).length;
+      const subCount   = kbTopics.filter(x => x.parentId === t.id).length;
+      const tagChips   = (t.tags||[]).slice(0,4).map(tag =>
         `<span style="font-size:10px;padding:1px 7px;border-radius:10px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border)">${esc(tag)}</span>`
       ).join('');
       return `<div class="project-list-row" onclick="openKbDetail('${t.id}')">
@@ -12507,7 +12510,8 @@ const renderers = {
           ${tagChips}
         </div>
         <div class="project-list-stats">
-          <span class="project-list-stat">🔗 ${linkCount}</span>
+          <span class="project-list-stat" title="Sub topics">📚 ${subCount}</span>
+          <span class="project-list-stat" title="Links">🔗 ${linkCount}</span>
           ${t.updatedAt ? `<span class="project-list-stat" title="Last updated">${t.updatedAt.slice(0,10)}</span>` : ''}
         </div>
       </div>`;
@@ -12538,12 +12542,22 @@ const renderers = {
         `<span style="font-size:11px;padding:2px 9px;border-radius:10px;background:var(--bg);color:var(--text-muted);border:1px solid var(--border)">${esc(tag)}</span>`
       ).join('');
 
+      const parent     = t.parentId ? kbTopics.find(x => x.id === t.parentId) : null;
+      const subTopics  = kbTopics.filter(x => x.parentId === t.id);
+      const backLabel  = parent ? `← Back to ${esc(parent.title)}` : '← Back to Knowledge Base';
+      const backAction = parent ? `openKbDetail('${parent.id}')` : `showView('kb')`;
+
       let html = `
-        <button class="back-btn" onclick="showView('kb')">← Back to Knowledge Base</button>
+        <button class="back-btn" onclick="${backAction}">${backLabel}</button>
         <div class="project-detail-header">
           <div class="project-detail-stripe" style="background:${color}"></div>
           <div class="project-detail-body">
             <div>
+              ${parent ? `<div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px;display:flex;align-items:center;gap:4px">
+                <button onclick="openKbDetail('${parent.id}')" style="background:none;border:none;padding:0;cursor:pointer;font-size:11px;font-weight:600;color:var(--primary);text-decoration:underline;text-underline-offset:2px;">${esc(parent.title)}</button>
+                <span style="color:var(--text-muted)">›</span>
+                <span style="color:var(--text-muted);font-weight:400">Sub Topic</span>
+              </div>` : ''}
               ${t.category ? `<div style="font-size:11px;font-weight:600;color:var(--primary);margin-bottom:4px">${esc(t.category)}</div>` : ''}
               <div class="project-detail-name">${esc(t.title)}</div>
               ${t.summary ? `<div class="project-detail-desc">${esc(t.summary)}</div>` : ''}
@@ -12558,13 +12572,21 @@ const renderers = {
 
         <div class="tabs">
           <button class="tab-btn ${activeKbTab==='overview'?'active':''}" onclick="switchKbTab('overview')">📄 Overview</button>
+          <button class="tab-btn ${activeKbTab==='subtopics'?'active':''}" onclick="switchKbTab('subtopics')">
+            📚 Sub Topics <span class="tab-count">${subTopics.length||''}</span>
+          </button>
           <button class="tab-btn ${activeKbTab==='links'?'active':''}" onclick="switchKbTab('links')">
             🔗 Links <span class="tab-count">${(t.links||[]).length||''}</span>
           </button>
+          <div style="margin-left:auto;display:flex;align-items:center;padding-bottom:2px">
+            <button class="btn btn-primary btn-sm" onclick="openKbTopicModal(null,'${t.id}')">＋ Add Sub Topic</button>
+          </div>
         </div>`;
 
       if (activeKbTab === 'overview') {
         html += renderKbOverview(t);
+      } else if (activeKbTab === 'subtopics') {
+        html += renderKbSubtopics(t, subTopics);
       } else if (activeKbTab === 'links') {
         html += renderKbLinks(t);
       }
@@ -12677,6 +12699,24 @@ const renderers = {
         </div>`;
     }
 
+    function renderKbSubtopics(parent, subTopics) {
+      if (subTopics.length === 0) {
+        return `<div class="empty-state" style="padding:40px 0">
+          <div class="icon">📚</div>
+          <h3>No sub topics yet</h3>
+          <p>Break this topic into focused sub topics using the <strong>＋ Add Sub Topic</strong> button.</p>
+        </div>`;
+      }
+      return `
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px">
+          <span style="font-size:12px;color:var(--text-muted)">${subTopics.length} sub topic${subTopics.length!==1?'s':''}</span>
+          <button class="btn btn-primary btn-sm" onclick="openKbTopicModal(null,'${parent.id}')">＋ Add Sub Topic</button>
+        </div>
+        <div class="projects-list">
+          ${subTopics.map(t => kbListRow(t)).join('')}
+        </div>`;
+    }
+
     // Auto-save notes from the contenteditable
     let _kbNotesTimer = null;
     function scheduleKbNotesSave(id) {
@@ -12725,11 +12765,12 @@ const renderers = {
     }
 
     // ── Modal (create / edit) ──────────────────────────────────
-    function openKbTopicModal(id) {
-      _kbEditId = id || null;
+    function openKbTopicModal(id, parentId) {
+      _kbEditId      = id || null;
+      _kbNewParentId = parentId || null;
       const t = id ? kbTopics.find(x => x.id === id) : null;
 
-      document.getElementById('kbTopicModalTitle').textContent = t ? '📚 Edit Topic' : '📚 New Topic';
+      document.getElementById('kbTopicModalTitle').textContent = t ? '📚 Edit Topic' : (parentId ? '📚 New Sub Topic' : '📚 New Topic');
       document.getElementById('kbTitle').value     = t?.title    || '';
       document.getElementById('kbCategory').value  = t?.category || '';
       document.getElementById('kbTags').value      = (t?.tags||[]).join(', ');
@@ -12752,6 +12793,7 @@ const renderers = {
     function closeKbTopicModal() {
       document.getElementById('kbTopicModal').classList.add('hidden');
       _kbEditId = null;
+      _kbNewParentId = null;
     }
 
     function kbAddLinkRow(label, url) {
@@ -12803,25 +12845,44 @@ const renderers = {
           summary: document.getElementById('kbSummary').value.trim(),
           notes: document.getElementById('kbNotes').value.trim(),
           links,
+          parentId: _kbNewParentId || null,
           createdAt: now,
           updatedAt: now
         });
       }
+      const parentIdForNav = _kbNewParentId;
       persistKb();
       closeKbTopicModal();
-      // Navigate to the detail page for this topic
-      activeKbTopicId = savedId;
-      activeKbTab     = 'overview';
-      showView('kb-detail');
+      _kbNewParentId = null;
+      // Navigate: if creating a sub-topic, go back to parent's subtopics tab; otherwise open the saved topic
+      if (parentIdForNav && !_kbEditId) {
+        activeKbTopicId = parentIdForNav;
+        activeKbTab     = 'subtopics';
+        showView('kb-detail');
+      } else {
+        activeKbTopicId = savedId;
+        activeKbTab     = 'overview';
+        showView('kb-detail');
+      }
     }
 
     function deleteKbTopic() {
       if (!_kbEditId) return;
       if (!confirm('Delete this topic?')) return;
-      kbTopics = kbTopics.filter(t => t.id !== _kbEditId);
+      // Also delete all sub-topics when a parent is deleted
+      const idsToDelete = new Set([_kbEditId, ...kbTopics.filter(t => t.parentId === _kbEditId).map(t => t.id)]);
+      const parentId = kbTopics.find(t => t.id === _kbEditId)?.parentId;
+      kbTopics = kbTopics.filter(t => !idsToDelete.has(t.id));
       persistKb();
       closeKbTopicModal();
-      showView('kb');
+      // Navigate to parent if was a sub-topic, else back to list
+      if (parentId) {
+        activeKbTopicId = parentId;
+        activeKbTab     = 'subtopics';
+        showView('kb-detail');
+      } else {
+        showView('kb');
+      }
     }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
