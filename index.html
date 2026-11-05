@@ -12591,18 +12591,62 @@ const renderers = {
         <div class="proj-summary-wrap">
           <div class="proj-summary-toolbar">
             <span class="proj-summary-label">Notes</span>
-            <button type="button" class="rte-btn" title="Bold" onmousedown="event.preventDefault();document.execCommand('bold')" style="height:24px"><b style="font-size:13px">B</b></button>
-            <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();document.execCommand('insertUnorderedList')" style="height:24px">
+            <button type="button" class="rte-btn" id="kbRteBoldBtn" title="Bold" onmousedown="event.preventDefault();kbRteExec('bold');kbRteUpdateToolbar()" style="height:24px"><b style="font-size:13px">B</b></button>
+            <button type="button" class="rte-btn" title="Bullet list" onmousedown="event.preventDefault();kbRteExec('insertUnorderedList')" style="height:24px">
               <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><circle cx="1.5" cy="2" r="1.5"/><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="6.5" r="1.5"/><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><circle cx="1.5" cy="11" r="1.5"/><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
             </button>
-            <button type="button" class="rte-btn" title="Add link" onmousedown="event.preventDefault();_kbRteAddLink()" style="height:24px">🔗</button>
+            <button type="button" class="rte-btn" title="Numbered list" onmousedown="event.preventDefault();kbRteExec('insertOrderedList')" style="height:24px">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><text x="0" y="4" font-size="4.5" font-family="inherit" font-weight="600">1.</text><rect x="5" y="1.25" width="10" height="1.5" rx=".75"/><text x="0" y="8.5" font-size="4.5" font-family="inherit" font-weight="600">2.</text><rect x="5" y="5.75" width="10" height="1.5" rx=".75"/><text x="0" y="13" font-size="4.5" font-family="inherit" font-weight="600">3.</text><rect x="5" y="10.25" width="10" height="1.5" rx=".75"/></svg>
+            </button>
+            <button type="button" class="rte-btn" title="Checklist" style="height:24px" onmousedown="event.preventDefault();rteInsertChecklist('kbNotesEditor')">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"><rect x=".75" y=".75" width="4.5" height="4.5" rx="1"/><path d="M1.8 3 L3 4.2 L4.8 1.5" stroke-width="1.2"/><rect x=".75" y="7.75" width="4.5" height="4.5" rx="1"/><line x1="7" y1="3" x2="15" y2="3" stroke-width="1.3"/><line x1="7" y1="10" x2="15" y2="10" stroke-width="1.3"/></svg>
+            </button>
+            <button type="button" class="rte-btn" title="Decrease indent" style="height:24px" onmousedown="event.preventDefault();rteIndent('kbNotesEditor','outdent')">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><path d="M0 3.5 L3 1.5 L3 5.5 Z"/><rect x="4.5" y="2.25" width="10.5" height="1.5" rx=".75"/><rect x="1.5" y="5.75" width="13.5" height="1.5" rx=".75"/><rect x="1.5" y="9.5" width="13.5" height="1.5" rx=".75"/></svg>
+            </button>
+            <button type="button" class="rte-btn" title="Increase indent" style="height:24px" onmousedown="event.preventDefault();rteIndent('kbNotesEditor','indent')">
+              <svg width="13" height="11" viewBox="0 0 15 13" fill="currentColor"><path d="M3 1.5 L0 3.5 L3 5.5 Z"/><rect x="4.5" y="2.25" width="10.5" height="1.5" rx=".75"/><rect x="1.5" y="5.75" width="13.5" height="1.5" rx=".75"/><rect x="1.5" y="9.5" width="13.5" height="1.5" rx=".75"/></svg>
+            </button>
+            <div class="rte-divider" style="margin:0 3px"></div>
+            <select class="rte-size-select" title="Text size" style="height:22px;font-size:10px" onmousedown="rteSaveSel()" onchange="rteApplySize('kbNotesEditor', this.value, this)">
+              <option value="">Size</option>
+              <option value="h1">H1</option>
+              <option value="h2">H2</option>
+              <option value="h3">H3</option>
+              <option value="p">Normal</option>
+            </select>
+            <button type="button" class="rte-btn rte-clear-btn" title="Clear formatting" style="height:24px" onmousedown="event.preventDefault();rteClearFormat('kbNotesEditor')">T</button>
+            <div class="rte-divider" style="margin:0 3px"></div>
+            <div class="rte-color-wrap">
+              <button type="button" class="rte-btn" id="kbRteColorBtn" title="Text color" onmousedown="event.preventDefault();kbRteToggleColorPicker()" style="flex-direction:column;padding:3px 6px;gap:1px;height:24px">
+                <span style="font-weight:700;font-size:12px;line-height:1">A</span>
+                <span id="kbRteColorBar" style="display:block;width:12px;height:2px;border-radius:2px;background:#e53e3e"></span>
+              </button>
+              <div class="rte-color-popup hidden" id="kbRteColorPicker">
+                <div class="rte-color-swatch" style="background:#111827" onmousedown="event.preventDefault();kbRteSetColor('#111827')"></div>
+                <div class="rte-color-swatch" style="background:#e53e3e" onmousedown="event.preventDefault();kbRteSetColor('#e53e3e')"></div>
+                <div class="rte-color-swatch" style="background:#dd6b20" onmousedown="event.preventDefault();kbRteSetColor('#dd6b20')"></div>
+                <div class="rte-color-swatch" style="background:#d69e2e" onmousedown="event.preventDefault();kbRteSetColor('#d69e2e')"></div>
+                <div class="rte-color-swatch" style="background:#38a169" onmousedown="event.preventDefault();kbRteSetColor('#38a169')"></div>
+                <div class="rte-color-swatch" style="background:#3182ce" onmousedown="event.preventDefault();kbRteSetColor('#3182ce')"></div>
+                <div class="rte-color-swatch" style="background:#805ad5" onmousedown="event.preventDefault();kbRteSetColor('#805ad5')"></div>
+                <div class="rte-color-swatch" style="background:#d53f8c" onmousedown="event.preventDefault();kbRteSetColor('#d53f8c')"></div>
+                <div class="rte-color-swatch" style="background:#718096" onmousedown="event.preventDefault();kbRteSetColor('#718096')"></div>
+                <div class="rte-color-swatch" style="background:#a0aec0" onmousedown="event.preventDefault();kbRteSetColor('#a0aec0')"></div>
+                <div class="rte-color-swatch" style="background:#fff;border-color:#ccc" onmousedown="event.preventDefault();kbRteSetColor('#ffffff')"></div>
+                <div class="rte-color-swatch" style="background:none;border-color:var(--border);font-size:11px;display:flex;align-items:center;justify-content:center;color:var(--text-muted)" onmousedown="event.preventDefault();kbRteRemoveColor()">✕</div>
+              </div>
+            </div>
+            <button type="button" class="rte-btn" style="height:24px" title="Add link" onmousedown="event.preventDefault();kbRteAddLink()">🔗</button>
+            <button type="button" class="rte-btn rte-emoji-toggle" style="height:24px" title="Emoji" onmousedown="event.preventDefault();openEmojiPicker(this,'kbNotesEditor')">😊</button>
             <div style="flex:1"></div>
             <span class="draft-badge" id="kbNotesBadge" style="transition:opacity .4s;opacity:0"></span>
           </div>
           <div class="proj-summary-editor rte-editor" id="kbNotesEditor" contenteditable="true"
                data-placeholder="Add notes, context, steps, decisions…"
                oninput="scheduleKbNotesSave('${t.id}')"
-               onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}">${t.notes||''}</div>
+               onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}"
+               onkeyup="kbRteUpdateToolbar()" onmouseup="kbRteUpdateToolbar()" onfocus="kbRteUpdateToolbar()" onclick="kbRteCloseColorPicker()">${t.notes||''}</div>
         </div>
         ${linksSection}`;
     }
@@ -12655,14 +12699,29 @@ const renderers = {
       }, 1200);
     }
 
-    function _kbRteAddLink() {
-      const url = prompt('URL:');
-      if (!url) return;
-      const label = prompt('Label (optional):', url);
+    /* ── KB Notes RTE helpers ── */
+    function kbRteExec(cmd, val) { document.getElementById('kbNotesEditor')?.focus(); document.execCommand(cmd, false, val || null); }
+    function kbRteUpdateToolbar() {
+      const bold = document.queryCommandState('bold');
+      document.getElementById('kbRteBoldBtn')?.classList.toggle('rte-active', bold);
+    }
+    function kbRteToggleColorPicker() { document.getElementById('kbRteColorPicker')?.classList.toggle('hidden'); }
+    function kbRteCloseColorPicker()  { document.getElementById('kbRteColorPicker')?.classList.add('hidden'); }
+    function kbRteSetColor(color) {
       document.getElementById('kbNotesEditor')?.focus();
-      document.execCommand('createLink', false, url);
-      const link = document.getElementById('kbNotesEditor')?.querySelector('a[href="' + url + '"]');
-      if (link && label && label !== url) link.textContent = label;
+      document.execCommand('foreColor', false, color);
+      const bar = document.getElementById('kbRteColorBar');
+      if (bar) bar.style.background = color;
+      kbRteCloseColorPicker();
+    }
+    function kbRteRemoveColor() {
+      document.getElementById('kbNotesEditor')?.focus();
+      document.execCommand('removeFormat', false, null);
+      kbRteCloseColorPicker();
+    }
+    function kbRteAddLink() {
+      const url = prompt('Enter URL:');
+      if (url) { document.getElementById('kbNotesEditor')?.focus(); document.execCommand('createLink', false, url); _rteSetLinkTarget(url); }
     }
 
     // ── Modal (create / edit) ──────────────────────────────────
