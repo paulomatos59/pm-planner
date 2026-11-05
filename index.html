@@ -1294,6 +1294,11 @@
     .comm-task-expand { background:var(--bg); border:1px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:6px; }
     .subtask-parent-badge { display:inline-flex; align-items:center; gap:4px; font-size:11px; font-weight:600; padding:2px 8px; border-radius:10px; background:var(--purple-light); color:var(--purple); cursor:pointer; }
     .subtask-parent-badge:hover { text-decoration:underline; }
+    /* Knowledge Base */
+    .kb-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(260px,1fr)); gap:14px; }
+    .kb-card { background:var(--surface); border:1px solid var(--border); border-radius:10px; padding:14px 16px; cursor:pointer; transition:box-shadow .15s, border-color .15s; }
+    .kb-card:hover { box-shadow:0 4px 12px rgba(0,0,0,.08); border-color:var(--primary); }
+    .kb-card-title { font-size:14px; font-weight:600; color:var(--text); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   </style>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
   <style>
@@ -1676,7 +1681,23 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.6</div>
+      <!-- Knowledge Base section -->
+      <div class="sidebar-section">
+        <div class="sidebar-section-header" onclick="toggleSection('kb')">
+          <div class="sidebar-section-left">
+            <span class="section-arrow open" id="arrow-kb">▶</span>
+            <span>Knowledge Base</span>
+          </div>
+          <div class="sidebar-section-right">
+            <button class="section-add-btn" onclick="event.stopPropagation();openKbTopicModal()" title="New topic">＋</button>
+          </div>
+        </div>
+        <div class="sidebar-section-body" id="section-kb">
+          <button class="nav-item" id="nav-kb" onclick="showView('kb')">📚 All Topics</button>
+        </div>
+      </div>
+
+      <div class="sidebar-version">v1.11.7</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2870,6 +2891,57 @@
     </div>
   </div>
 
+  <!-- Knowledge Base Topic Modal -->
+  <div class="modal-overlay hidden" id="kbTopicModal" onclick="if(event.target===this)closeKbTopicModal()">
+    <div class="modal" style="max-width:600px;width:95vw">
+      <div class="modal-header">
+        <h2 class="modal-title" id="kbTopicModalTitle">📚 New Topic</h2>
+        <button class="btn-close" onclick="closeKbTopicModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label class="form-label">Title <span style="color:#dc2626">*</span></label>
+          <input type="text" class="form-input" id="kbTitle" placeholder="e.g. Jira Workflow Setup" autocomplete="off">
+        </div>
+        <div style="display:flex;gap:12px">
+          <div class="form-group" style="flex:1">
+            <label class="form-label">Category</label>
+            <input type="text" class="form-input" id="kbCategory" placeholder="e.g. Process, Security, Tools" list="kbCategoryList" autocomplete="off">
+            <datalist id="kbCategoryList"></datalist>
+          </div>
+          <div class="form-group" style="flex:1">
+            <label class="form-label">Tags <span style="font-size:11px;color:var(--text-muted)">(comma-separated)</span></label>
+            <input type="text" class="form-input" id="kbTags" placeholder="e.g. jira, agile, ops">
+          </div>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Summary <span style="font-size:11px;color:var(--text-muted)">(one line)</span></label>
+          <input type="text" class="form-input" id="kbSummary" placeholder="Short description shown on the card">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Notes</label>
+          <textarea id="kbNotes" class="form-input" rows="6" placeholder="Detailed notes, context, steps…" style="resize:vertical;font-family:inherit"></textarea>
+        </div>
+        <div class="form-group">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+            <label class="form-label" style="margin-bottom:0">External Links</label>
+            <button class="btn btn-secondary btn-sm" onclick="kbAddLinkRow()">＋ Add link</button>
+          </div>
+          <div id="kbLinksContainer" style="display:flex;flex-direction:column;gap:6px"></div>
+        </div>
+      </div>
+      <div class="modal-footer" style="display:flex;gap:8px;justify-content:space-between">
+        <div>
+          <button class="btn btn-danger btn-sm" id="kbDeleteBtn" onclick="deleteKbTopic()" style="display:none">🗑 Delete</button>
+        </div>
+        <div style="display:flex;gap:8px">
+          <button class="btn btn-secondary" onclick="closeKbTopicModal()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveKbTopic()">Save Topic</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <div class="modal-overlay hidden" id="settingsModal">
     <div class="modal">
       <div class="modal-header">
@@ -3036,6 +3108,7 @@
       if (changed) persistGoals();
     })();
     let comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
+    let kbTopics     = JSON.parse(localStorage.getItem('dp_kb_topics')   || '[]');
     let knownContacts = JSON.parse(localStorage.getItem('dp_contacts_v1') || '[]');
 
     let currentView      = 'today';
@@ -3194,6 +3267,7 @@
     function persistReports()  { localStorage.setItem('dp_reports_v1',  JSON.stringify(reports));      scheduleGistSave(); scheduleAutoDownload(); }
     function persistNotes()    { localStorage.setItem('dp_notes_v1',    JSON.stringify(projectNotes)); scheduleGistSave(); scheduleAutoDownload(); }
     function persistComms()    { localStorage.setItem('dp_comms_v1',    JSON.stringify(comms));        scheduleGistSave(); scheduleAutoDownload(); }
+    function persistKb()       { localStorage.setItem('dp_kb_topics',   JSON.stringify(kbTopics));     scheduleGistSave(); scheduleAutoDownload(); }
     function persistContacts() { localStorage.setItem('dp_contacts_v1', JSON.stringify(knownContacts)); }
 
     /* ── Known contacts (Organizer / Participants autocomplete) ── */
@@ -4349,7 +4423,8 @@ const renderers = {
         gantt:            renderGantt,
         comms:            renderComms,
         followups:        renderFollowupsPage,
-        search:           renderGlobalSearch
+        search:           renderGlobalSearch,
+        kb:               renderKnowledgeBase
       };
 
       if (_tzInterval) { clearInterval(_tzInterval); _tzInterval = null; }
@@ -10626,6 +10701,7 @@ const renderers = {
       if (e.key === 'dp_popup_saved') {
         tasks        = JSON.parse(localStorage.getItem('dp_tasks_v1')    || '[]');
         comms        = JSON.parse(localStorage.getItem('dp_comms_v1')    || '[]');
+        kbTopics     = JSON.parse(localStorage.getItem('dp_kb_topics')   || '[]');
         followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
         projectNotes = JSON.parse(localStorage.getItem('dp_notes_v1')    || '[]');
         projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
@@ -12338,6 +12414,167 @@ const renderers = {
 
     // Resume interval-based backup if it was enabled before page reload
     if (autoDownload && backupFrequency !== 'save') startBackupInterval();
+
+    /* ==============================
+       KNOWLEDGE BASE
+    ============================== */
+    let _kbEditId = null; // null = new topic, string = existing topic id
+
+    function renderKnowledgeBase() {
+      const search = (document.getElementById('kbSearch')?.value || '').toLowerCase();
+      const catFilter = (document.getElementById('kbCatFilter')?.value || '');
+      const categories = [...new Set(kbTopics.map(t => t.category).filter(Boolean))].sort();
+
+      const filtered = kbTopics.filter(t => {
+        if (catFilter && t.category !== catFilter) return false;
+        if (search) {
+          const hay = [t.title, t.category, t.summary, t.notes, ...(t.tags||[])].join(' ').toLowerCase();
+          if (!hay.includes(search)) return false;
+        }
+        return true;
+      });
+
+      const catOptions = categories.map(c =>
+        `<option value="${esc(c)}" ${catFilter===c?'selected':''}>${esc(c)}</option>`
+      ).join('');
+
+      const cards = filtered.length === 0
+        ? `<div style="text-align:center;color:var(--text-muted);padding:60px 20px;font-size:14px">
+             ${kbTopics.length === 0 ? 'No topics yet. Click <strong>+ New Topic</strong> to get started.' : 'No topics match your filter.'}
+           </div>`
+        : filtered.map(t => {
+            const tagChips = (t.tags||[]).map(tag =>
+              `<span style="font-size:10px;padding:2px 7px;border-radius:10px;background:var(--surface-alt,#f1f5f9);color:var(--text-muted);border:1px solid var(--border)">${esc(tag)}</span>`
+            ).join('');
+            const linkCount = (t.links||[]).length;
+            const linksLabel = linkCount > 0
+              ? `<span style="font-size:11px;color:var(--primary)">🔗 ${linkCount} link${linkCount>1?'s':''}</span>`
+              : '';
+            return `<div class="kb-card" onclick="openKbTopicModal('${t.id}')" title="Click to edit">
+              <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px">
+                <div class="kb-card-title" title="${esc(t.title)}">${esc(t.title)}</div>
+                ${t.category ? `<span style="font-size:10px;padding:2px 8px;border-radius:10px;background:#eff6ff;color:#1d4ed8;border:1px solid #bfdbfe;white-space:nowrap;flex-shrink:0">${esc(t.category)}</span>` : ''}
+              </div>
+              ${t.summary ? `<div style="font-size:12px;color:var(--text-muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(t.summary)}">${esc(t.summary)}</div>` : ''}
+              <div style="display:flex;align-items:center;gap:6px;margin-top:8px;flex-wrap:wrap">
+                ${tagChips}
+                ${linksLabel}
+              </div>
+              ${t.updatedAt ? `<div style="font-size:10px;color:var(--text-muted);margin-top:8px;text-align:right">Updated ${t.updatedAt.slice(0,10)}</div>` : ''}
+            </div>`;
+          }).join('');
+
+      return `<div style="padding:20px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;flex-wrap:wrap;gap:10px">
+          <h2 style="font-size:18px;font-weight:700;color:var(--text);margin:0">📚 Knowledge Base</h2>
+          <button class="btn btn-primary btn-sm" onclick="openKbTopicModal()">＋ New Topic</button>
+        </div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap">
+          <input type="text" id="kbSearch" class="form-input" placeholder="Search topics…"
+            value="${esc(search)}" oninput="showView('kb')" style="flex:1;min-width:160px;max-width:300px">
+          <select id="kbCatFilter" class="filter-select" onchange="showView('kb')" style="min-width:140px">
+            <option value="">All categories</option>
+            ${catOptions}
+          </select>
+        </div>
+        <div class="kb-grid">${cards}</div>
+      </div>`;
+    }
+
+    function openKbTopicModal(id) {
+      _kbEditId = id || null;
+      const t = id ? kbTopics.find(x => x.id === id) : null;
+
+      document.getElementById('kbTopicModalTitle').textContent = t ? '📚 Edit Topic' : '📚 New Topic';
+      document.getElementById('kbTitle').value     = t?.title    || '';
+      document.getElementById('kbCategory').value  = t?.category || '';
+      document.getElementById('kbTags').value      = (t?.tags||[]).join(', ');
+      document.getElementById('kbSummary').value   = t?.summary  || '';
+      document.getElementById('kbNotes').value     = t?.notes    || '';
+
+      // Populate category datalist
+      const cats = [...new Set(kbTopics.map(x => x.category).filter(Boolean))].sort();
+      document.getElementById('kbCategoryList').innerHTML = cats.map(c => `<option value="${esc(c)}">`).join('');
+
+      // Render link rows
+      const links = t?.links || [];
+      const container = document.getElementById('kbLinksContainer');
+      container.innerHTML = '';
+      links.forEach(l => kbAddLinkRow(l.label, l.url));
+
+      document.getElementById('kbDeleteBtn').style.display = t ? '' : 'none';
+      document.getElementById('kbTopicModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('kbTitle').focus(), 50);
+    }
+
+    function closeKbTopicModal() {
+      document.getElementById('kbTopicModal').classList.add('hidden');
+      _kbEditId = null;
+    }
+
+    function kbAddLinkRow(label, url) {
+      const container = document.getElementById('kbLinksContainer');
+      const row = document.createElement('div');
+      row.style.cssText = 'display:flex;gap:6px;align-items:center';
+      row.innerHTML = `
+        <input type="text" class="form-input" placeholder="Label" value="${esc(label||'')}" style="flex:1;min-width:0" data-kb-link="label">
+        <input type="url" class="form-input" placeholder="https://…" value="${esc(url||'')}" style="flex:2;min-width:0" data-kb-link="url">
+        <button onclick="this.closest('div').remove()" style="border:none;background:none;cursor:pointer;color:var(--text-muted);font-size:16px;padding:0 4px;line-height:1" title="Remove">×</button>`;
+      container.appendChild(row);
+    }
+
+    function saveKbTopic() {
+      const title = document.getElementById('kbTitle').value.trim();
+      if (!title) { document.getElementById('kbTitle').focus(); return; }
+
+      const links = [];
+      document.getElementById('kbLinksContainer').querySelectorAll('div').forEach(row => {
+        const label = row.querySelector('[data-kb-link="label"]')?.value.trim() || '';
+        const url   = row.querySelector('[data-kb-link="url"]')?.value.trim()   || '';
+        if (url) links.push({ label, url });
+      });
+
+      const now = new Date().toISOString();
+      if (_kbEditId) {
+        const idx = kbTopics.findIndex(t => t.id === _kbEditId);
+        if (idx !== -1) {
+          kbTopics[idx] = {
+            ...kbTopics[idx],
+            title,
+            category: document.getElementById('kbCategory').value.trim(),
+            tags: document.getElementById('kbTags').value.split(',').map(s=>s.trim()).filter(Boolean),
+            summary: document.getElementById('kbSummary').value.trim(),
+            notes: document.getElementById('kbNotes').value.trim(),
+            links,
+            updatedAt: now
+          };
+        }
+      } else {
+        kbTopics.push({
+          id: Math.random().toString(36).slice(2,10),
+          title,
+          category: document.getElementById('kbCategory').value.trim(),
+          tags: document.getElementById('kbTags').value.split(',').map(s=>s.trim()).filter(Boolean),
+          summary: document.getElementById('kbSummary').value.trim(),
+          notes: document.getElementById('kbNotes').value.trim(),
+          links,
+          createdAt: now,
+          updatedAt: now
+        });
+      }
+      persistKb();
+      closeKbTopicModal();
+      showView('kb');
+    }
+
+    function deleteKbTopic() {
+      if (!_kbEditId) return;
+      if (!confirm('Delete this topic?')) return;
+      kbTopics = kbTopics.filter(t => t.id !== _kbEditId);
+      persistKb();
+      closeKbTopicModal();
+      showView('kb');
+    }
   </script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
   <script>
