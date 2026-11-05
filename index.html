@@ -13247,18 +13247,48 @@ const renderers = {
       document.getElementById('internalRefModal').classList.add('hidden');
       const el = document.getElementById(_internalRefEditorId);
       if (!el) { _internalRefRange = null; return; }
+
+      // Build the link node
+      const a = document.createElement('a');
+      a.href = 'javascript:void(0)';
+      a.dataset.dpRef = type + ':' + id;
+      a.className = 'dp-int-ref';
+      a.title = 'Go to: ' + title;
+      a.textContent = title;
+      const space = document.createTextNode(' ');
+
       el.focus();
+
       if (_internalRefRange) {
         try {
-          const sel = window.getSelection();
-          sel.removeAllRanges();
-          sel.addRange(_internalRefRange);
-        } catch(e) {}
+          // Verify the range is still inside this editor
+          if (el.contains(_internalRefRange.commonAncestorContainer)) {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(_internalRefRange);
+            _internalRefRange.deleteContents();
+            _internalRefRange.insertNode(space);
+            _internalRefRange.insertNode(a);
+            // Move cursor after the space
+            const after = document.createRange();
+            after.setStartAfter(space);
+            after.collapse(true);
+            sel.removeAllRanges();
+            sel.addRange(after);
+          } else {
+            throw new Error('range outside editor');
+          }
+        } catch(e) {
+          // Fallback: append at end of editor
+          el.appendChild(a);
+          el.appendChild(space);
+        }
+      } else {
+        // No saved range: append at end
+        el.appendChild(a);
+        el.appendChild(space);
       }
-      const safeTitle = title.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-      document.execCommand('insertHTML', false,
-        `<a href="javascript:void(0)" data-dp-ref="${type}:${id}" class="dp-int-ref" title="Go to: ${safeTitle}">${safeTitle}</a>&nbsp;`
-      );
+
       _internalRefRange = null;
       el.dispatchEvent(new Event('input', { bubbles: true }));
     }
