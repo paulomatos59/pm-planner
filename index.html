@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.14</div>
+      <div class="sidebar-version">v1.11.15</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6021,6 +6021,19 @@ const renderers = {
           ${(()=>{
             const dk = _gDayKey(today);
             const arr = _gArr(dk);
+            // Carried-over open goals from past days
+            const _coCarried = [];
+            Object.keys(goals).sort().forEach(k => {
+              if (!k.startsWith('day:')) return;
+              if (k >= dk) return;
+              _gArr(k).forEach(g => { if (g.status !== 'Achieved') _coCarried.push({ k, g }); });
+            });
+            const carriedHtml = _coCarried.map(({k, g}) =>
+              `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border);border-left:2px solid #ef4444;padding-left:6px">
+                <span style="flex:1;font-size:13px">${esc(g.text)} <span style="font-size:10px;color:#ef4444;font-style:italic">from ${new Date(k.slice(4)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span></span>
+                <button onclick="toggleGoalStatus('${k}','${g.id}')" style="flex-shrink:0;border:none;cursor:pointer;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;background:#fef9c3;color:#a16207">🔄 Open</button>
+                <button onclick="deleteGoalItem('${k}','${g.id}')" style="border:none;background:none;cursor:pointer;color:var(--danger);opacity:.5;font-size:13px;padding:0 2px">✕</button>
+              </div>`).join('');
             const listHtml = arr.map(g => {
               const ach = g.status === 'Achieved';
               return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid var(--border)">
@@ -6029,7 +6042,7 @@ const renderers = {
                 <button onclick="deleteGoalItem('${dk}','${g.id}')" style="border:none;background:none;cursor:pointer;color:var(--danger);opacity:.5;font-size:13px;padding:0 2px">✕</button>
               </div>`;
             }).join('');
-            return `${listHtml ? `<div style="margin:8px 0 0">${listHtml}</div>` : '<div class="morning-sub">What do you want to achieve today?</div>'}
+            return `${(carriedHtml || listHtml) ? `<div style="margin:8px 0 0">${carriedHtml}${listHtml}</div>` : '<div class="morning-sub">What do you want to achieve today?</div>'}
             <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
               <input class="focus-input" type="text" id="goalDayInput" placeholder="${arr.length?'Add another goal…':'Set your goal for today…'}" style="flex:1">
               <button class="btn btn-primary btn-sm" onclick="addGoalFromInput('today-view','${dk}')" style="white-space:nowrap">Save</button>
