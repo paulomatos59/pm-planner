@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.13</div>
+      <div class="sidebar-version">v1.11.14</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -7073,7 +7073,31 @@ const renderers = {
     // Reusable read-only banner showing all goals for a given key (used in week/month/daily views)
     function _goalsBanner(key, label) {
       const arr = _gArr(key);
-      if (!arr.length) return '';
+
+      // Collect open goals from past periods of the same type
+      const prefix = key.split(':')[0] + ':';
+      const keyDate = key.slice(prefix.length);
+      const carried = [];
+      Object.keys(goals).sort().forEach(k => {
+        if (!k.startsWith(prefix)) return;
+        if (k.slice(prefix.length) >= keyDate) return;
+        _gArr(k).forEach(g => { if (g.status !== 'Achieved') carried.push({ k, g }); });
+      });
+
+      if (!arr.length && !carried.length) return '';
+
+      const _fromLabel = k => {
+        if (k.startsWith('day:'))  return new Date(k.slice(4)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        if (k.startsWith('week:')) return 'wk ' + new Date(k.slice(5)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+        return new Date(k.slice(6)+'-01T00:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'});
+      };
+
+      const carriedItems = carried.map(({k, g}) =>
+        `<div style="display:flex;align-items:center;gap:8px;margin-top:4px;border-left:2px solid #ef4444;padding-left:6px">
+          <span style="font-size:14px;color:var(--text)">${esc(g.text)} <span style="font-size:10px;color:#ef4444;font-style:italic">from ${_fromLabel(k)}</span></span>
+          <button onclick="toggleGoalStatus('${k}','${g.id}')" style="border:none;cursor:pointer;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;background:#fef9c3;color:#a16207;white-space:nowrap;flex-shrink:0">🔄 Open</button>
+        </div>`).join('');
+
       const items = arr.map(g => {
         const ach = g.status === 'Achieved';
         return `<div style="display:flex;align-items:center;gap:8px;${arr.length>1?'margin-top:4px':''}">
@@ -7082,11 +7106,12 @@ const renderers = {
           <button onclick="toggleGoalStatus('${key}','${g.id}')" style="border:none;cursor:pointer;border-radius:20px;padding:2px 8px;font-size:11px;font-weight:600;background:${ach?'#dcfce7':'#fef9c3'};color:${ach?'#16a34a':'#a16207'};white-space:nowrap;flex-shrink:0">${ach?'✅ Achieved':'🔄 Open'}</button>
         </div>`;
       }).join('');
+
       return `<div class="morning-card" style="margin-bottom:16px;display:flex;align-items:flex-start;gap:10px">
         <span style="font-size:16px;margin-top:2px">🏆</span>
         <div style="flex:1;min-width:0">
           <div style="font-size:11px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">${label}</div>
-          <div style="margin-top:4px">${items}</div>
+          <div style="margin-top:4px">${carriedItems}${items}</div>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="showView('goals')" style="flex-shrink:0">Edit</button>
       </div>`;
