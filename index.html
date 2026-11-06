@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.15</div>
+      <div class="sidebar-version">v1.11.16</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4736,15 +4736,29 @@ const renderers = {
               const td = todayStr();
               const dKey = _gDayKey(td), wKey = _gWeekKey(td), mKey = _gMonthKey(td);
               const dArr = _gArr(dKey); const wArr = _gArr(wKey); const mArr = _gArr(mKey);
-              const anyGoal = dArr.length || wArr.length || mArr.length;
+              // Collect carried-over open goals by type
+              const _coOpen = (prefix, currentKey) => {
+                const out = [];
+                Object.keys(goals).sort().forEach(k => {
+                  if (!k.startsWith(prefix)) return;
+                  if (k.slice(prefix.length) >= currentKey.slice(prefix.length)) return;
+                  _gArr(k).forEach(g => { if (g.status !== 'Achieved') out.push(g); });
+                });
+                return out;
+              };
+              const dCo = _coOpen('day:', dKey);
+              const wCo = _coOpen('week:', wKey);
+              const mCo = _coOpen('month:', mKey);
+              const anyGoal = dArr.length || wArr.length || mArr.length || dCo.length || wCo.length || mCo.length;
               if (!anyGoal) return `<div class="summary-focus-empty" onclick="showView('goals')">＋ Set your goals →</div>`;
-              const col = (arr, label) => {
-                if (!arr.length) return '';
-                const items = arr.map(g => {
+              const col = (arr, carried, label) => {
+                const all = [...carried.map(g=>({...g,_co:true})), ...arr];
+                if (!all.length) return '';
+                const items = all.map(g => {
                   const ach = g.status === 'Achieved';
-                  return `<div style="display:flex;align-items:baseline;gap:5px;margin-top:4px">
+                  return `<div style="display:flex;align-items:baseline;gap:5px;margin-top:4px${g._co?';border-left:2px solid #ef4444;padding-left:4px':''}">
                     <span style="font-size:10px;opacity:.5;flex-shrink:0;margin-top:2px">•</span>
-                    <span style="font-size:13px;font-weight:600;line-height:1.35;${ach?'text-decoration:line-through;opacity:.55':''}">${esc(g.text)}</span>
+                    <span style="font-size:13px;font-weight:600;line-height:1.35;${ach?'text-decoration:line-through;opacity:.55':''}">${esc(g.text)}${g._co?` <span style="font-size:9px;opacity:.7">(overdue)</span>`:''}  </span>
                     ${ach ? `<span style="font-size:12px;flex-shrink:0">✅</span>` : ''}
                   </div>`;
                 }).join('');
@@ -4753,7 +4767,7 @@ const renderers = {
                   ${items}
                 </div>`;
               };
-              const cols = [col(dArr,'Today'), col(wArr,'This Week'), col(mArr,'This Month')].filter(Boolean).join('');
+              const cols = [col(dArr,dCo,'Today'), col(wArr,wCo,'This Week'), col(mArr,mCo,'This Month')].filter(Boolean).join('');
               return `<div onclick="showView('goals')" style="cursor:pointer;display:flex;align-items:stretch;margin-top:12px;border-radius:10px;overflow:hidden;background:rgba(0,0,0,.18);border:1px solid rgba(255,255,255,.12)">
                 <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:10px 14px;background:rgba(0,0,0,.15);border-right:1px solid rgba(255,255,255,.15);min-width:54px">
                   <span style="font-size:20px;line-height:1">🏆</span>
