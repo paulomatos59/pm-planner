@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.12</div>
+      <div class="sidebar-version">v1.11.13</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -6916,6 +6916,33 @@ const renderers = {
 
       const goalCard = (id, icon, title, subtitle, prevFn, nextFn, key, placeholder) => {
         const arr = _gArr(key);
+
+        // Collect open goals from past periods of the same type
+        const prefix = key.split(':')[0] + ':';
+        const keyDate = key.slice(prefix.length);
+        const carriedOver = [];
+        Object.keys(goals).sort().forEach(k => {
+          if (!k.startsWith(prefix)) return;
+          if (k.slice(prefix.length) >= keyDate) return; // only past periods
+          _gArr(k).forEach(g => {
+            if (g.status !== 'Achieved') carriedOver.push({ k, g });
+          });
+        });
+
+        const _coLabel = k => {
+          if (k.startsWith('day:'))   return new Date(k.slice(4)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+          if (k.startsWith('week:'))  return 'week of ' + new Date(k.slice(5)+'T00:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'});
+          return new Date(k.slice(6)+'-01T00:00:00').toLocaleDateString('en-US',{month:'short',year:'numeric'});
+        };
+
+        const carriedHtml = carriedOver.map(({k, g}) => `
+          <div id="goal-row-${g.id}" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border);background:rgba(239,68,68,.04);border-radius:4px;padding:6px 8px;margin-bottom:2px">
+            <span style="flex:1;font-size:13px">${esc(g.text)} <span style="font-size:10px;color:var(--text-muted);font-style:italic">from ${_coLabel(k)}</span></span>
+            <button onclick="toggleGoalStatus('${k}','${g.id}')" style="flex-shrink:0;border:none;cursor:pointer;border-radius:20px;padding:2px 9px;font-size:11px;font-weight:600;background:#fef9c3;color:#a16207">🔄 Open</button>
+            <button onclick="startEditGoal('${k}','${g.id}')" style="border:none;background:none;cursor:pointer;font-size:13px;padding:0 2px;opacity:.5" title="Edit">✏</button>
+            <button onclick="deleteGoalItem('${k}','${g.id}')" style="border:none;background:none;cursor:pointer;color:var(--danger);opacity:.5;font-size:13px;padding:0 2px">✕</button>
+          </div>`).join('');
+
         const listHtml = arr.map(g => {
           const ach = g.status === 'Achieved';
           return `<div id="goal-row-${g.id}" style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)">
@@ -6935,6 +6962,7 @@ const renderers = {
               ${navBtn('›', nextFn)}
             </div>
           </div>
+          ${carriedHtml ? `<div style="margin:8px 0 0;border-left:3px solid #ef4444;padding-left:6px">${carriedHtml}</div>` : ''}
           ${listHtml ? `<div style="margin:8px 0 0">${listHtml}</div>` : ''}
           <div style="display:flex;align-items:center;gap:8px;margin-top:8px">
             <input class="focus-input" type="text" id="goal-input-${id}" style="flex:1"
