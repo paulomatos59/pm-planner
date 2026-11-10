@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.17</div>
+      <div class="sidebar-version">v1.11.18</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4627,7 +4627,15 @@ const renderers = {
         });
       const hasDoneComms = todayComms.some(c => (c._occStatus || 'planned') !== 'planned');
 
-      // Upcoming Events card: time-off entries
+      // Ongoing Events: started before today, not yet ended
+      const _ongoingEvents = tasks
+        .filter(t => ['timeoff','corporate'].includes(t.taskType)
+          && t.startDate && t.startDate < today
+          && (t.dueDate || t.startDate) >= today)
+        .map(t => ({ _type: 'timeoff', _date: t.startDate, _ongoing: true, _t: t }))
+        .sort((a,b) => a._date.localeCompare(b._date));
+
+      // Upcoming Events card: time-off entries starting today or later
       const _timeoffEvents = tasks
         .filter(t => ['timeoff','corporate'].includes(t.taskType) && (t.startDate || t.dueDate) >= today)
         .map(t => ({ _type: 'timeoff', _date: t.startDate || t.dueDate, _t: t }))
@@ -4655,6 +4663,7 @@ const renderers = {
       const upcomingEvents = [..._timeoffEvents, ..._holidayEvents]
         .sort((a,b) => a._date.localeCompare(b._date))
         .slice(0, 10);
+      const ongoingEvents = _ongoingEvents;
 
       // Pre-split for tasks/comms Done section (used by padding:0 card approach)
       const _isEffDone     = t => t.status === 'Done' || _isRecurDoneToday(t);
@@ -4923,12 +4932,34 @@ const renderers = {
 
           <div class="summary-card">
             <div class="summary-card-header">
-              <span class="summary-card-title">📅 Upcoming Events</span>
+              <span class="summary-card-title">📅 Ongoing & Upcoming Events</span>
               <button class="summary-card-link" onclick="showView('month')">Month view →</button>
             </div>
-            ${upcomingEvents.length === 0
+            ${(ongoingEvents.length === 0 && upcomingEvents.length === 0)
               ? `<div class="summary-empty">No upcoming time off or events</div>`
-              : `<div>${upcomingEvents.map(item => {
+              : `<div>
+                ${ongoingEvents.length ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--primary);padding:2px 0 6px">🔄 Ongoing</div>` : ''}
+                ${ongoingEvents.map(item => {
+                  const t = item._t;
+                  const d = parseLocal(item._date);
+                  const daysLeft = Math.ceil((parseLocal(t.dueDate) - new Date()) / 86400000);
+                  return `<div class="upcoming-item" onclick="openTaskModal('${t.id}')" style="border-left:3px solid var(--primary);padding-left:8px">
+                    <div class="upcoming-date-col">
+                      <div class="upcoming-date-day">${d.getDate()}</div>
+                      <div class="upcoming-date-mon">${d.toLocaleDateString('en-US',{month:'short'})}</div>
+                      <div class="upcoming-date-dow">${d.toLocaleDateString('en-US',{weekday:'short'})}</div>
+                    </div>
+                    <div style="flex:1;min-width:0">
+                      <div class="upcoming-title">${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}</div>
+                      <div class="upcoming-meta">
+                        <span class="upcoming-type-badge ${t.taskType==='corporate'?'upcoming-type-corporate':'upcoming-type-timeoff'}">${t.taskType==='corporate'?'Corporate Event':'Time Off'}</span>
+                        <span style="font-size:11px;color:var(--text-muted)">Until ${formatDue(t.dueDate)} · ${daysLeft}d left</span>
+                      </div>
+                    </div>
+                  </div>`;
+                }).join('')}
+                ${ongoingEvents.length && upcomingEvents.length ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);padding:8px 0 6px">📆 Upcoming</div>` : ''}
+                ${upcomingEvents.map(item => {
                   if (item._type === 'holiday') {
                     const d = parseLocal(item._date);
                     return `<div class="upcoming-item">
@@ -4963,7 +4994,8 @@ const renderers = {
                       </div>
                     </div>
                   </div>`;
-                }).join('')}</div>`
+                }).join('')}
+              </div>`
             }
           </div>
 
