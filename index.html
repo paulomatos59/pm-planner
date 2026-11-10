@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.16</div>
+      <div class="sidebar-version">v1.11.17</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -4520,7 +4520,7 @@ const renderers = {
 
       const open          = tasks.filter(t => t.status !== 'Done');
       const overdueList   = open.filter(t => isOverdue(t) && !['timeoff','corporate'].includes(t.taskType) && !t.parentId);
-      const todayList     = open.filter(t => isTaskActiveOn(t, today));
+      const todayList     = open.filter(t => isTaskActiveOn(t, today) && !['timeoff','corporate'].includes(t.taskType));
       const weekList      = open.filter(t => t.dueDate >= monStr && t.dueDate <= sunStr);
       const blockedList   = open.filter(t => t.status === 'Blocked');
       const openFus       = followups.filter(f => f.status === 'Open' || f.status === 'In Progress');
