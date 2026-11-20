@@ -340,6 +340,11 @@
     .gantt-super-group-hdr:hover .gantt-super-group-name { color: var(--primary); }
     .gantt-super-group-name { width: 190px; min-width: 190px; padding: 0 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--text-muted); user-select: none; overflow: hidden; }
     .gantt-super-group-band { flex: 1; }
+    .gantt-super-group-hdr.drag-above { box-shadow: inset 0 3px 0 var(--primary); }
+    .gantt-super-group-hdr.drag-below { box-shadow: inset 0 -3px 0 var(--primary); }
+    .gantt-super-group-hdr.dragging  { opacity: 0.4; }
+    .gantt-cat-drag-handle { cursor: grab; color: var(--text-muted); font-size: 13px; padding: 0 2px; flex-shrink: 0; opacity: 0.5; }
+    .gantt-super-group-hdr:hover .gantt-cat-drag-handle { opacity: 1; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
@@ -1708,7 +1713,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.22</div>
+      <div class="sidebar-version">v1.11.23</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3222,6 +3227,7 @@
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
     const ganttCollapsed     = new Set(); // group keys currently collapsed
+    let ganttCatOrder = JSON.parse(localStorage.getItem('dp_gantt_cat_order') || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal'];
     let ganttHolidayCountries   = new Set(JSON.parse(localStorage.getItem('dp_gantt_holidays') || '[]')); // selected ISO codes e.g. Set(['PT','US'])
     let ganttHolidayDropOpen    = false;
     const ganttHolidaysCache    = {};        // { 'PT-2026': [...] }
@@ -4465,6 +4471,7 @@ const renderers = {
       if (view === 'backlog')      _setupBacklogDnd();
       if (view === 'okrs-list')   _setupOkrListDnd();
       if (view === 'priorities')  _setupPrioritiesDnD();
+      if (view === 'gantt')       _setupGanttCatDnD();
       if (view === 'today') {
         setTimeout(() => {
           const fi = document.getElementById('goalDayInput');
@@ -5703,8 +5710,10 @@ const renderers = {
         const visCount = childRows.length;
         const sgCollapsed = ganttCollapsed.has(sgKey);
         return `
-        <div class="gantt-super-group-hdr" onclick="toggleGanttGroup('${sgKey}')">
+        <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true"
+             onclick="toggleGanttGroup('${sgKey}')">
           <div class="gantt-super-group-name">
+            <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
             <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
             <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
             <span class="gantt-grp-name-text">${label}</span>
@@ -5723,13 +5732,23 @@ const renderers = {
         else                                  _sgInit.push(g);
       });
 
+      const _sgDefs = {
+        '_sg_okr':      { label: '🎯 OKRs',       color: '#7c3aed', list: _sgOkr },
+        '_sg_ms':       { label: '🏁 Milestones',  color: '#0891b2', list: _sgMs },
+        '_sg_init':     { label: '🚀 Initiatives', color: '#2563eb', list: _sgInit },
+        '_sg_personal': { label: '🏠 General',     color: '#10b981', list: _sgPersonal },
+      };
+      // Ensure any new keys from the default set are included even if not in saved order
+      const _orderedKeys = [...new Set([...ganttCatOrder, ...Object.keys(_sgDefs)])];
+      const catSections = _orderedKeys.map(k => {
+        const d = _sgDefs[k];
+        return d ? _renderSuperGrp(k, d.label, d.color, d.list) : '';
+      }).join('');
+
       const groupRows = !hasContent && !sprintSection
         ? `<div class="gantt-empty-row">No items in this period.</div>`
         : timeoffSection
-          + _renderSuperGrp('_sg_okr',      '🎯 OKRs',       '#7c3aed', _sgOkr)
-          + _renderSuperGrp('_sg_ms',       '🏁 Milestones',  '#0891b2', _sgMs)
-          + _renderSuperGrp('_sg_init',     '🚀 Initiatives', '#2563eb', _sgInit)
-          + _renderSuperGrp('_sg_personal', '🏠 General',     '#10b981', _sgPersonal)
+          + catSections
           + _sgUnassigned.map(_renderGrpRow).join('')
           + sprintSection;
 
@@ -6990,6 +7009,62 @@ const renderers = {
       }
 
       _setupTaskContainer('prioritiesActList', 'dp_priorities_act_order');
+    }
+
+    /* ── Gantt category drag-and-drop ── */
+    function _setupGanttCatDnD() {
+      let _dragSrc = null;
+      const headers = document.querySelectorAll('.gantt-super-group-hdr[data-sg-key]');
+      if (headers.length < 2) return;
+
+      headers.forEach(el => {
+        el.addEventListener('dragstart', function(e) {
+          _dragSrc = this;
+          this.classList.add('dragging');
+          e.dataTransfer.effectAllowed = 'move';
+          e.dataTransfer.setData('text/plain', this.dataset.sgKey);
+        });
+
+        el.addEventListener('dragend', function() {
+          this.classList.remove('dragging');
+          headers.forEach(x => x.classList.remove('drag-above', 'drag-below'));
+          _dragSrc = null;
+        });
+
+        el.addEventListener('dragover', function(e) {
+          e.preventDefault();
+          if (!_dragSrc || this === _dragSrc) return;
+          headers.forEach(x => x.classList.remove('drag-above', 'drag-below'));
+          const rect = this.getBoundingClientRect();
+          if (e.clientY < rect.top + rect.height / 2) this.classList.add('drag-above');
+          else this.classList.add('drag-below');
+        });
+
+        el.addEventListener('dragleave', function(e) {
+          if (!this.contains(e.relatedTarget)) this.classList.remove('drag-above', 'drag-below');
+        });
+
+        el.addEventListener('drop', function(e) {
+          e.stopPropagation();
+          this.classList.remove('drag-above', 'drag-below');
+          if (!_dragSrc || this === _dragSrc) return;
+
+          const fromKey = _dragSrc.dataset.sgKey;
+          const toKey   = this.dataset.sgKey;
+          let order = [...headers].map(h => h.dataset.sgKey);
+          const fi = order.indexOf(fromKey);
+          if (fi < 0) return;
+          const rect = this.getBoundingClientRect();
+          const before = e.clientY < rect.top + rect.height / 2;
+          order.splice(fi, 1);
+          const ti = order.indexOf(toKey);
+          if (ti < 0) return;
+          order.splice(before ? ti : ti + 1, 0, fromKey);
+          ganttCatOrder = order;
+          localStorage.setItem('dp_gantt_cat_order', JSON.stringify(order));
+          showView('gantt');
+        });
+      });
     }
 
     /* ==============================
