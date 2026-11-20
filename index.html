@@ -1713,7 +1713,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.23</div>
+      <div class="sidebar-version">v1.11.24</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3227,7 +3227,7 @@
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
     const ganttCollapsed     = new Set(); // group keys currently collapsed
-    let ganttCatOrder = JSON.parse(localStorage.getItem('dp_gantt_cat_order') || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal'];
+    let ganttCatOrder = JSON.parse(localStorage.getItem('dp_gantt_cat_order') || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal','_sg_corporate'];
     let ganttHolidayCountries   = new Set(JSON.parse(localStorage.getItem('dp_gantt_holidays') || '[]')); // selected ISO codes e.g. Set(['PT','US'])
     let ganttHolidayDropOpen    = false;
     const ganttHolidaysCache    = {};        // { 'PT-2026': [...] }
@@ -5589,11 +5589,11 @@ const renderers = {
       if (unassignedTasks.length || unassignedComms.length)
         groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassignedTasks, comms: unassignedComms });
 
-      const _makeTimeoffSection = (key, label, color, items) => {
+      const _makeTimeoffSection = (key, label, color, items, isChild = false) => {
         if (ganttFilter === 'meetings' || items.length === 0) return '';
         const collapsed = ganttCollapsed.has(key);
         return `
-        <div class="gantt-group-hdr">
+        <div class="gantt-group-hdr${isChild ? ' gantt-group-hdr-child' : ''}">
           <div class="gantt-group-name" onclick="toggleGanttGroup('${key}')">
             <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
             <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>
@@ -5732,25 +5732,57 @@ const renderers = {
         else                                  _sgInit.push(g);
       });
 
-      const _sgDefs = {
-        '_sg_okr':      { label: '🎯 OKRs',       color: '#7c3aed', list: _sgOkr },
-        '_sg_ms':       { label: '🏁 Milestones',  color: '#0891b2', list: _sgMs },
-        '_sg_init':     { label: '🚀 Initiatives', color: '#2563eb', list: _sgInit },
-        '_sg_personal': { label: '🏠 General',     color: '#10b981', list: _sgPersonal },
+      // ── Corporate super-group: Time Off + Corporate Events + Sprint Plan ──
+      const _renderCorporateSection = () => {
+        const toHtml   = _makeTimeoffSection('_timeoff',   '🌴 Time Off',        TOFF_COLOR, _toTasks,   true);
+        const corpHtml = _makeTimeoffSection('_corporate', '🏢 Corporate Events', CORP_COLOR, _corpTasks, true);
+        // Sprint child: same as sprintSection but with gantt-group-hdr-child class
+        const sprintChild = sprintSection
+          ? sprintSection.replace('class="gantt-group-hdr"', 'class="gantt-group-hdr gantt-group-hdr-child"')
+          : '';
+        const childHtml = toHtml + corpHtml + sprintChild;
+        if (!childHtml) return '';
+        const sgKey = '_sg_corporate';
+        const color = '#6b7280';
+        const sgCollapsed = ganttCollapsed.has(sgKey);
+        let count = 0;
+        if (toHtml)     count++;
+        if (corpHtml)   count++;
+        if (sprintChild) count++;
+        return `
+        <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true"
+             onclick="toggleGanttGroup('${sgKey}')">
+          <div class="gantt-super-group-name">
+            <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
+            <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
+            <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <span class="gantt-grp-name-text">🏛 Corporate</span>
+            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${count})</span>
+          </div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
+        </div>
+        ${sgCollapsed ? '' : childHtml}`;
       };
-      // Ensure any new keys from the default set are included even if not in saved order
-      const _orderedKeys = [...new Set([...ganttCatOrder, ...Object.keys(_sgDefs)])];
+
+      const _sgDefs = {
+        '_sg_okr':       { label: '🎯 OKRs',       color: '#7c3aed', list: _sgOkr },
+        '_sg_ms':        { label: '🏁 Milestones',  color: '#0891b2', list: _sgMs },
+        '_sg_init':      { label: '🚀 Initiatives', color: '#2563eb', list: _sgInit },
+        '_sg_personal':  { label: '🏠 General',     color: '#10b981', list: _sgPersonal },
+      };
+      // Ensure all known keys are included even if not in saved order
+      const _allKeys = [...Object.keys(_sgDefs), '_sg_corporate'];
+      const _orderedKeys = [...new Set([...ganttCatOrder, ..._allKeys])];
       const catSections = _orderedKeys.map(k => {
+        if (k === '_sg_corporate') return _renderCorporateSection();
         const d = _sgDefs[k];
         return d ? _renderSuperGrp(k, d.label, d.color, d.list) : '';
       }).join('');
 
       const groupRows = !hasContent && !sprintSection
         ? `<div class="gantt-empty-row">No items in this period.</div>`
-        : timeoffSection
-          + catSections
-          + _sgUnassigned.map(_renderGrpRow).join('')
-          + sprintSection;
+        : catSections
+          + _sgUnassigned.map(_renderGrpRow).join('');
 
       // ── Toolbar ──
       const rangeLabel = `${winStart.toLocaleDateString('en-US',{month:'short',day:'numeric'})} – ${new Date(winEnd-MS).toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'})}`;
