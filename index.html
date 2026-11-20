@@ -1725,7 +1725,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.31</div>
+      <div class="sidebar-version">v1.11.32</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3318,12 +3318,28 @@
         const icon = t.taskType === 'timeoff' ? '🌴' : t.taskType === 'corporate' ? '🏢' : '📋';
         items.push({ date: due, icon, title: t.title || 'Untitled' });
       });
-      // Comms with date from today through end of week
+      // Comms with date from today through end of window (handles recurring)
       comms.forEach(c => {
-        const d = (c.date || '').slice(0,10);
-        if (!d || d < todayS || d > we) return;
+        if (!c.date) return;
         const icon = c.type === 'Meeting' ? '🤝' : c.type === 'Slack' ? '💬' : c.type === 'Email' ? '📧' : '💬';
-        items.push({ date: d, icon, title: c.title || c.subject || 'Untitled' });
+        const title = c.title || 'Untitled';
+        if (c.recurrence && c.recurrence.freq) {
+          // Expand occurrences up to window end, collect those in [todayS, we]
+          const cap = (c.recurrence.endDate && c.recurrence.endDate < we) ? c.recurrence.endDate : we;
+          if (c.date > we) return; // starts after window
+          if (c.recurrence.endDate && c.recurrence.endDate < todayS) return; // ended before today
+          const occs = getAllOccurrences(c, 'date', cap);
+          const overrides = c.dateOverrides || {};
+          occs.forEach(orig => {
+            const actual = overrides[orig] || orig;
+            if (actual >= todayS && actual <= we)
+              items.push({ date: actual, icon, title });
+          });
+        } else {
+          const d = c.date.slice(0,10);
+          if (d < todayS || d > we) return;
+          items.push({ date: d, icon, title });
+        }
       });
       if (items.length === 0) return '';
       items.sort((a,b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
