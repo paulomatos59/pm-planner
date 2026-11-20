@@ -1728,7 +1728,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.34</div>
+      <div class="sidebar-version">v1.11.35</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3321,36 +3321,37 @@
         if (!due || due < tomorrowS || due > we) return;
         if (t.status === 'Done') return;
         const icon = t.taskType === 'timeoff' ? '🌴' : t.taskType === 'corporate' ? '🏢' : '📋';
-        items.push({ date: due, icon, title: t.title || 'Untitled' });
+        items.push({ date: due, icon, title: t.title || 'Untitled', kind: 'task', id: t.id });
       });
-      // Comms with date from today through end of window (handles recurring)
+      // Comms with date from tomorrow through end of window (handles recurring)
       comms.forEach(c => {
         if (!c.date) return;
         const icon = c.type === 'Meeting' ? '🤝' : c.type === 'Slack' ? '💬' : c.type === 'Email' ? '📧' : '💬';
         const title = c.title || 'Untitled';
         if (c.recurrence && c.recurrence.freq) {
-          // Expand occurrences up to window end, collect those in [todayS, we]
           const cap = (c.recurrence.endDate && c.recurrence.endDate < we) ? c.recurrence.endDate : we;
-          if (c.date > we) return; // starts after window
+          if (c.date > we) return;
           if (c.recurrence.endDate && c.recurrence.endDate < tomorrowS) return;
           const occs = getAllOccurrences(c, 'date', cap);
           const overrides = c.dateOverrides || {};
           occs.forEach(orig => {
             const actual = overrides[orig] || orig;
             if (actual >= tomorrowS && actual <= we)
-              items.push({ date: actual, icon, title });
+              items.push({ date: actual, icon, title, kind: 'comm', id: c.id });
           });
         } else {
           const d = c.date.slice(0,10);
           if (d < tomorrowS || d > we) return;
-          items.push({ date: d, icon, title });
+          items.push({ date: d, icon, title, kind: 'comm', id: c.id });
         }
       });
       if (items.length === 0) return '';
       items.sort((a,b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
       const sep = `<span class="dp-ticker-sep">|</span>`;
-      const renderItem = it =>
-        `<span class="dp-ticker-item">${it.icon} <span style="opacity:.55;font-size:10px">${fmtD(it.date)}</span> <span style="font-weight:600">${esc(it.title)}</span></span>`;
+      const renderItem = it => {
+        const handler = it.kind === 'task' ? `openTaskModal('${it.id}')` : `openCommModal('${it.id}')`;
+        return `<span class="dp-ticker-item" onclick="${handler}" style="cursor:pointer" title="Open ${it.kind}">${it.icon} <span style="opacity:.55;font-size:10px">${fmtD(it.date)}</span> <span style="font-weight:600;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,0.35)">${esc(it.title)}</span></span>`;
+      };
       const content = items.map(renderItem).join(sep) + sep;
       const dur = Math.max(20, items.length * 5);
       return `
