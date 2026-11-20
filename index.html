@@ -1011,6 +1011,12 @@
       background: linear-gradient(135deg, #1e3a5f 0%, #2563eb 100%);
       border-radius: 12px; padding: 22px 26px; margin-bottom: 16px; color: white;
     }
+    @keyframes dp-ticker { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+    .dp-ticker-wrap { width:100%;overflow:hidden;position:relative;height:20px;margin-top:7px;padding-top:7px;border-top:1px solid rgba(255,255,255,0.12); }
+    .dp-ticker-track { display:inline-flex;align-items:center;white-space:nowrap;position:absolute;top:0;height:20px;animation:dp-ticker var(--dp-ticker-dur,40s) linear infinite; }
+    .dp-ticker-track:hover { animation-play-state:paused; }
+    .dp-ticker-item { display:inline-flex;align-items:center;gap:5px;font-size:11.5px;color:rgba(255,255,255,0.88); }
+    .dp-ticker-sep { display:inline-block;margin:0 16px;opacity:0.25;font-size:14px; }
     .summary-greeting { font-size: 21px; font-weight: 700; }
     .summary-date { font-size: 13px; opacity: 0.75; margin-top: 3px; }
     .summary-focus { font-size: 13px; margin-top: 12px; background: rgba(255,255,255,0.18); display: inline-flex; align-items: flex-start; gap: 6px; padding: 5px 14px; border-radius: 20px; }
@@ -1719,7 +1725,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.28</div>
+      <div class="sidebar-version">v1.11.29</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3287,6 +3293,48 @@
     function getCurrentSprint() {
       const today = todayStr();
       return SPRINTS.find(s => today >= s.start && today <= s.end) || null;
+    }
+    function weekTickerHtml() {
+      const pad2 = n => String(n).padStart(2,'0');
+      const toStr = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+      const now = new Date(); now.setHours(0,0,0,0);
+      const dow = now.getDay(); // 0=Sun
+      const msStart = new Date(now); msStart.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
+      const msEnd   = new Date(msStart); msEnd.setDate(msStart.getDate() + 6);
+      const ws = toStr(msStart), we = toStr(msEnd);
+      const fmtD = s => {
+        const d = new Date(s + 'T00:00:00');
+        return d.toLocaleDateString('en-US', { weekday:'short', day:'numeric', month:'short' });
+      };
+      const items = [];
+      // Tasks with dueDate this week, not done
+      tasks.forEach(t => {
+        const due = (t.dueDate || '').slice(0,10);
+        if (!due || due < ws || due > we) return;
+        if (t.status === 'Done') return;
+        const icon = t.taskType === 'timeoff' ? '🌴' : t.taskType === 'corporate' ? '🏢' : '📋';
+        items.push({ date: due, icon, title: t.title || 'Untitled' });
+      });
+      // Comms with date this week
+      comms.forEach(c => {
+        const d = (c.date || '').slice(0,10);
+        if (!d || d < ws || d > we) return;
+        const icon = c.type === 'Meeting' ? '🤝' : c.type === 'Slack' ? '💬' : c.type === 'Email' ? '📧' : '💬';
+        items.push({ date: d, icon, title: c.title || c.subject || 'Untitled' });
+      });
+      if (items.length === 0) return '';
+      items.sort((a,b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+      const sep = `<span class="dp-ticker-sep">|</span>`;
+      const renderItem = it =>
+        `<span class="dp-ticker-item">${it.icon} <span style="opacity:.55;font-size:10px">${fmtD(it.date)}</span> <span style="font-weight:600">${esc(it.title)}</span></span>`;
+      const content = items.map(renderItem).join(sep) + sep;
+      const dur = Math.max(20, items.length * 5);
+      return `
+        <div class="dp-ticker-wrap">
+          <div class="dp-ticker-track" style="--dp-ticker-dur:${dur}s">
+            ${content}${content}
+          </div>
+        </div>`;
     }
     function sprintBarHtml() {
       const s = getCurrentSprint();
@@ -4911,6 +4959,7 @@ const renderers = {
           </div>
           <div class="tz-row" id="tzRow" style="margin-top:0;flex-shrink:0;justify-content:flex-end"></div>
           ${sprintBarHtml()}
+          ${weekTickerHtml()}
         </div>
 
         <div class="summary-stats">
