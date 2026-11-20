@@ -345,6 +345,9 @@
     .gantt-super-group-hdr.dragging  { opacity: 0.4; }
     .gantt-cat-drag-handle { cursor: grab; color: var(--text-muted); font-size: 13px; padding: 0 2px; flex-shrink: 0; opacity: 0.5; }
     .gantt-super-group-hdr:hover .gantt-cat-drag-handle { opacity: 1; }
+    .gantt-cat-edit-btn { margin-left: auto; flex-shrink: 0; background: none; border: none; cursor: pointer; font-size: 12px; padding: 0 3px; opacity: 0; line-height: 1; }
+    .gantt-super-group-hdr:hover .gantt-cat-edit-btn { opacity: 0.6; }
+    .gantt-cat-edit-btn:hover { opacity: 1 !important; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
@@ -1713,7 +1716,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.24</div>
+      <div class="sidebar-version">v1.11.25</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2913,6 +2916,33 @@
     </div>
   </div>
 
+  <!-- Gantt Category Edit Modal -->
+  <div class="modal-overlay hidden" id="ganttCatEditModal" onclick="if(event.target===this)closeGanttCatEdit()">
+    <div class="modal" style="max-width:320px;width:95vw">
+      <div class="modal-header">
+        <h2 class="modal-title">✏️ Edit Category</h2>
+        <button class="btn-close" onclick="closeGanttCatEdit()">×</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
+        <div>
+          <label class="form-label">Name</label>
+          <input type="text" class="form-input" id="ganttCatEditName" placeholder="Category name…">
+        </div>
+        <div>
+          <label class="form-label">Color</label>
+          <div style="display:flex;align-items:center;gap:10px">
+            <input type="color" id="ganttCatEditColor" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px" oninput="document.getElementById('ganttCatEditColorHex').textContent=this.value">
+            <span id="ganttCatEditColorHex" style="font-size:12px;color:var(--text-muted);font-family:monospace"></span>
+          </div>
+        </div>
+        <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
+          <button class="btn btn-secondary" onclick="closeGanttCatEdit()">Cancel</button>
+          <button class="btn btn-primary" onclick="saveGanttCatEdit()">Save</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
   <!-- Knowledge Base Topic Modal -->
   <!-- Internal Reference Picker -->
   <div class="modal-overlay hidden" id="internalRefModal" onclick="if(event.target===this)closeInternalRefPicker()">
@@ -3227,7 +3257,17 @@
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
     const ganttCollapsed     = new Set(); // group keys currently collapsed
-    let ganttCatOrder = JSON.parse(localStorage.getItem('dp_gantt_cat_order') || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal','_sg_corporate'];
+    let ganttCatOrder  = JSON.parse(localStorage.getItem('dp_gantt_cat_order')  || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal','_sg_corporate'];
+    let ganttCatLabels = JSON.parse(localStorage.getItem('dp_gantt_cat_labels') || '{}');
+    let ganttCatColors = JSON.parse(localStorage.getItem('dp_gantt_cat_colors') || '{}');
+    const _sgDefaults  = {
+      '_sg_okr':       { label: '🎯 OKRs',       color: '#7c3aed' },
+      '_sg_ms':        { label: '🏁 Milestones',  color: '#0891b2' },
+      '_sg_init':      { label: '🚀 Initiatives', color: '#2563eb' },
+      '_sg_personal':  { label: '🏠 General',     color: '#10b981' },
+      '_sg_corporate': { label: '🏛 Corporate',   color: '#6b7280' },
+    };
+    let _ganttCatEditKey = null;
     let ganttHolidayCountries   = new Set(JSON.parse(localStorage.getItem('dp_gantt_holidays') || '[]')); // selected ISO codes e.g. Set(['PT','US'])
     let ganttHolidayDropOpen    = false;
     const ganttHolidaysCache    = {};        // { 'PT-2026': [...] }
@@ -4471,7 +4511,8 @@ const renderers = {
       if (view === 'backlog')      _setupBacklogDnd();
       if (view === 'okrs-list')   _setupOkrListDnd();
       if (view === 'priorities')  _setupPrioritiesDnD();
-      if (view === 'gantt')       _setupGanttCatDnD();
+      if (view === 'gantt')       { _setupGanttCatDnD(); }
+      _updateSidebarCatLabels();
       if (view === 'today') {
         setTimeout(() => {
           const fi = document.getElementById('goalDayInput');
@@ -5718,6 +5759,7 @@ const renderers = {
             <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
             <span class="gantt-grp-name-text">${label}</span>
             <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${visCount})</span>
+            <button class="gantt-cat-edit-btn" title="Edit category" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openGanttCatEdit('${sgKey}')">✏️</button>
           </div>
           <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
         </div>
@@ -5749,26 +5791,31 @@ const renderers = {
         if (toHtml)     count++;
         if (corpHtml)   count++;
         if (sprintChild) count++;
+        const corpLabel = ganttCatLabels[sgKey] ?? (_sgDefaults[sgKey]?.label ?? '🏛 Corporate');
+        const corpColor = ganttCatColors[sgKey] ?? color;
         return `
         <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true"
              onclick="toggleGanttGroup('${sgKey}')">
           <div class="gantt-super-group-name">
             <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
             <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
-            <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
-            <span class="gantt-grp-name-text">🏛 Corporate</span>
+            <div style="width:8px;height:8px;border-radius:50%;background:${corpColor};flex-shrink:0"></div>
+            <span class="gantt-grp-name-text">${esc(corpLabel)}</span>
             <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${count})</span>
+            <button class="gantt-cat-edit-btn" title="Edit category" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openGanttCatEdit('${sgKey}')">✏️</button>
           </div>
-          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${corpColor}12 0%,transparent 30%);width:${totalW}px"></div>
         </div>
         ${sgCollapsed ? '' : childHtml}`;
       };
 
+      const _sgLabel = (k, def) => ganttCatLabels[k] ?? def;
+      const _sgColor = (k, def) => ganttCatColors[k] ?? def;
       const _sgDefs = {
-        '_sg_okr':       { label: '🎯 OKRs',       color: '#7c3aed', list: _sgOkr },
-        '_sg_ms':        { label: '🏁 Milestones',  color: '#0891b2', list: _sgMs },
-        '_sg_init':      { label: '🚀 Initiatives', color: '#2563eb', list: _sgInit },
-        '_sg_personal':  { label: '🏠 General',     color: '#10b981', list: _sgPersonal },
+        '_sg_okr':       { label: _sgLabel('_sg_okr',      '🎯 OKRs'),       color: _sgColor('_sg_okr',      '#7c3aed'), list: _sgOkr },
+        '_sg_ms':        { label: _sgLabel('_sg_ms',       '🏁 Milestones'),  color: _sgColor('_sg_ms',       '#0891b2'), list: _sgMs },
+        '_sg_init':      { label: _sgLabel('_sg_init',     '🚀 Initiatives'), color: _sgColor('_sg_init',     '#2563eb'), list: _sgInit },
+        '_sg_personal':  { label: _sgLabel('_sg_personal', '🏠 General'),     color: _sgColor('_sg_personal', '#10b981'), list: _sgPersonal },
       };
       // Ensure all known keys are included even if not in saved order
       const _allKeys = [...Object.keys(_sgDefs), '_sg_corporate'];
@@ -7041,6 +7088,54 @@ const renderers = {
       }
 
       _setupTaskContainer('prioritiesActList', 'dp_priorities_act_order');
+    }
+
+    /* ── Gantt category label/color editing ── */
+    function openGanttCatEdit(key) {
+      _ganttCatEditKey = key;
+      const def = _sgDefaults[key] || { label: key, color: '#6b7280' };
+      const name  = ganttCatLabels[key] ?? def.label;
+      const color = ganttCatColors[key] ?? def.color;
+      document.getElementById('ganttCatEditName').value  = name;
+      document.getElementById('ganttCatEditColor').value = color;
+      document.getElementById('ganttCatEditColorHex').textContent = color;
+      document.getElementById('ganttCatEditModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('ganttCatEditName').select(), 50);
+    }
+    function closeGanttCatEdit() {
+      document.getElementById('ganttCatEditModal').classList.add('hidden');
+      _ganttCatEditKey = null;
+    }
+    function saveGanttCatEdit() {
+      const key = _ganttCatEditKey;
+      if (!key) return;
+      const name  = document.getElementById('ganttCatEditName').value.trim();
+      const color = document.getElementById('ganttCatEditColor').value;
+      if (name) ganttCatLabels[key] = name; else delete ganttCatLabels[key];
+      ganttCatColors[key] = color;
+      localStorage.setItem('dp_gantt_cat_labels', JSON.stringify(ganttCatLabels));
+      localStorage.setItem('dp_gantt_cat_colors', JSON.stringify(ganttCatColors));
+      closeGanttCatEdit();
+      _updateSidebarCatLabels();
+      showView('gantt');
+    }
+    function _updateSidebarCatLabels() {
+      // Map category key → sidebar arrow element ID (sibling text span holds the label)
+      const sidebarMap = {
+        '_sg_okr':      'arrow-okrs',
+        '_sg_ms':       'arrow-milestones',
+        '_sg_init':     'arrow-initiatives',
+        '_sg_personal': 'arrow-personal',
+      };
+      Object.entries(sidebarMap).forEach(([catKey, arrowId]) => {
+        const arrowEl = document.getElementById(arrowId);
+        if (!arrowEl) return;
+        const textEl = arrowEl.nextElementSibling;
+        if (!textEl) return;
+        const name  = ganttCatLabels[catKey];
+        const def   = _sgDefaults[catKey];
+        textEl.textContent = name || (def ? def.label : textEl.textContent);
+      });
     }
 
     /* ── Gantt category drag-and-drop ── */
