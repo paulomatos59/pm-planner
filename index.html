@@ -1708,7 +1708,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.21</div>
+      <div class="sidebar-version">v1.11.22</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5679,7 +5679,10 @@ const renderers = {
       const _renderGrpRow = g => {
         const key = 'g_' + g.name;
         const collapsed = ganttCollapsed.has(key);
-        const count = g.tasks.length + g.comms.length;
+        const tHtml = g.tasks.map(t => taskBar(t, g.color));
+        const cHtml = g.comms.map(c => commBar(c));
+        const count = tHtml.filter(Boolean).length + cHtml.filter(Boolean).length;
+        if (count === 0) return '';
         return `
         <div class="gantt-group-hdr gantt-group-hdr-child">
           <div class="gantt-group-name" onclick="toggleGanttGroup('${key.replace(/'/g,"\\'")}')">
@@ -5690,10 +5693,14 @@ const renderers = {
           </div>
           <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
-        ${collapsed ? '' : g.tasks.map(t => taskBar(t, g.color)).join('') + g.comms.map(c => commBar(c)).join('')}`;
+        ${collapsed ? '' : tHtml.join('') + cHtml.join('')}`;
       };
       const _renderSuperGrp = (sgKey, label, color, grpList) => {
         if (grpList.length === 0) return '';
+        const childRows = grpList.map(_renderGrpRow).filter(Boolean);
+        if (childRows.length === 0) return ''; // all children rendered empty (no bars in window)
+        const childHtml = childRows.join('');
+        const visCount = childRows.length;
         const sgCollapsed = ganttCollapsed.has(sgKey);
         return `
         <div class="gantt-super-group-hdr" onclick="toggleGanttGroup('${sgKey}')">
@@ -5701,11 +5708,11 @@ const renderers = {
             <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
             <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
             <span class="gantt-grp-name-text">${label}</span>
-            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${grpList.length})</span>
+            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${visCount})</span>
           </div>
           <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
         </div>
-        ${sgCollapsed ? '' : grpList.map(_renderGrpRow).join('')}`;
+        ${sgCollapsed ? '' : childHtml}`;
       };
       const _sgOkr = [], _sgMs = [], _sgInit = [], _sgPersonal = [], _sgUnassigned = [];
       groups.forEach(g => {
