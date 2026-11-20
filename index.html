@@ -1702,7 +1702,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.18</div>
+      <div class="sidebar-version">v1.11.19</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5377,6 +5377,7 @@ const renderers = {
 
       // ── Task bars ──
       const TOFF_COLOR = '#0891b2';
+      const CORP_COLOR = '#ea580c';
       const minBarW = Math.max(colPx - 2, 10);
 
       // Generate future occurrence bars for recurring tasks within the window
@@ -5479,7 +5480,7 @@ const renderers = {
             <div class="gantt-task-lbl" onclick="openTaskModal('${t.id}')" title="${esc(t.title)}">${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)}</div>
             <div class="gantt-bars-cell" style="width:${totalW}px">
               ${backdrop()}
-              <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${TOFF_COLOR};opacity:0.85"
+              <div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${t.taskType==='corporate'?CORP_COLOR:TOFF_COLOR};opacity:0.85"
                    onclick="openTaskModal('${t.id}')"
                    title="${t.taskType==='corporate'?'🏢':'🌴'} ${esc(t.title)} (${from} → ${t.dueDate})">${barContent}</div>
             </div>
@@ -5575,19 +5576,24 @@ const renderers = {
       if (unassignedTasks.length || unassignedComms.length)
         groups.push({ name: 'Unassigned', color: '#94a3b8', tasks: unassignedTasks, comms: unassignedComms });
 
-      const timeoffSection = (ganttFilter === 'meetings' || timeoffs.length === 0) ? '' : (() => {
-        const key = '_timeoff';
+      const _makeTimeoffSection = (key, label, color, items) => {
+        if (ganttFilter === 'meetings' || items.length === 0) return '';
         const collapsed = ganttCollapsed.has(key);
         return `
         <div class="gantt-group-hdr">
           <div class="gantt-group-name" onclick="toggleGanttGroup('${key}')">
             <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
-            <div style="width:9px;height:9px;border-radius:50%;background:${TOFF_COLOR};flex-shrink:0"></div>Time Off / Events
+            <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>${label}
           </div>
-          <div class="gantt-group-band" style="background:linear-gradient(90deg,${TOFF_COLOR}18 0%,transparent 40%);width:${totalW}px"></div>
+          <div class="gantt-group-band" style="background:linear-gradient(90deg,${color}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
-        ${collapsed ? '' : timeoffs.map(t => timeoffBar(t)).join('')}`;
-      })();
+        ${collapsed ? '' : items.map(t => timeoffBar(t)).join('')}`;
+      };
+      const _toTasks = timeoffs.filter(t => t.taskType === 'timeoff');
+      const _corpTasks = timeoffs.filter(t => t.taskType === 'corporate');
+      const timeoffSection =
+        _makeTimeoffSection('_timeoff', '🌴 Time Off', TOFF_COLOR, _toTasks) +
+        _makeTimeoffSection('_corporate', '🏢 Corporate Events', CORP_COLOR, _corpTasks);
 
       const hasContent = groups.length > 0 || timeoffs.length > 0;
 
@@ -8817,6 +8823,7 @@ const renderers = {
 
       const projColor = p.color || '#2563eb';
       const TOFF_COLOR = '#0891b2';
+      const CORP_COLOR = '#ea580c';
       const minBarW   = Math.max(colPx - 2, 10);
 
       // ── Task rows (includes Time Off / Events) ──
@@ -8833,7 +8840,7 @@ const renderers = {
         const xEnd  = xOf(t.dueDate) + (projTimelineScale==='days'?colPx:0);
         const rawW  = clamp(xEnd-x1-2, minBarW, totalW-x1);
         const od    = isOverdue(t);
-        const bc    = t.status==='Done' ? '#94a3b8' : (isToff ? TOFF_COLOR : projColor);
+        const bc    = t.status==='Done' ? '#94a3b8' : (isToff ? (t.taskType==='corporate' ? CORP_COLOR : TOFF_COLOR) : projColor);
         const toffIcon = isToff ? (t.taskType==='corporate'?'🏢 ':'🌴 ') : '';
         const rawLabel = rawW > 44 ? `${toffIcon}${esc(t.title)}` : '';
         const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
