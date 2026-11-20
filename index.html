@@ -334,6 +334,10 @@
     .gantt-bar-parent { height: 16px !important; top: 9px !important; border-radius: 8px !important; }
     .gantt-row-child .gantt-task-lbl { padding-left: 28px; }
     .gantt-group-hdr-child .gantt-group-name { padding-left: 28px; }
+    .gantt-super-group-hdr { display: flex; align-items: stretch; background: var(--surface-alt, #f1f5f9); border-bottom: 1px solid var(--border); border-top: 2px solid var(--border); cursor: pointer; }
+    .gantt-super-group-hdr:hover .gantt-super-group-name { color: var(--primary); }
+    .gantt-super-group-name { width: 190px; min-width: 190px; padding: 5px 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--text-muted); user-select: none; }
+    .gantt-super-group-band { flex: 1; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
     .gantt-legend { display: flex; gap: 16px; flex-wrap: wrap; align-items: center; font-size: 11px; color: var(--text-muted); margin-top: 10px; }
@@ -1702,7 +1706,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.19</div>
+      <div class="sidebar-version">v1.11.20</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5566,7 +5570,7 @@ const renderers = {
               .sort((a,b) => (a.date||'').localeCompare(b.date||'') || (a.startTime||'').localeCompare(b.startTime||''))
           : [];
         if (pt.length || pc.length)
-          groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt, comms: pc });
+          groups.push({ name: p.name, color: p.color||'#2563eb', tasks: pt, comms: pc, ptype: p.type, psubtype: p.subtype });
       });
       // Unassigned: tasks/comms not linked to any project
       const assignedTaskIds = new Set(groups.flatMap(g => g.tasks.map(t => t.id)));
@@ -5667,25 +5671,55 @@ const renderers = {
           </div>`}`;
       }
 
+      // ── Super-group rendering helpers ──
+      const _renderGrpRow = g => {
+        const key = 'g_' + g.name;
+        const collapsed = ganttCollapsed.has(key);
+        const count = g.tasks.length + g.comms.length;
+        return `
+        <div class="gantt-group-hdr gantt-group-hdr-child">
+          <div class="gantt-group-name" onclick="toggleGanttGroup('${key.replace(/'/g,"\\'")}')">
+            <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
+            <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
+            ${esc(g.name)}
+            <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:2px">(${count})</span>
+          </div>
+          <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
+        </div>
+        ${collapsed ? '' : g.tasks.map(t => taskBar(t, g.color)).join('') + g.comms.map(c => commBar(c)).join('')}`;
+      };
+      const _renderSuperGrp = (sgKey, label, color, grpList) => {
+        if (grpList.length === 0) return '';
+        const sgCollapsed = ganttCollapsed.has(sgKey);
+        return `
+        <div class="gantt-super-group-hdr" onclick="toggleGanttGroup('${sgKey}')">
+          <div class="gantt-super-group-name">
+            <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
+            <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            ${label}
+            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);margin-left:2px">(${grpList.length})</span>
+          </div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
+        </div>
+        ${sgCollapsed ? '' : grpList.map(_renderGrpRow).join('')}`;
+      };
+      const _sgOkr = [], _sgMs = [], _sgInit = [], _sgPersonal = [], _sgUnassigned = [];
+      groups.forEach(g => {
+        if (g.name === 'Unassigned') { _sgUnassigned.push(g); return; }
+        if (g.ptype === 'okr')               _sgOkr.push(g);
+        else if (g.psubtype === 'milestone')  _sgMs.push(g);
+        else if (g.ptype === 'personal')      _sgPersonal.push(g);
+        else                                  _sgInit.push(g);
+      });
+
       const groupRows = !hasContent && !sprintSection
         ? `<div class="gantt-empty-row">No items in this period.</div>`
         : timeoffSection
-          + groups.map(g => {
-              const key = 'g_' + g.name;
-              const collapsed = ganttCollapsed.has(key);
-              const count = g.tasks.length + g.comms.length;
-              return `
-              <div class="gantt-group-hdr">
-                <div class="gantt-group-name" onclick="toggleGanttGroup('${key.replace(/'/g,"\\'")}')">
-                  <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
-                  <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
-                  ${esc(g.name)}
-                  <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:2px">(${count})</span>
-                </div>
-                <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
-              </div>
-              ${collapsed ? '' : g.tasks.map(t => taskBar(t, g.color)).join('') + g.comms.map(c => commBar(c)).join('')}`;
-            }).join('')
+          + _renderSuperGrp('_sg_okr',      '🎯 OKRs',       '#7c3aed', _sgOkr)
+          + _renderSuperGrp('_sg_ms',       '🏁 Milestones',  '#0891b2', _sgMs)
+          + _renderSuperGrp('_sg_init',     '🚀 Initiatives', '#2563eb', _sgInit)
+          + _renderSuperGrp('_sg_personal', '🏠 General',     '#10b981', _sgPersonal)
+          + _sgUnassigned.map(_renderGrpRow).join('')
           + sprintSection;
 
       // ── Toolbar ──
