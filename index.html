@@ -1725,7 +1725,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.30</div>
+      <div class="sidebar-version">v1.11.31</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3298,9 +3298,11 @@
       const pad2 = n => String(n).padStart(2,'0');
       const toStr = d => `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
       const now = new Date(); now.setHours(0,0,0,0);
-      const dow = now.getDay(); // 0=Sun
+      const dow = now.getDay(); // 0=Sun, 5=Fri, 6=Sat
       const msStart = new Date(now); msStart.setDate(now.getDate() + (dow === 0 ? -6 : 1 - dow));
-      const msEnd   = new Date(msStart); msEnd.setDate(msStart.getDate() + 6);
+      // On Friday/Saturday/Sunday extend window to end of *next* week so the feed stays populated
+      const weeksAhead = (dow >= 5 || dow === 0) ? 2 : 1;
+      const msEnd = new Date(msStart); msEnd.setDate(msStart.getDate() + (weeksAhead * 7) - 1);
       const ws = toStr(msStart), we = toStr(msEnd);
       const fmtD = s => {
         const d = new Date(s + 'T00:00:00');
