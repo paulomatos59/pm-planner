@@ -1719,7 +1719,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.27</div>
+      <div class="sidebar-version">v1.11.28</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2921,21 +2921,42 @@
 
   <!-- Gantt Category Edit Modal -->
   <div class="modal-overlay hidden" id="ganttCatEditModal" onclick="if(event.target===this)closeGanttCatEdit()">
-    <div class="modal" style="max-width:320px;width:95vw">
+    <div class="modal" style="max-width:360px;width:95vw">
       <div class="modal-header">
         <h2 class="modal-title">✏️ Edit Category</h2>
         <button class="btn-close" onclick="closeGanttCatEdit()">×</button>
       </div>
-      <div style="display:flex;flex-direction:column;gap:14px;margin-top:4px">
+      <div style="display:flex;flex-direction:column;gap:18px;margin-top:12px;padding:0 4px">
         <div>
           <label class="form-label">Name</label>
           <input type="text" class="form-input" id="ganttCatEditName" placeholder="Category name…">
         </div>
         <div>
           <label class="form-label">Color</label>
+          <!-- Preset swatches -->
+          <div style="display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px">
+            <button onclick="pickGanttCatColor('#7c3aed')" style="width:26px;height:26px;border-radius:6px;background:#7c3aed;border:2px solid transparent;cursor:pointer;outline:none" title="#7c3aed"></button>
+            <button onclick="pickGanttCatColor('#2563eb')" style="width:26px;height:26px;border-radius:6px;background:#2563eb;border:2px solid transparent;cursor:pointer;outline:none" title="#2563eb"></button>
+            <button onclick="pickGanttCatColor('#0891b2')" style="width:26px;height:26px;border-radius:6px;background:#0891b2;border:2px solid transparent;cursor:pointer;outline:none" title="#0891b2"></button>
+            <button onclick="pickGanttCatColor('#10b981')" style="width:26px;height:26px;border-radius:6px;background:#10b981;border:2px solid transparent;cursor:pointer;outline:none" title="#10b981"></button>
+            <button onclick="pickGanttCatColor('#84cc16')" style="width:26px;height:26px;border-radius:6px;background:#84cc16;border:2px solid transparent;cursor:pointer;outline:none" title="#84cc16"></button>
+            <button onclick="pickGanttCatColor('#f59e0b')" style="width:26px;height:26px;border-radius:6px;background:#f59e0b;border:2px solid transparent;cursor:pointer;outline:none" title="#f59e0b"></button>
+            <button onclick="pickGanttCatColor('#f97316')" style="width:26px;height:26px;border-radius:6px;background:#f97316;border:2px solid transparent;cursor:pointer;outline:none" title="#f97316"></button>
+            <button onclick="pickGanttCatColor('#ef4444')" style="width:26px;height:26px;border-radius:6px;background:#ef4444;border:2px solid transparent;cursor:pointer;outline:none" title="#ef4444"></button>
+            <button onclick="pickGanttCatColor('#ec4899')" style="width:26px;height:26px;border-radius:6px;background:#ec4899;border:2px solid transparent;cursor:pointer;outline:none" title="#ec4899"></button>
+            <button onclick="pickGanttCatColor('#8b5cf6')" style="width:26px;height:26px;border-radius:6px;background:#8b5cf6;border:2px solid transparent;cursor:pointer;outline:none" title="#8b5cf6"></button>
+            <button onclick="pickGanttCatColor('#6b7280')" style="width:26px;height:26px;border-radius:6px;background:#6b7280;border:2px solid transparent;cursor:pointer;outline:none" title="#6b7280"></button>
+            <button onclick="pickGanttCatColor('#374151')" style="width:26px;height:26px;border-radius:6px;background:#374151;border:2px solid transparent;cursor:pointer;outline:none" title="#374151"></button>
+          </div>
+          <!-- Custom color picker + preview -->
           <div style="display:flex;align-items:center;gap:10px">
-            <input type="color" id="ganttCatEditColor" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px" oninput="document.getElementById('ganttCatEditColorHex').textContent=this.value">
-            <span id="ganttCatEditColorHex" style="font-size:12px;color:var(--text-muted);font-family:monospace"></span>
+            <input type="color" id="ganttCatEditColor" style="width:44px;height:36px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px" oninput="pickGanttCatColor(this.value)">
+            <span id="ganttCatEditColorHex" style="font-size:12px;color:var(--text-muted);font-family:monospace;min-width:56px"></span>
+            <!-- Live preview strip -->
+            <div id="ganttCatEditPreview" style="flex:1;height:28px;border-radius:6px;border:1px solid var(--border);display:flex;align-items:center;padding:0 10px;gap:6px;font-size:12px;font-weight:600;overflow:hidden">
+              <div id="ganttCatEditPreviewDot" style="width:8px;height:8px;border-radius:50%;flex-shrink:0"></div>
+              <span id="ganttCatEditPreviewLabel" style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></span>
+            </div>
           </div>
         </div>
         <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:4px">
@@ -5801,6 +5822,7 @@ const renderers = {
         const sgCollapsed = ganttCollapsed.has(sgKey);
         return `
         <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true"
+             style="background:${color}22;border-top-color:${color}88"
              onclick="toggleGanttGroup('${sgKey}')">
           <div class="gantt-super-group-name">
             <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
@@ -5810,7 +5832,7 @@ const renderers = {
             <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${visCount})</span>
             <button class="gantt-cat-edit-btn" title="Edit category" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openGanttCatEdit('${sgKey}')">✏️</button>
           </div>
-          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
         ${sgCollapsed ? '' : childHtml}`;
       };
@@ -5844,6 +5866,7 @@ const renderers = {
         const corpColor = ganttCatColors[sgKey] ?? color;
         return `
         <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true"
+             style="background:${corpColor}22;border-top-color:${corpColor}88"
              onclick="toggleGanttGroup('${sgKey}')">
           <div class="gantt-super-group-name">
             <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
@@ -5853,7 +5876,7 @@ const renderers = {
             <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${count})</span>
             <button class="gantt-cat-edit-btn" title="Edit category" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openGanttCatEdit('${sgKey}')">✏️</button>
           </div>
-          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${corpColor}12 0%,transparent 30%);width:${totalW}px"></div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${corpColor}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
         ${sgCollapsed ? '' : childHtml}`;
       };
@@ -5900,7 +5923,9 @@ const renderers = {
           </div>`;
         }).join('');
         return `
-        <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true" onclick="toggleGanttGroup('${sgKey}')">
+        <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true"
+             style="background:${sgColor}22;border-top-color:${sgColor}88"
+             onclick="toggleGanttGroup('${sgKey}')">
           <div class="gantt-super-group-name">
             <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
             <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
@@ -5910,7 +5935,7 @@ const renderers = {
             <button class="gantt-cat-edit-btn" title="Edit category name/color" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openGanttCatEdit('${sgKey}')">✏️</button>
             <button class="gantt-cat-edit-btn" title="Manage team OOO entries" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openTeamTimeoffModal()" style="margin-left:0">⚙️</button>
           </div>
-          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${sgColor}12 0%,transparent 30%);width:${totalW}px"></div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${sgColor}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
         ${sgCollapsed ? '' : memberRows}`;
       };
@@ -7284,16 +7309,33 @@ const renderers = {
     }
 
     /* ── Gantt category label/color editing ── */
+    function pickGanttCatColor(color) {
+      document.getElementById('ganttCatEditColor').value = color;
+      document.getElementById('ganttCatEditColorHex').textContent = color;
+      // Update preview strip background + dot
+      const preview = document.getElementById('ganttCatEditPreview');
+      const dot     = document.getElementById('ganttCatEditPreviewDot');
+      if (preview) preview.style.background = color + '28';
+      if (dot)     dot.style.background = color;
+      // Highlight active swatch
+      document.querySelectorAll('#ganttCatEditModal button[onclick^="pickGanttCatColor"]').forEach(b => {
+        b.style.border = b.title === color ? '2px solid var(--text)' : '2px solid transparent';
+      });
+    }
     function openGanttCatEdit(key) {
       _ganttCatEditKey = key;
       const def = _sgDefaults[key] || { label: key, color: '#6b7280' };
       const name  = ganttCatLabels[key] ?? def.label;
       const color = ganttCatColors[key] ?? def.color;
       document.getElementById('ganttCatEditName').value  = name;
-      document.getElementById('ganttCatEditColor').value = color;
-      document.getElementById('ganttCatEditColorHex').textContent = color;
+      document.getElementById('ganttCatEditPreviewLabel').textContent = name;
+      pickGanttCatColor(color);
       document.getElementById('ganttCatEditModal').classList.remove('hidden');
       setTimeout(() => document.getElementById('ganttCatEditName').select(), 50);
+      // Keep preview label in sync as user types
+      document.getElementById('ganttCatEditName').oninput = function() {
+        document.getElementById('ganttCatEditPreviewLabel').textContent = this.value || def.label;
+      };
     }
     function closeGanttCatEdit() {
       document.getElementById('ganttCatEditModal').classList.add('hidden');
