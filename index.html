@@ -1728,7 +1728,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.35</div>
+      <div class="sidebar-version">v1.11.36</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3336,10 +3336,12 @@
           const overrides = c.dateOverrides || {};
           occs.forEach(orig => {
             const actual = overrides[orig] || orig;
-            if (actual >= tomorrowS && actual <= we)
-              items.push({ date: actual, icon, title, kind: 'comm', id: c.id });
+            if (actual < tomorrowS || actual > we) return;
+            if (c.notDoneOccurrences && c.notDoneOccurrences[actual]) return; // canceled occurrence
+            items.push({ date: actual, icon, title, kind: 'comm', id: c.id });
           });
         } else {
+          if (c.status === 'Canceled') return; // canceled meeting
           const d = c.date.slice(0,10);
           if (d < tomorrowS || d > we) return;
           items.push({ date: d, icon, title, kind: 'comm', id: c.id });
