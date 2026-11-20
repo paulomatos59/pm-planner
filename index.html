@@ -1719,7 +1719,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.26</div>
+      <div class="sidebar-version">v1.11.27</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -2946,6 +2946,48 @@
     </div>
   </div>
 
+  <!-- Team Time-off Management Modal -->
+  <div class="modal-overlay hidden" id="teamTimeoffModal" onclick="if(event.target===this)closeTeamTimeoffModal()">
+    <div class="modal" style="max-width:520px;width:95vw;max-height:80vh;display:flex;flex-direction:column">
+      <div class="modal-header">
+        <h2 class="modal-title">👥 Team Time-off</h2>
+        <button class="btn-close" onclick="closeTeamTimeoffModal()">×</button>
+      </div>
+      <div style="flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:12px;margin-top:4px">
+        <!-- Add entry form -->
+        <div style="background:var(--surface-alt);border:1px solid var(--border);border-radius:8px;padding:12px;display:flex;flex-direction:column;gap:10px">
+          <div style="font-size:12px;font-weight:600;color:var(--text-muted);text-transform:uppercase;letter-spacing:.5px">Add Entry</div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+            <div style="grid-column:1/-1">
+              <label class="form-label">Team Member Name</label>
+              <input type="text" class="form-input" id="ttoName" placeholder="e.g. Alice Smith" style="font-size:13px">
+            </div>
+            <div>
+              <label class="form-label">Start Date</label>
+              <input type="date" class="form-input" id="ttoStart" style="font-size:13px">
+            </div>
+            <div>
+              <label class="form-label">End Date</label>
+              <input type="date" class="form-input" id="ttoEnd" style="font-size:13px">
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:10px">
+            <div>
+              <label class="form-label">Color</label>
+              <input type="color" id="ttoColor" value="#f59e0b" style="width:44px;height:32px;border:1px solid var(--border);border-radius:6px;cursor:pointer;padding:2px">
+            </div>
+            <button class="btn btn-primary" onclick="addTeamTimeoffEntry()" style="margin-top:16px;align-self:flex-end">+ Add</button>
+          </div>
+        </div>
+        <!-- Existing entries list -->
+        <div id="ttoList" style="display:flex;flex-direction:column;gap:6px"></div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:12px">
+        <button class="btn btn-secondary" onclick="closeTeamTimeoffModal()">Close</button>
+      </div>
+    </div>
+  </div>
+
   <!-- Knowledge Base Topic Modal -->
   <!-- Internal Reference Picker -->
   <div class="modal-overlay hidden" id="internalRefModal" onclick="if(event.target===this)closeInternalRefPicker()">
@@ -3260,7 +3302,7 @@
     let ganttScale           = 'days'; // hours|days|weeks|months|quarters|halfyears|years
     let ganttFilter          = 'both'; // tasks|meetings|both
     const ganttCollapsed     = new Set(); // group keys currently collapsed
-    let ganttCatOrder  = JSON.parse(localStorage.getItem('dp_gantt_cat_order')  || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal','_sg_corporate'];
+    let ganttCatOrder  = JSON.parse(localStorage.getItem('dp_gantt_cat_order')  || 'null') || ['_sg_okr','_sg_ms','_sg_init','_sg_personal','_sg_corporate','_sg_team'];
     let ganttLblWidth  = Math.max(120, Math.min(500, parseInt(localStorage.getItem('dp_gantt_lbl_width') || '190')));
     let ganttCatLabels = JSON.parse(localStorage.getItem('dp_gantt_cat_labels') || '{}');
     let ganttCatColors = JSON.parse(localStorage.getItem('dp_gantt_cat_colors') || '{}');
@@ -3270,8 +3312,10 @@
       '_sg_init':      { label: '🚀 Initiatives', color: '#2563eb' },
       '_sg_personal':  { label: '🏠 General',     color: '#10b981' },
       '_sg_corporate': { label: '🏛 Corporate',   color: '#6b7280' },
+      '_sg_team':      { label: '👥 Team Time-off', color: '#f59e0b' },
     };
     let _ganttCatEditKey = null;
+    let teamTimeoff = JSON.parse(localStorage.getItem('dp_team_timeoff') || '[]');
     let ganttHolidayCountries   = new Set(JSON.parse(localStorage.getItem('dp_gantt_holidays') || '[]')); // selected ISO codes e.g. Set(['PT','US'])
     let ganttHolidayDropOpen    = false;
     const ganttHolidaysCache    = {};        // { 'PT-2026': [...] }
@@ -5654,7 +5698,8 @@ const renderers = {
         _makeTimeoffSection('_timeoff', '🌴 Time Off', TOFF_COLOR, _toTasks) +
         _makeTimeoffSection('_corporate', '🏢 Corporate Events', CORP_COLOR, _corpTasks);
 
-      const hasContent = groups.length > 0 || timeoffs.length > 0;
+      const _hasTeamTto = teamTimeoff.some(e => e.name && e.start && e.end && e.end >= winS && e.start <= winE);
+      const hasContent = groups.length > 0 || timeoffs.length > 0 || _hasTeamTto;
 
       // ── Sprint Plan rows ──
       const PI_COLORS = {
@@ -5813,6 +5858,63 @@ const renderers = {
         ${sgCollapsed ? '' : childHtml}`;
       };
 
+      // ── Team Time-off super-group ──
+      const _renderTeamTimeoffSection = () => {
+        if (ganttFilter === 'meetings') return '';
+        const sgKey = '_sg_team';
+        const sgLabel = ganttCatLabels[sgKey] ?? (_sgDefaults[sgKey]?.label ?? '👥 Team Time-off');
+        const sgColor = ganttCatColors[sgKey] ?? '#f59e0b';
+        // Group entries by person; include any entry overlapping the visible window
+        const byPerson = {};
+        teamTimeoff.forEach(e => {
+          if (!e.name || !e.start || !e.end) return;
+          if (e.end < winS || e.start > winE) return;
+          if (!byPerson[e.name]) byPerson[e.name] = [];
+          byPerson[e.name].push(e);
+        });
+        const members = Object.keys(byPerson).sort();
+        if (members.length === 0) return '';
+        const sgCollapsed = ganttCollapsed.has(sgKey);
+        const memberRows = members.map(name => {
+          const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+          const bars = byPerson[name].map(e => {
+            const xFromRaw = xOf(e.start);
+            const x1 = clamp(xFromRaw, 0, totalW - 2);
+            const xEnd = xOf(e.end) + (ganttScale==='days'?colPx:0);
+            const rawW = clamp(xEnd - x1 - 2, minBarW, totalW - x1);
+            const color = e.color || sgColor;
+            const startClipped = xFromRaw < -2;
+            const endClipped = xEnd > totalW + 2;
+            const startTag = startClipped ? `<span class="gantt-bar-starttag">← ${fmtD(e.start)}</span>` : '';
+            const endTag = endClipped ? `<span class="gantt-bar-endtag">→ ${fmtD(e.end)}</span>` : '';
+            return `<div class="gantt-bar" style="left:${x1}px;width:${rawW}px;background:${color};opacity:0.82"
+                     title="${esc(name)}: ${fmtD(e.start)} → ${fmtD(e.end)}">${startTag}${endTag}</div>`;
+          }).join('');
+          return `
+          <div class="gantt-row">
+            <div class="gantt-task-lbl" title="${esc(name)}" style="padding-left:28px">👤 ${esc(name)}</div>
+            <div class="gantt-bars-cell" style="width:${totalW}px">
+              ${backdrop()}
+              ${bars}
+            </div>
+          </div>`;
+        }).join('');
+        return `
+        <div class="gantt-super-group-hdr" data-sg-key="${sgKey}" draggable="true" onclick="toggleGanttGroup('${sgKey}')">
+          <div class="gantt-super-group-name">
+            <span class="gantt-cat-drag-handle" title="Drag to reorder" onmousedown="event.stopPropagation()" onclick="event.stopPropagation()">⠿</span>
+            <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
+            <div style="width:8px;height:8px;border-radius:50%;background:${sgColor};flex-shrink:0"></div>
+            <span class="gantt-grp-name-text">${esc(sgLabel)}</span>
+            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${members.length})</span>
+            <button class="gantt-cat-edit-btn" title="Edit category name/color" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openGanttCatEdit('${sgKey}')">✏️</button>
+            <button class="gantt-cat-edit-btn" title="Manage team OOO entries" onmousedown="event.stopPropagation()" onclick="event.stopPropagation();openTeamTimeoffModal()" style="margin-left:0">⚙️</button>
+          </div>
+          <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${sgColor}12 0%,transparent 30%);width:${totalW}px"></div>
+        </div>
+        ${sgCollapsed ? '' : memberRows}`;
+      };
+
       const _sgLabel = (k, def) => ganttCatLabels[k] ?? def;
       const _sgColor = (k, def) => ganttCatColors[k] ?? def;
       const _sgDefs = {
@@ -5822,10 +5924,11 @@ const renderers = {
         '_sg_personal':  { label: _sgLabel('_sg_personal', '🏠 General'),     color: _sgColor('_sg_personal', '#10b981'), list: _sgPersonal },
       };
       // Ensure all known keys are included even if not in saved order
-      const _allKeys = [...Object.keys(_sgDefs), '_sg_corporate'];
+      const _allKeys = [...Object.keys(_sgDefs), '_sg_corporate', '_sg_team'];
       const _orderedKeys = [...new Set([...ganttCatOrder, ..._allKeys])];
       const catSections = _orderedKeys.map(k => {
         if (k === '_sg_corporate') return _renderCorporateSection();
+        if (k === '_sg_team') return _renderTeamTimeoffSection();
         const d = _sgDefs[k];
         return d ? _renderSuperGrp(k, d.label, d.color, d.list) : '';
       }).join('');
@@ -7092,6 +7195,55 @@ const renderers = {
       }
 
       _setupTaskContainer('prioritiesActList', 'dp_priorities_act_order');
+    }
+
+    /* ── Team Time-off management ── */
+    function _renderTtoList() {
+      const list = document.getElementById('ttoList');
+      if (!list) return;
+      if (teamTimeoff.length === 0) {
+        list.innerHTML = '<div style="text-align:center;color:var(--text-muted);font-size:12px;padding:12px 0">No entries yet. Add a team member\'s time off above.</div>';
+        return;
+      }
+      const fmtD = s => { const d=new Date(s+'T00:00:00'); return `${String(d.getDate()).padStart(2,'0')} ${d.toLocaleDateString('en-US',{month:'short'})} ${d.getFullYear()}`; };
+      const sorted = [...teamTimeoff].sort((a,b) => (a.name||'').localeCompare(b.name||'') || (a.start||'').localeCompare(b.start||''));
+      list.innerHTML = sorted.map(e => `
+        <div style="display:flex;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--border);border-radius:7px;padding:8px 10px">
+          <div style="width:12px;height:12px;border-radius:50%;background:${e.color||'#f59e0b'};flex-shrink:0"></div>
+          <span style="font-size:13px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${e.name}">👤 ${e.name}</span>
+          <span style="font-size:11px;color:var(--text-muted);white-space:nowrap">${fmtD(e.start)} → ${fmtD(e.end)}</span>
+          <button onclick="deleteTeamTimeoffEntry('${e.id}')" style="background:none;border:none;cursor:pointer;color:var(--danger,#ef4444);font-size:16px;line-height:1;padding:0 2px;flex-shrink:0" title="Delete">×</button>
+        </div>`).join('');
+    }
+    function openTeamTimeoffModal() {
+      _renderTtoList();
+      document.getElementById('teamTimeoffModal').classList.remove('hidden');
+      setTimeout(() => document.getElementById('ttoName').focus(), 50);
+    }
+    function closeTeamTimeoffModal() {
+      document.getElementById('teamTimeoffModal').classList.add('hidden');
+    }
+    function addTeamTimeoffEntry() {
+      const name  = document.getElementById('ttoName').value.trim();
+      const start = document.getElementById('ttoStart').value;
+      const end   = document.getElementById('ttoEnd').value;
+      const color = document.getElementById('ttoColor').value;
+      if (!name || !start || !end) { alert('Please fill in name, start date, and end date.'); return; }
+      if (start > end) { alert('Start date must be on or before end date.'); return; }
+      const id = 'tto_' + Date.now() + '_' + Math.random().toString(36).slice(2,7);
+      teamTimeoff.push({ id, name, start, end, color });
+      localStorage.setItem('dp_team_timeoff', JSON.stringify(teamTimeoff));
+      document.getElementById('ttoName').value  = '';
+      document.getElementById('ttoStart').value = '';
+      document.getElementById('ttoEnd').value   = '';
+      _renderTtoList();
+      showView('gantt');
+    }
+    function deleteTeamTimeoffEntry(id) {
+      teamTimeoff = teamTimeoff.filter(e => e.id !== id);
+      localStorage.setItem('dp_team_timeoff', JSON.stringify(teamTimeoff));
+      _renderTtoList();
+      showView('gantt');
     }
 
     /* ── Gantt label-column resize ── */
