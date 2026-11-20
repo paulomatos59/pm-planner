@@ -305,16 +305,18 @@
     .gantt-day-hdr .gd-mon { font-size: 8px; font-weight: 700; text-transform: uppercase; color: var(--text-muted); letter-spacing: 0.3px; height: 11px; }
     .gantt-day-hdr .gd-num { font-size: 11px; font-weight: 700; }
     .gantt-day-hdr.is-today .gd-num { color: var(--primary); }
-    .gantt-group-hdr { display: flex; align-items: stretch; background: var(--bg); border-bottom: 1px solid var(--border); }
-    .gantt-group-name { width: 190px; min-width: 190px; padding: 5px 12px; font-size: 12px; font-weight: 700; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; cursor: pointer; user-select: none; }
+    .gantt-group-hdr { display: flex; align-items: stretch; background: var(--bg); border-bottom: 1px solid var(--border); height: 38px; overflow: hidden; box-sizing: border-box; }
+    .gantt-group-name { width: 190px; min-width: 190px; padding: 0 10px; font-size: 12px; font-weight: 700; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 6px; flex-shrink: 0; cursor: pointer; user-select: none; overflow: hidden; }
     .gantt-group-name:hover { background: var(--surface-alt, #f1f5f9); color: var(--primary); }
+    .gantt-grp-name-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; flex: 1; }
+    .gantt-grp-name-count { flex-shrink: 0; font-size: 10px; font-weight: 400; color: var(--text-muted); margin-left: 2px; }
     .gantt-collapse-arrow { font-size: 9px; color: var(--text-muted); flex-shrink: 0; transition: transform 0.15s; }
     .gantt-group-band { flex: 1; }
-    .gantt-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); min-height: 34px; }
+    .gantt-row { display: flex; align-items: stretch; border-bottom: 1px solid var(--border); height: 38px; overflow: hidden; }
     .gantt-row:hover { background: rgba(37,99,235,0.025); }
     .gantt-task-lbl { width: 190px; min-width: 190px; padding: 0 12px; font-size: 12px; border-right: 1px solid var(--border); display: flex; align-items: center; cursor: pointer; flex-shrink: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .gantt-task-lbl:hover { color: var(--primary); }
-    .gantt-bars-cell { position: relative; flex: 1; min-height: 34px; overflow: hidden; }
+    .gantt-bars-cell { position: relative; flex: 1; height: 38px; overflow: hidden; }
     .gantt-wknd-band { position: absolute; top: 0; bottom: 0; background: rgba(148,163,184,0.07); pointer-events: none; }
     .gantt-tod-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--danger); z-index: 6; pointer-events: none; }
     .gantt-holiday-band  { position: absolute; top: 0; bottom: 0; background: rgba(245,158,11,0.13); border-left: 2px solid rgba(245,158,11,0.45); pointer-events: none; z-index: 2; }
@@ -334,9 +336,9 @@
     .gantt-bar-parent { height: 16px !important; top: 9px !important; border-radius: 8px !important; }
     .gantt-row-child .gantt-task-lbl { padding-left: 28px; }
     .gantt-group-hdr-child .gantt-group-name { padding-left: 28px; }
-    .gantt-super-group-hdr { display: flex; align-items: stretch; background: var(--surface-alt, #f1f5f9); border-bottom: 1px solid var(--border); border-top: 2px solid var(--border); cursor: pointer; }
+    .gantt-super-group-hdr { display: flex; align-items: stretch; background: var(--surface-alt, #f1f5f9); border-bottom: 1px solid var(--border); border-top: 2px solid var(--border); cursor: pointer; height: 34px; overflow: hidden; box-sizing: border-box; }
     .gantt-super-group-hdr:hover .gantt-super-group-name { color: var(--primary); }
-    .gantt-super-group-name { width: 190px; min-width: 190px; padding: 5px 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--text-muted); user-select: none; }
+    .gantt-super-group-name { width: 190px; min-width: 190px; padding: 0 10px; font-size: 10.5px; font-weight: 800; letter-spacing: .05em; text-transform: uppercase; border-right: 1px solid var(--border); display: flex; align-items: center; gap: 5px; flex-shrink: 0; color: var(--text-muted); user-select: none; overflow: hidden; }
     .gantt-super-group-band { flex: 1; }
     .gantt-bar.g-milestone { width: 16px !important; height: 16px; top: 9px; border-radius: 3px; transform: rotate(45deg); padding: 0; }
     .gantt-empty-row { padding: 28px 16px; text-align: center; color: var(--text-muted); font-size: 13px; }
@@ -1706,7 +1708,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.20</div>
+      <div class="sidebar-version">v1.11.21</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -5587,7 +5589,8 @@ const renderers = {
         <div class="gantt-group-hdr">
           <div class="gantt-group-name" onclick="toggleGanttGroup('${key}')">
             <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
-            <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>${label}
+            <div style="width:9px;height:9px;border-radius:50%;background:${color};flex-shrink:0"></div>
+            <span class="gantt-grp-name-text">${label}</span>
           </div>
           <div class="gantt-group-band" style="background:linear-gradient(90deg,${color}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
@@ -5656,7 +5659,8 @@ const renderers = {
           <div class="gantt-group-hdr">
             <div class="gantt-group-name" onclick="toggleGanttGroup('${sprintKey}')">
               <span class="gantt-collapse-arrow">${sprintCollapsed ? '▶' : '▼'}</span>
-              <div style="width:9px;height:9px;border-radius:50%;background:#6366f1;flex-shrink:0"></div>🏃 Sprint Plan
+              <div style="width:9px;height:9px;border-radius:50%;background:#6366f1;flex-shrink:0"></div>
+              <span class="gantt-grp-name-text">🏃 Sprint Plan</span>
             </div>
             <div class="gantt-group-band" style="background:linear-gradient(90deg,#6366f118 0%,transparent 40%);width:${totalW}px"></div>
           </div>
@@ -5681,8 +5685,8 @@ const renderers = {
           <div class="gantt-group-name" onclick="toggleGanttGroup('${key.replace(/'/g,"\\'")}')">
             <span class="gantt-collapse-arrow">${collapsed ? '▶' : '▼'}</span>
             <div style="width:9px;height:9px;border-radius:50%;background:${g.color};flex-shrink:0"></div>
-            ${esc(g.name)}
-            <span style="font-size:10px;font-weight:400;color:var(--text-muted);margin-left:2px">(${count})</span>
+            <span class="gantt-grp-name-text" title="${esc(g.name)}">${esc(g.name)}</span>
+            <span class="gantt-grp-name-count">(${count})</span>
           </div>
           <div class="gantt-group-band" style="background:linear-gradient(90deg,${g.color}18 0%,transparent 40%);width:${totalW}px"></div>
         </div>
@@ -5696,8 +5700,8 @@ const renderers = {
           <div class="gantt-super-group-name">
             <span class="gantt-collapse-arrow">${sgCollapsed ? '▶' : '▼'}</span>
             <div style="width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></div>
-            ${label}
-            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;color:var(--text-muted);margin-left:2px">(${grpList.length})</span>
+            <span class="gantt-grp-name-text">${label}</span>
+            <span style="font-size:9.5px;font-weight:400;text-transform:none;letter-spacing:0;flex-shrink:0;margin-left:2px">(${grpList.length})</span>
           </div>
           <div class="gantt-super-group-band" style="background:linear-gradient(90deg,${color}12 0%,transparent 30%);width:${totalW}px"></div>
         </div>
