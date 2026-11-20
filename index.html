@@ -1725,7 +1725,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.29</div>
+      <div class="sidebar-version">v1.11.30</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3306,19 +3306,20 @@
         const d = new Date(s + 'T00:00:00');
         return d.toLocaleDateString('en-US', { weekday:'short', day:'numeric', month:'short' });
       };
+      const todayS = toStr(now); // today as YYYY-MM-DD — lower bound for "upcoming"
       const items = [];
-      // Tasks with dueDate this week, not done
+      // Tasks with dueDate from today through end of week, not done
       tasks.forEach(t => {
         const due = (t.dueDate || '').slice(0,10);
-        if (!due || due < ws || due > we) return;
+        if (!due || due < todayS || due > we) return;
         if (t.status === 'Done') return;
         const icon = t.taskType === 'timeoff' ? '🌴' : t.taskType === 'corporate' ? '🏢' : '📋';
         items.push({ date: due, icon, title: t.title || 'Untitled' });
       });
-      // Comms with date this week
+      // Comms with date from today through end of week
       comms.forEach(c => {
         const d = (c.date || '').slice(0,10);
-        if (!d || d < ws || d > we) return;
+        if (!d || d < todayS || d > we) return;
         const icon = c.type === 'Meeting' ? '🤝' : c.type === 'Slack' ? '💬' : c.type === 'Email' ? '📧' : '💬';
         items.push({ date: d, icon, title: c.title || c.subject || 'Untitled' });
       });
