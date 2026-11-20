@@ -1728,7 +1728,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.33</div>
+      <div class="sidebar-version">v1.11.34</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3311,12 +3311,14 @@
         const d = new Date(s + 'T00:00:00');
         return d.toLocaleDateString('en-US', { weekday:'short', day:'numeric', month:'short' });
       };
-      const todayS = toStr(now); // today as YYYY-MM-DD — lower bound for "upcoming"
+      const todayS = toStr(now); // today as YYYY-MM-DD
+      const tomorrowD = new Date(now); tomorrowD.setDate(now.getDate() + 1);
+      const tomorrowS = toStr(tomorrowD); // start from tomorrow
       const items = [];
-      // Tasks with dueDate from today through end of week, not done
+      // Tasks with dueDate from tomorrow through end of window, not done
       tasks.forEach(t => {
         const due = (t.dueDate || '').slice(0,10);
-        if (!due || due < todayS || due > we) return;
+        if (!due || due < tomorrowS || due > we) return;
         if (t.status === 'Done') return;
         const icon = t.taskType === 'timeoff' ? '🌴' : t.taskType === 'corporate' ? '🏢' : '📋';
         items.push({ date: due, icon, title: t.title || 'Untitled' });
@@ -3330,17 +3332,17 @@
           // Expand occurrences up to window end, collect those in [todayS, we]
           const cap = (c.recurrence.endDate && c.recurrence.endDate < we) ? c.recurrence.endDate : we;
           if (c.date > we) return; // starts after window
-          if (c.recurrence.endDate && c.recurrence.endDate < todayS) return; // ended before today
+          if (c.recurrence.endDate && c.recurrence.endDate < tomorrowS) return;
           const occs = getAllOccurrences(c, 'date', cap);
           const overrides = c.dateOverrides || {};
           occs.forEach(orig => {
             const actual = overrides[orig] || orig;
-            if (actual >= todayS && actual <= we)
+            if (actual >= tomorrowS && actual <= we)
               items.push({ date: actual, icon, title });
           });
         } else {
           const d = c.date.slice(0,10);
-          if (d < todayS || d > we) return;
+          if (d < tomorrowS || d > we) return;
           items.push({ date: d, icon, title });
         }
       });
