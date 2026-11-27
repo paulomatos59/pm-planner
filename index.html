@@ -1349,12 +1349,14 @@
 
     /* ── Hamburger (hidden on desktop) ── */
     .hamburger-btn {
-      display: flex; align-items: center; justify-content: center;
+      display: none; align-items: center; justify-content: center;
       background: none; border: none; cursor: pointer;
       font-size: 18px; color: var(--text-muted); padding: 4px 6px; border-radius: 6px;
       line-height: 1; flex-shrink: 0; transition: color 0.15s, background 0.15s;
     }
     .hamburger-btn:hover { background: var(--bg); color: var(--text); }
+    /* Show hamburger in header when sidebar is collapsed (so user can re-open) */
+    body.sidebar-collapsed .hamburger-btn { display: flex; }
 
     /* ── Sidebar overlay (mobile) ── */
     .sidebar-overlay {
@@ -1552,8 +1554,9 @@
 
     <!-- ── Sidebar ── -->
     <nav class="sidebar" id="sidebarNav">
-      <div style="padding:8px 12px 4px;position:relative">
-        <button class="btn-add-task" id="sidebarAddBtn" onclick="toggleAddMenu(event)">＋ Add ▾</button>
+      <div style="padding:8px 12px 4px;position:relative;display:flex;align-items:center;gap:6px">
+        <button class="btn-add-task" id="sidebarAddBtn" onclick="toggleAddMenu(event)" style="flex:1">＋ Add ▾</button>
+        <button id="sidebarCollapseBtn" onclick="toggleSidebar()" title="Hide sidebar" style="flex-shrink:0;background:none;border:1px solid var(--border);border-radius:6px;padding:5px 7px;cursor:pointer;font-size:13px;color:var(--text-muted);line-height:1;transition:background .15s,color .15s" onmouseover="this.style.background='var(--bg)';this.style.color='var(--text)'" onmouseout="this.style.background='none';this.style.color='var(--text-muted)'">‹</button>
         <div class="add-dropdown hidden" id="addDropdown">
           <button class="add-dropdown-item" onclick="closeAddMenu();openTaskModal()">📋 Task</button>
           <button class="add-dropdown-item" onclick="closeAddMenu();openCommModal()">💬 Comm</button>
@@ -1731,7 +1734,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.40</div>
+      <div class="sidebar-version">v1.11.41</div>
     </nav>
 
     <!-- ── Main content ── -->
