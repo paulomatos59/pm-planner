@@ -122,20 +122,7 @@
       overflow-y: auto; flex-shrink: 0;
       transition: width 0.22s ease, padding 0.22s ease;
     }
-    .sidebar.collapsed { width: 0; padding: 0; overflow: hidden; border-right: none; }
-    /* Toggle button — sits at the left edge of the main area */
-    #sidebarToggle {
-      position: fixed; top: 68px; left: 210px;
-      width: 18px; height: 36px; z-index: 100;
-      background: var(--surface); border: 1px solid var(--border);
-      border-left: none; border-radius: 0 6px 6px 0;
-      cursor: pointer; display: flex; align-items: center; justify-content: center;
-      font-size: 10px; color: var(--text-muted);
-      transition: left 0.22s ease, background 0.15s;
-      box-shadow: 2px 0 6px rgba(0,0,0,0.06);
-    }
-    #sidebarToggle:hover { background: var(--bg); color: var(--text); }
-    body.sidebar-collapsed #sidebarToggle { left: 0; border-left: 1px solid var(--border); border-radius: 0 6px 6px 0; }
+    .sidebar.collapsed { width: 0; padding: 0; overflow: hidden; border-right: none; min-width: 0; }
     .sidebar-label {
       font-size: 10px; font-weight: 700; color: var(--text-muted);
       text-transform: uppercase; letter-spacing: 0.6px; padding: 10px 16px 4px;
@@ -1362,11 +1349,12 @@
 
     /* ── Hamburger (hidden on desktop) ── */
     .hamburger-btn {
-      display: none; background: none; border: none; cursor: pointer;
-      font-size: 20px; color: var(--text); padding: 4px 6px; border-radius: 6px;
-      line-height: 1; flex-shrink: 0;
+      display: flex; align-items: center; justify-content: center;
+      background: none; border: none; cursor: pointer;
+      font-size: 18px; color: var(--text-muted); padding: 4px 6px; border-radius: 6px;
+      line-height: 1; flex-shrink: 0; transition: color 0.15s, background 0.15s;
     }
-    .hamburger-btn:hover { background: var(--bg); }
+    .hamburger-btn:hover { background: var(--bg); color: var(--text); }
 
     /* ── Sidebar overlay (mobile) ── */
     .sidebar-overlay {
@@ -1562,9 +1550,6 @@
 
   <div class="app-body">
 
-    <!-- Sidebar collapse toggle -->
-    <button id="sidebarToggle" onclick="toggleSidebar()" title="Toggle sidebar">‹</button>
-
     <!-- ── Sidebar ── -->
     <nav class="sidebar" id="sidebarNav">
       <div style="padding:8px 12px 4px;position:relative">
@@ -1746,7 +1731,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.39</div>
+      <div class="sidebar-version">v1.11.40</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3386,24 +3371,14 @@
           <button class="dp-ticker-btn" id="dpTickerBtn" onclick="toggleTicker()" title="Play / Pause feed">▶</button>
         </div>`;
     }
-    // ── Sidebar collapse ──
+    // ── Sidebar collapse (desktop init) ──
     (function initSidebar() {
       if (localStorage.getItem('dp_sidebar_collapsed') === '1') {
         document.body.classList.add('sidebar-collapsed');
         const nav = document.getElementById('sidebarNav');
-        const btn = document.getElementById('sidebarToggle');
         if (nav) nav.classList.add('collapsed');
-        if (btn) btn.textContent = '›';
       }
     })();
-    function toggleSidebar() {
-      const collapsed = document.body.classList.toggle('sidebar-collapsed');
-      const nav = document.getElementById('sidebarNav');
-      const btn = document.getElementById('sidebarToggle');
-      if (nav) nav.classList.toggle('collapsed', collapsed);
-      if (btn) btn.textContent = collapsed ? '›' : '‹';
-      localStorage.setItem('dp_sidebar_collapsed', collapsed ? '1' : '0');
-    }
     function toggleTicker() {
       const track = document.getElementById('dpTickerTrack');
       const btn   = document.getElementById('dpTickerBtn');
@@ -13106,13 +13081,21 @@ const renderers = {
       if (menu && !menu.contains(e.target) && e.target !== btn) closeSettingsMenu();
     });
 
-    /* ── Mobile sidebar ── */
+    /* ── Sidebar toggle (desktop + mobile) ── */
     function toggleSidebar() {
-      const sidebar  = document.querySelector('.sidebar');
-      const overlay  = document.getElementById('sidebarOverlay');
-      const isOpen   = sidebar.classList.contains('open');
-      sidebar.classList.toggle('open', !isOpen);
-      overlay.classList.toggle('visible', !isOpen);
+      const isMobile = window.matchMedia('(max-width: 768px)').matches;
+      if (isMobile) {
+        const sidebar = document.querySelector('.sidebar');
+        const overlay = document.getElementById('sidebarOverlay');
+        const isOpen  = sidebar.classList.contains('open');
+        sidebar.classList.toggle('open', !isOpen);
+        overlay.classList.toggle('visible', !isOpen);
+      } else {
+        const collapsed = document.body.classList.toggle('sidebar-collapsed');
+        const nav = document.getElementById('sidebarNav');
+        if (nav) nav.classList.toggle('collapsed', collapsed);
+        localStorage.setItem('dp_sidebar_collapsed', collapsed ? '1' : '0');
+      }
     }
     function closeSidebar() {
       document.querySelector('.sidebar').classList.remove('open');
