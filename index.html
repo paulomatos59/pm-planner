@@ -1728,7 +1728,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.37</div>
+      <div class="sidebar-version">v1.11.38</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -3316,20 +3316,15 @@
       const todayS = toStr(now); // today as YYYY-MM-DD
       const tomorrowD = new Date(now); tomorrowD.setDate(now.getDate() + 1);
       const tomorrowS = toStr(tomorrowD); // start from tomorrow
-      const items = [];
-      // Tasks with dueDate from tomorrow through end of window, not done
-      tasks.forEach(t => {
-        const due = (t.dueDate || '').slice(0,10);
-        if (!due || due < tomorrowS || due > we) return;
-        if (t.status === 'Done') return;
-        const icon = t.taskType === 'timeoff' ? '🌴' : t.taskType === 'corporate' ? '🏢' : '📋';
-        items.push({ date: due, icon, title: t.title || 'Untitled', kind: 'task', id: t.id });
-      });
-      // Comms with date from tomorrow through end of window (handles recurring)
+      // Meetings only — grouped by day
+      const byDay = {}; // date → [{title, id}]
       comms.forEach(c => {
         if (!c.date) return;
-        const icon = c.type === 'Meeting' ? '🤝' : c.type === 'Slack' ? '💬' : c.type === 'Email' ? '📧' : '💬';
         const title = c.title || 'Untitled';
+        const pushDay = (d, id) => {
+          if (!byDay[d]) byDay[d] = [];
+          byDay[d].push({ title, id });
+        };
         if (c.recurrence && c.recurrence.freq) {
           const cap = (c.recurrence.endDate && c.recurrence.endDate < we) ? c.recurrence.endDate : we;
           if (c.date > we) return;
@@ -3339,25 +3334,30 @@
           occs.forEach(orig => {
             const actual = overrides[orig] || orig;
             if (actual < tomorrowS || actual > we) return;
-            if (c.notDoneOccurrences && c.notDoneOccurrences[actual]) return; // canceled occurrence
-            items.push({ date: actual, icon, title, kind: 'comm', id: c.id });
+            if (c.notDoneOccurrences && c.notDoneOccurrences[actual]) return;
+            pushDay(actual, c.id);
           });
         } else {
-          if (c.status === 'Canceled') return; // canceled meeting
+          if (c.status === 'Canceled') return;
           const d = c.date.slice(0,10);
           if (d < tomorrowS || d > we) return;
-          items.push({ date: d, icon, title, kind: 'comm', id: c.id });
+          pushDay(d, c.id);
         }
       });
-      if (items.length === 0) return '';
-      items.sort((a,b) => a.date.localeCompare(b.date) || a.title.localeCompare(b.title));
+      const days = Object.keys(byDay).sort();
+      if (days.length === 0) return '';
       const sep = `<span class="dp-ticker-sep">|</span>`;
-      const renderItem = it => {
-        const handler = it.kind === 'task' ? `openTaskModal('${it.id}')` : `openCommModal('${it.id}')`;
-        return `<span class="dp-ticker-item" onclick="${handler}" style="cursor:pointer" title="Open ${it.kind}">${it.icon} <span style="opacity:.55;font-size:10px">${fmtD(it.date)}</span> <span style="font-weight:600;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,0.35)">${esc(it.title)}</span></span>`;
+      // Each day renders as: "Mon, Nov 30  Title1; Title2; Title3"
+      const renderDay = date => {
+        const meetings = byDay[date];
+        const titlesHtml = meetings.map((m, i) => {
+          const comma = i < meetings.length - 1 ? '<span style="opacity:.5">;</span> ' : '';
+          return `<span class="dp-ticker-item" onclick="openCommModal('${m.id}')" style="cursor:pointer" title="${esc(m.title)}"><span style="font-weight:600;text-decoration:underline;text-underline-offset:2px;text-decoration-color:rgba(255,255,255,0.35)">${esc(m.title)}</span></span>${comma}`;
+        }).join('');
+        return `<span class="dp-ticker-item"><span style="opacity:.55;font-size:10px;margin-right:5px">${fmtD(date)}</span>${titlesHtml}</span>`;
       };
-      const content = items.map(renderItem).join(sep) + sep;
-      const dur = Math.max(20, items.length * 5);
+      const content = days.map(renderDay).join(sep) + sep;
+      const dur = Math.max(20, days.length * 8);
       return `
         <div class="dp-ticker-wrap">
           <div class="dp-ticker-scroll">
