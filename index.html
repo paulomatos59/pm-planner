@@ -563,7 +563,7 @@
     }
     #taskModal .modal-sidebar-col .form-group { margin-bottom: 16px; }
     #taskModal .rte-editor { min-height: 180px; max-height: none; overflow-y: visible; }
-    /* ── Follow-up modal ── */
+    /* ── Thread modal ── */
     #followupModal { padding: 20px; align-items: flex-start; justify-content: center; overflow-y: auto; }
     #followupModal .modal {
       max-width: 100%; width: 100%; max-height: none; height: auto;
@@ -848,7 +848,7 @@
     .tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
     .tab-count { font-size: 11px; background: var(--bg); padding: 1px 6px; border-radius: 10px; border: 1px solid var(--border); }
 
-    /* ── Follow-up items ── */
+    /* ── Thread items ── */
     .followup-list { display: flex; flex-direction: column; gap: 6px; }
     .followup-card {
       background: var(--surface); border: 1px solid var(--border);
@@ -1436,7 +1436,7 @@
       #commModal .modal-body-split { grid-template-columns: 1fr; }
       #commModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
       #commModal .modal-sidebar-col { background: var(--bg); border-radius: 0; }
-      /* Follow-up modal on mobile */
+      /* Thread modal on mobile */
       #followupModal { padding: 8px; }
       #followupModal .modal-body-split { grid-template-columns: 1fr; }
       #followupModal .modal-main-col { border-right: none; border-bottom: 1px solid var(--border); }
@@ -1554,7 +1554,7 @@
         <div class="add-dropdown hidden" id="addDropdown">
           <button class="add-dropdown-item" onclick="closeAddMenu();openTaskModal()">📋 Task</button>
           <button class="add-dropdown-item" onclick="closeAddMenu();openCommModal()">💬 Comm</button>
-          <button class="add-dropdown-item" onclick="closeAddMenu();openFollowupModal()">📌 Follow-up</button>
+          <button class="add-dropdown-item" onclick="closeAddMenu();openFollowupModal()">📌 Thread</button>
           <button class="add-dropdown-item" onclick="closeAddMenu();openNoteModal()">📝 Note</button>
         </div>
       </div>
@@ -1707,7 +1707,7 @@
           <button class="nav-item" onclick="filterByCategory('Meeting')">🤝 Meetings</button>
           <button class="nav-item" onclick="filterByCategory('Project')">🚀 Initiatives & Milestones</button>
           <button class="nav-item" onclick="filterByCategory('Admin')">⚙️ Admin</button>
-          <button class="nav-item" onclick="filterByCategory('Follow-up')">📌 Follow-ups</button>
+          <button class="nav-item" onclick="filterByCategory('Thread')">📌 Threads</button>
           <button class="nav-item" onclick="filterByCategory('Personal')">👤 Personal</button>
         </div>
       </div>
@@ -1728,7 +1728,7 @@
         </div>
       </div>
 
-      <div class="sidebar-version">v1.11.36</div>
+      <div class="sidebar-version">v1.11.37</div>
     </nav>
 
     <!-- ── Main content ── -->
@@ -1943,7 +1943,7 @@
                 <option value="Project">🚀 Project</option>
                 <option value="Meeting">🤝 Meeting</option>
                 <option value="Admin">⚙️ Admin</option>
-                <option value="Follow-up">📌 Follow-up</option>
+                <option value="Thread">📌 Thread</option>
                 <option value="Personal">👤 Personal</option>
               </select>
             </div>
@@ -1978,14 +1978,14 @@
             </div>
           </div>
 
-          <!-- Follow-up Action -->
+          <!-- Thread Action -->
           <div class="form-group" style="border-top:1px solid var(--border);padding-top:12px;margin-top:4px">
             <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--text)">
               <input type="checkbox" id="taskAddFollowup" onchange="toggleTaskFollowupDate()" style="width:15px;height:15px;cursor:pointer;accent-color:var(--primary)">
-              📋 Add Follow-up Action
+              📋 Add Thread Action
             </label>
             <div id="taskFollowupDateRow" class="hidden" style="margin-top:8px">
-              <label class="form-label">Follow-up Date</label>
+              <label class="form-label">Thread Date</label>
               <input type="date" class="form-input" id="taskFollowupDate">
             </div>
           </div>
@@ -2611,17 +2611,17 @@
     </div>
   </div>
 
-  <!-- ── Follow-up Modal ── -->
+  <!-- ── Thread Modal ── -->
   <div class="modal-overlay hidden" id="followupModal">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title" id="followupModalTitle">New Follow-up</h2>
+        <h2 class="modal-title" id="followupModalTitle">New Thread</h2>
         <div style="display:flex;align-items:center;gap:8px;margin-left:auto">
           <span class="draft-badge" id="followupDraftBadge"></span>
           <button class="popout-btn" id="followupPopoutBtn" title="Open in new window" onclick="popOutModal('followup',document.getElementById('followupId').value||null)">⧉</button>
           <button class="btn btn-danger btn-sm" id="btnDeleteFollowup" style="display:none" onclick="deleteFollowup()">Delete</button>
           <button class="btn btn-secondary btn-sm" onclick="closeFollowupModal()">Cancel</button>
-          <button class="btn btn-primary btn-sm" onclick="saveFollowup()">Save Follow-up</button>
+          <button class="btn btn-primary btn-sm" onclick="saveFollowup()">Save Thread</button>
         </div>
         <button class="btn-close" style="margin-left:12px" onclick="closeFollowupModal()">×</button>
       </div>
@@ -3176,6 +3176,8 @@
        STATE
     ============================== */
     let tasks        = JSON.parse(localStorage.getItem('dp_tasks_v1')    || '[]');
+    // Migrate old 'Follow-up' category value → 'Thread'
+    (function(){ let dirty=false; tasks.forEach(t=>{ if(t.category==='Follow-up'){t.category='Thread';dirty=true;} }); if(dirty) localStorage.setItem('dp_tasks_v1',JSON.stringify(tasks)); })();
     let projects     = JSON.parse(localStorage.getItem('dp_projects_v1') || '[]');
     let followups    = JSON.parse(localStorage.getItem('dp_followups_v1')|| '[]');
     let reports      = JSON.parse(localStorage.getItem('dp_reports_v1')  || '[]');
@@ -4551,7 +4553,7 @@
     /* ── End Work Log ── */
 
     function chipClass(cat) {
-      return { Meeting:'meeting', Project:'project', Admin:'admin', 'Follow-up':'followup', Personal:'personal' }[cat] || 'admin';
+      return { Meeting:'meeting', Project:'project', Admin:'admin', 'Thread':'followup', Personal:'personal' }[cat] || 'admin';
     }
     function projectStatusClass(s) {
       return { 'Active':'active','On Hold':'onhold','Completed':'completed','Cancelled':'cancelled' }[s] || 'active';
@@ -5040,7 +5042,7 @@ const renderers = {
           </div>
           <div class="summary-stat ${overdueFus.length > 0 ? 's-warning' : 's-neutral'}" onclick="showView('followups')">
             <div class="ss-value" style="color:${overdueFus.length > 0 ? 'var(--warning)' : 'var(--primary)'}">${openFus.length}</div>
-            <div class="ss-label">Follow-ups</div>
+            <div class="ss-label">Threads</div>
           </div>
         </div>
 
@@ -5110,11 +5112,11 @@ const renderers = {
 
           <div class="summary-card">
             <div class="summary-card-header">
-              <span class="summary-card-title" style="${overdueFus.length > 0 ? 'color:var(--warning)' : ''}">📋 Open Follow-ups${overdueFus.length > 0 ? ' <span style="font-size:11px;font-weight:600;color:var(--warning);margin-left:4px">'+overdueFus.length+' overdue</span>' : ''}</span>
+              <span class="summary-card-title" style="${overdueFus.length > 0 ? 'color:var(--warning)' : ''}">📋 Open Threads${overdueFus.length > 0 ? ' <span style="font-size:11px;font-weight:600;color:var(--warning);margin-left:4px">'+overdueFus.length+' overdue</span>' : ''}</span>
               <button class="summary-card-link" onclick="showView('followups')">View all →</button>
             </div>
             ${openFus.length === 0
-              ? `<div class="summary-empty">✅ No open follow-ups</div>`
+              ? `<div class="summary-empty">✅ No open threads</div>`
               : `<div class="summary-task-list">${openFus.slice(0,6).map(f => {
                   const fuProjIds = f.projectIds && f.projectIds.length ? f.projectIds : (f.projectId ? [f.projectId] : []);
                   const fuProjNames = fuProjIds.map(pid => { const p = projects.find(x => x.id === pid); return p ? esc(p.name) : ''; }).filter(Boolean).join(', ');
@@ -6253,7 +6255,7 @@ const renderers = {
               <div style="display:flex;gap:10px;font-size:11px;color:var(--text-muted);margin-top:2px">
                 <span>${p.status}</span>
                 <span>📋 ${openT} open</span>
-                ${openFu > 0 ? `<span>📌 ${openFu} follow-up${openFu!==1?'s':''}</span>` : ''}
+                ${openFu > 0 ? `<span>📌 ${openFu} thread${openFu!==1?'s':''}</span>` : ''}
                 ${odT    > 0 ? `<span style="color:var(--danger);font-weight:700">🚨 ${odT} overdue</span>` : ''}
               </div>
             </div>
@@ -6793,7 +6795,7 @@ const renderers = {
             <option value="Project"   ${fs.category==='Project'   ?'selected':''}>🚀 Project</option>
             <option value="Meeting"   ${fs.category==='Meeting'   ?'selected':''}>🤝 Meeting</option>
             <option value="Admin"     ${fs.category==='Admin'     ?'selected':''}>⚙️ Admin</option>
-            <option value="Follow-up" ${fs.category==='Follow-up' ?'selected':''}>📌 Follow-up</option>
+            <option value="Thread" ${fs.category==='Thread' ?'selected':''}>📌 Thread</option>
             <option value="Personal"  ${fs.category==='Personal'  ?'selected':''}>👤 Personal</option>
           </select>
           <select class="filter-select" id="filterPriority" onchange="applyFilters()">
@@ -7835,7 +7837,7 @@ const renderers = {
         </div>${pills}`;
 
       if (workProjects.length === 0) {
-        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No ${viewTitle.toLowerCase()} yet</h3><p>Create one to organise tasks, follow-ups, and notes in one place.</p></div>`;
+        return html + `<div class="empty-state"><div class="icon">🗂</div><h3>No ${viewTitle.toLowerCase()} yet</h3><p>Create one to organise tasks, threads, and notes in one place.</p></div>`;
       }
 
       const renderGroup = (items) => isList
@@ -7911,7 +7913,7 @@ const renderers = {
         { key:'tasks',     label:'📋 Tasks' },
         { key:'comms',     label:'🤝 Meetings' },
         { key:'projects',  label:'🗂 Projects' },
-        { key:'followups', label:'📌 Follow-ups' },
+        { key:'followups', label:'📌 Threads' },
         { key:'notes',     label:'📝 Notes' },
         { key:'goals',     label:'🏆 Goals' },
       ].map(c => `<button class="comm-filter-chip${gsTypeFilter===c.key?' active':''}" onclick="gsTypeFilter='${c.key}';_gsRender()">${c.label}</button>`).join('');
@@ -7936,7 +7938,7 @@ const renderers = {
             <option value="Project"   ${fs.category==='Project'   ?'selected':''}>🚀 Project</option>
             <option value="Meeting"   ${fs.category==='Meeting'   ?'selected':''}>🤝 Meeting</option>
             <option value="Admin"     ${fs.category==='Admin'     ?'selected':''}>⚙️ Admin</option>
-            <option value="Follow-up" ${fs.category==='Follow-up' ?'selected':''}>📌 Follow-up</option>
+            <option value="Thread" ${fs.category==='Thread' ?'selected':''}>📌 Thread</option>
             <option value="Personal"  ${fs.category==='Personal'  ?'selected':''}>👤 Personal</option>
           </select>
           <select class="filter-select" id="filterPriority" onchange="applyFilters()">
@@ -8038,10 +8040,10 @@ const renderers = {
         }))});
       }
 
-      // Follow-ups
+      // Threads
       if (gf === 'all' || gf === 'followups') {
         const mFu = followups.filter(f => match(f.topic) || match(f.notes));
-        if (mFu.length) sections.push({ title:'Follow-ups', icon:'📌', items: mFu.map(f => {
+        if (mFu.length) sections.push({ title:'Threads', icon:'📌', items: mFu.map(f => {
           const proj = projects.find(p => p.id === f.projectId);
           return { icon:'📌', title: f.topic, sub:[f.status, proj?.name].filter(Boolean).join(' · '), action:`openFollowupModal('${f.id}')` };
         })});
@@ -8461,7 +8463,7 @@ const renderers = {
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
               <span class="project-stat">📋 ${ptasks} task${ptasks!==1?'s':''}</span>
-              <span class="project-stat">📌 ${pfu} follow-up${pfu!==1?'s':''}</span>
+              <span class="project-stat">📌 ${pfu} thread${pfu!==1?'s':''}</span>
               <span class="project-stat">📝 ${pnotes} note${pnotes!==1?'s':''}</span>
             </div>
           </div>
@@ -8523,7 +8525,7 @@ const renderers = {
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
               <span class="project-stat">📋 ${ptasks} task${ptasks!==1?'s':''}</span>
-              <span class="project-stat">📌 ${pfu} follow-up${pfu!==1?'s':''}</span>
+              <span class="project-stat">📌 ${pfu} thread${pfu!==1?'s':''}</span>
               <span class="project-stat">📝 ${pnotes} note${pnotes!==1?'s':''}</span>
             </div>
           </div>
@@ -8576,7 +8578,7 @@ const renderers = {
             📋 Tasks <span class="tab-count">${ptasks.length}</span>
           </button>
           <button class="tab-btn ${activeProjectTab==='followups'?'active':''}" onclick="switchTab('followups')">
-            📌 Follow-ups <span class="tab-count">${openFu} open</span>
+            📌 Threads <span class="tab-count">${openFu} open</span>
           </button>
           <button class="tab-btn ${activeProjectTab==='notes'?'active':''}" onclick="switchTab('notes')">
             📝 Notes <span class="tab-count">${pnotes.length}</span>
@@ -8598,7 +8600,7 @@ const renderers = {
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
-              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Thread</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openNoteModal(null,'${pid}')">📝 Note</button>
             </div>
           </div>` : ''}
@@ -8653,10 +8655,10 @@ const renderers = {
         const resolved = pfu.filter(f => f.status === 'Resolved');
         html += `
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-            <button class="btn btn-primary btn-sm" onclick="openFollowupModal(null,'${pid}')">＋ Add Follow-up</button>
+            <button class="btn btn-primary btn-sm" onclick="openFollowupModal(null,'${pid}')">＋ Add Thread</button>
           </div>`;
         if (pfu.length === 0) {
-          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📌</div><h3>No follow-ups yet</h3><p>Track topics that need to be discussed or actioned.</p></div>`;
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📌</div><h3>No threads yet</h3><p>Track topics that need to be discussed or actioned.</p></div>`;
         } else {
           if (open.length > 0) {
             html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
@@ -8718,7 +8720,7 @@ const renderers = {
         </div>`;
 
       if (personalItems.length === 0) {
-        return html + `<div class="empty-state"><div class="icon">🏠</div><h3>No personal items yet</h3><p>Create a personal item to organise your own tasks, follow-ups, and notes.</p></div>`;
+        return html + `<div class="empty-state"><div class="icon">🏠</div><h3>No personal items yet</h3><p>Create a personal item to organise your own tasks, threads, and notes.</p></div>`;
       }
 
       if (activeItems.length > 0) {
@@ -8747,7 +8749,7 @@ const renderers = {
             <div class="project-card-desc">${esc(p.description) || '&nbsp;'}</div>
             <div class="project-card-stats">
               <span class="project-stat">📋 ${ptasks} task${ptasks!==1?'s':''}</span>
-              <span class="project-stat">📌 ${pfu} follow-up${pfu!==1?'s':''}</span>
+              <span class="project-stat">📌 ${pfu} thread${pfu!==1?'s':''}</span>
               <span class="project-stat">📝 ${pnotes} note${pnotes!==1?'s':''}</span>
             </div>
           </div>
@@ -8791,7 +8793,7 @@ const renderers = {
             📋 Tasks <span class="tab-count">${ptasks.length}</span>
           </button>
           <button class="tab-btn ${activeProjectTab==='followups'?'active':''}" onclick="switchTab('followups')">
-            📌 Follow-ups <span class="tab-count">${openFu} open</span>
+            📌 Threads <span class="tab-count">${openFu} open</span>
           </button>
           <button class="tab-btn ${activeProjectTab==='notes'?'active':''}" onclick="switchTab('notes')">
             📝 Notes <span class="tab-count">${pnotes.length}</span>
@@ -8813,7 +8815,7 @@ const renderers = {
             <div class="ov-add-dropdown hidden" id="ovAddDrop_${pid}">
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openTaskModal(null,'${pid}')">📋 Task</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');${p.type==='personal'?`openCommModalForPersonal('${pid}')`:`openCommModalForProject('${pid}')`}">💬 Comm</button>
-              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Follow-up</button>
+              <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openFollowupModal(null,'${pid}')">📌 Thread</button>
               <button class="add-dropdown-item" onclick="closeOvAdd('${pid}');openNoteModal(null,'${pid}')">📝 Note</button>
             </div>
           </div>` : ''}
@@ -8868,10 +8870,10 @@ const renderers = {
         const resolved = pfu.filter(f => f.status === 'Resolved');
         html += `
           <div style="display:flex;justify-content:flex-end;margin-bottom:12px">
-            <button class="btn btn-primary btn-sm" onclick="openFollowupModal(null,'${pid}')">＋ Add Follow-up</button>
+            <button class="btn btn-primary btn-sm" onclick="openFollowupModal(null,'${pid}')">＋ Add Thread</button>
           </div>`;
         if (pfu.length === 0) {
-          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📌</div><h3>No follow-ups yet</h3><p>Track topics that need to be discussed or actioned.</p></div>`;
+          html += `<div class="empty-state" style="padding:32px 0"><div class="icon">📌</div><h3>No threads yet</h3><p>Track topics that need to be discussed or actioned.</p></div>`;
         } else {
           if (open.length > 0) {
             html += `<div class="section-header"><span class="section-title">Open</span><span class="section-count">${open.length}</span></div>
@@ -9009,7 +9011,7 @@ const renderers = {
                 ${x.description ? `<div class="project-card-desc">${esc(x.description)}</div>` : ''}
                 <div class="project-card-stats">
                   <span class="project-stat">📋 ${xTasks} task${xTasks!==1?'s':''}</span>
-                  <span class="project-stat">📌 ${xFu} follow-up${xFu!==1?'s':''}</span>
+                  <span class="project-stat">📌 ${xFu} thread${xFu!==1?'s':''}</span>
                 </div>
               </div>
             </div>`;
@@ -9212,7 +9214,7 @@ const renderers = {
                onkeydown="if(event.key==='Tab'){event.preventDefault();document.execCommand(event.shiftKey?'outdent':'indent');}">${p.summary||''}</div>
         </div>`;
 
-      // ── Row 1: Tasks + Follow-ups side by side ──
+      // ── Row 1: Tasks + Threads side by side ──
       html += `<div class="proj-ov-grid">`;
 
       html += `
@@ -9235,12 +9237,12 @@ const renderers = {
         <div class="proj-ov-section grid-item">
           <div class="proj-ov-hdr">
             <span>📌</span>
-            <span class="proj-ov-hdr-title">Open Follow-ups</span>
+            <span class="proj-ov-hdr-title">Open Threads</span>
             <span class="tab-count">${openFu.length}</span>
           </div>
           <div class="proj-ov-body">
             ${openFu.length === 0
-              ? `<div class="proj-ov-empty">No open follow-ups</div>`
+              ? `<div class="proj-ov-empty">No open threads</div>`
               : `<div class="followup-list">${openFu.slice(0,5).map(followupCard).join('')}</div>
                  ${openFu.length > 5 ? `<div class="proj-ov-more"><button class="btn btn-secondary btn-sm" onclick="switchTab('followups')">View all ${openFu.length} →</button></div>` : ''}`
             }
@@ -9708,16 +9710,16 @@ const renderers = {
 
       return `
         <div class="view-header">
-          <div><div class="view-title">📋 Follow-ups</div>
+          <div><div class="view-title">📋 Threads</div>
             <div class="view-subtitle">${open.length} open · ${overdue.length} overdue · ${resolved.length} resolved</div>
           </div>
-          <button class="btn btn-primary" onclick="openFollowupModal()">＋ New Follow-up</button>
+          <button class="btn btn-primary" onclick="openFollowupModal()">＋ New Thread</button>
         </div>
         <div style="padding:0 4px">
           ${overdue.length > 0 ? section('⚠ Overdue', overdue, '') : ''}
           ${upcoming.length > 0 ? section('📅 Upcoming', upcoming, '') : ''}
           ${noDue.length > 0   ? section('No Date', noDue, '') : ''}
-          ${open.length === 0  ? '<div class="empty-state"><div class="icon">📋</div><h3>No open follow-ups</h3><p>All caught up!</p></div>' : ''}
+          ${open.length === 0  ? '<div class="empty-state"><div class="icon">📋</div><h3>No open threads</h3><p>All caught up!</p></div>' : ''}
           ${resolved.length > 0 ? section('✅ Resolved', resolved, '') : ''}
         </div>`;
     }
@@ -11613,7 +11615,7 @@ const renderers = {
         occSec.style.display = 'none';
       }
 
-      // ── Follow-up Action section ──
+      // ── Thread Action section ──
       const linkedFu = id ? followups.find(f => f.taskId === id) : null;
       const addFuChk = document.getElementById('taskAddFollowup');
       addFuChk.checked = !!linkedFu;
@@ -11728,20 +11730,20 @@ const renderers = {
       }
       if (existing) { Object.assign(existing, task); } else { tasks.push(task); }
 
-      // ── Follow-up Action: create / update / remove ──
+      // ── Thread Action: create / update / remove ──
       const addFu = document.getElementById('taskAddFollowup').checked;
       const fuDate = document.getElementById('taskFollowupDate').value || null;
       const existingFu = followups.find(f => f.taskId === id);
       if (addFu) {
         if (existingFu) {
-          // Update existing linked follow-up
+          // Update existing linked thread
           existingFu.topic     = task.title;
           existingFu.dueDate   = fuDate;
           existingFu.projectId = task.projectId || existingFu.projectId;
           existingFu.taskId    = id;
           existingFu.updatedAt = new Date().toISOString();
         } else {
-          // Create new follow-up
+          // Create new thread
           followups.push({
             id:        uid(),
             topic:     task.title,
@@ -11756,7 +11758,7 @@ const renderers = {
         }
         persistFollowups();
       } else if (!addFu && existingFu) {
-        // Remove follow-up if checkbox was unchecked
+        // Remove thread if checkbox was unchecked
         followups = followups.filter(f => f.taskId !== id);
         persistFollowups();
       }
@@ -12068,7 +12070,7 @@ const renderers = {
       const isPersonal = p?.type === 'personal';
       const isOkr      = p?.type === 'okr';
       const typeLabel  = isPersonal ? 'personal item' : isOkr ? 'OKR' : 'initiative/milestone';
-      if (!editingProjId || !confirm(`Delete this ${typeLabel}? Tasks, follow-ups and notes linked to it will NOT be deleted — just unlinked.`)) return;
+      if (!editingProjId || !confirm(`Delete this ${typeLabel}? Tasks, threads and notes linked to it will NOT be deleted — just unlinked.`)) return;
       tasks.forEach(t => { if (t.projectId === editingProjId) t.projectId = null; });
       persistTasks();
       followups    = followups.filter(f => f.projectId !== editingProjId);
@@ -12361,7 +12363,7 @@ const renderers = {
       const f     = id ? followups.find(x => x.id === id) : null;
       const preId = f?.projectId || projectId || '';
 
-      document.getElementById('followupModalTitle').textContent    = isNew ? 'New Follow-up' : 'Edit Follow-up';
+      document.getElementById('followupModalTitle').textContent    = isNew ? 'New Thread' : 'Edit Thread';
       document.getElementById('btnDeleteFollowup').style.display   = isNew ? 'none' : 'block';
       document.getElementById('followupId').value    = f?.id    || '';
       document.getElementById('followupTopic').value               = f?.topic  || '';
@@ -12413,14 +12415,14 @@ const renderers = {
     }
 
     function deleteFollowup() {
-      if (!editingFuId || !confirm('Delete this follow-up?')) return;
+      if (!editingFuId || !confirm('Delete this thread?')) return;
       followups = followups.filter(f => f.id !== editingFuId);
       persistFollowups();
       closeFollowupModal();
       showView(currentView);
     }
 
-    /* ── Follow-up RTE helpers ── */
+    /* ── Thread RTE helpers ── */
     function fuRteExec(cmd, val) { document.getElementById('followupNotes').focus(); document.execCommand(cmd, false, val || null); }
     function fuRteUpdateToolbar() {
       document.getElementById('fuRteBoldBtn')?.classList.toggle('active', document.queryCommandState('bold'));
